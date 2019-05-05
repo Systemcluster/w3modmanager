@@ -8,7 +8,7 @@ from w3modmanager.ui.graphical.settingswindow import SettingsWindow
 from qtpy.QtCore import QSize, QSettings, Qt
 from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QFileDialog, QInputDialog, QDialogButtonBox, QSizePolicy, \
-    QMessageBox
+    QMessageBox, QMenu
 from qtpy.QtGui import QIcon
 
 
@@ -45,8 +45,11 @@ class MainWindow(QMainWindow):
     def setupMenu(self):
         self.menuBar = QMenuBar(self)
         self.setMenuBar(self.menuBar)
+        settings = QSettings()
 
-        menuMods = self.menuBar.addMenu('&Mods')
+        # mods menu
+
+        menuMods: QMenu = self.menuBar.addMenu('&Mods')
 
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
@@ -77,13 +80,23 @@ class MainWindow(QMainWindow):
         actionExport.triggered.connect(self.showExportDialog)
         menuMods.addAction(actionExport)
 
-        menuSettings = self.menuBar.addMenu('&Tools')
+        menuMods.aboutToShow.connect(lambda: [
+            actionDownloadMod.setDisabled(not str(settings.value('nexusAPIKey'))),
+            actionGetInfo.setDisabled(not str(settings.value('nexusAPIKey'))),
+            actionGetUpdates.setDisabled(not str(settings.value('nexusAPIKey')))
+        ])
+
+        # settings menu
+
+        menuSettings: QMenu = self.menuBar.addMenu('&Tools')
         actionSettings = QAction('&Settings', self)
         actionSettings.triggered.connect(self.showSettingsDialog)
         actionSettings.setIcon(gearIcon)
         menuSettings.addAction(actionSettings)
 
-        menuInfo = self.menuBar.addMenu('&Info')
+        # info menu
+
+        menuInfo: QMenu = self.menuBar.addMenu('&Info')
         actionAbout = QAction('&About', self)
         actionAbout.triggered.connect(self.showAboutDialog)
         actionAbout.setIcon(QIcon.fromTheme('document-open'))

@@ -105,16 +105,17 @@ class SettingsWindow(QDialog):
 
         # Nexus Mods API
 
-        gbNexusmodsApi = QGroupBox('Nexus Mods API', self)
-        mainLayout.addWidget(gbNexusmodsApi)
-        gbNexusmodsApiLayout = QVBoxLayout(gbNexusmodsApi)
+        gbNexusModsAPI = QGroupBox('Nexus Mods API', self)
+        mainLayout.addWidget(gbNexusModsAPI)
+        gbNexusModsAPILayout = QVBoxLayout(gbNexusModsAPI)
 
         self.nexusAPIKey = QLineEdit(self)
         self.nexusAPIKey.setPlaceholderText('Personal API Key...')
         if settings.value('nexusAPIKey'):
             self.nexusAPIKey.setText(str(settings.value('nexusAPIKey')))
-        gbNexusmodsApiLayout.addWidget(self.nexusAPIKey)
+        gbNexusModsAPILayout.addWidget(self.nexusAPIKey)
 
+        # TODO: enhancement: check if API Key is valid
         nexusAPIKeyInfo = QLabel('''
             <font color="#888">The API Key is used to check for mod updates, to get mod details and to download mods.<br>\
             Get your Personal API Key <a href="https://www.nexusmods.com/users/myaccount?tab=api">here</a>.</font>
@@ -123,19 +124,19 @@ class SettingsWindow(QDialog):
         nexusAPIKeyInfo.setWordWrap(True)
         nexusAPIKeyInfo.setMargin(4)
         nexusAPIKeyInfo.setMinimumHeight(48)
-        gbNexusmodsApiLayout.addWidget(nexusAPIKeyInfo)
+        gbNexusModsAPILayout.addWidget(nexusAPIKeyInfo)
 
         self.nexusGetInfo = QCheckBox('Get Mod details after adding a new mod', self)
         self.nexusGetInfo.setChecked(settings.value('nexusGetInfo', 'True') == 'True')
-        gbNexusmodsApiLayout.addWidget(self.nexusGetInfo)
+        gbNexusModsAPILayout.addWidget(self.nexusGetInfo)
 
         self.nexusCheckUpdates = QCheckBox('Check for Mod updates on startup', self)
         self.nexusCheckUpdates.setChecked(settings.value('nexusCheckUpdates', 'False') == 'True')
-        gbNexusmodsApiLayout.addWidget(self.nexusCheckUpdates)
+        gbNexusModsAPILayout.addWidget(self.nexusCheckUpdates)
 
         self.nexusCheckClipboard = QCheckBox('Monitor the Clipboard for Nexus Mods URLs', self)
         self.nexusCheckClipboard.setChecked(settings.value('nexusCheckClipboard', 'False') == 'True')
-        gbNexusmodsApiLayout.addWidget(self.nexusCheckClipboard)
+        gbNexusModsAPILayout.addWidget(self.nexusCheckClipboard)
 
         # Output
 
