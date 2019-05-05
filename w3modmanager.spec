@@ -1,0 +1,48 @@
+# -*- mode: python -*-
+
+from os import path
+from PyInstaller.building.build_main import Analysis, PYZ, EXE
+
+
+# work-around for https://github.com/pyinstaller/pyinstaller/issues/4064
+import distutils
+if distutils.distutils_path.endswith('__init__.py'):  # type: ignore
+    distutils.distutils_path = path.dirname(distutils.distutils_path)  # type: ignore
+
+
+a = Analysis(
+    ['.\\w3modmanager\\__main__.py'],
+    pathex=['.\\w3modmanager'],
+    binaries=[],
+    datas=[('resources', 'resources'), ('tools', 'tools')],
+    hiddenimports=['distutils'],
+    hookspath=[],
+    runtime_hooks=[],
+    excludes=['PyQt5'],  # ignore QtPy's PyQt5 since we use PySide2
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=None,
+    noarchive=False,
+)
+pyz = PYZ(
+    a.pure,
+    a.zipped_data,
+    cipher=None,
+)
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='w3modmanager',
+    debug=False,
+    strip=False,
+    upx=False,
+    runtime_tmpdir=None,
+    console=False,
+    uac_admin=False,
+    bootloader_ignore_signals=True,
+    icon='.\\resources\\icons\\w3b.ico',
+)
