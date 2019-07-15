@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 
 from qtpy.QtCore import Qt, QAbstractTableModel, QModelIndex
 from qtpy.QtGui import QFontDatabase, QColor, QIcon
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget, QAbstractItemView
 
 
 class ModListModel(QAbstractTableModel):
@@ -39,6 +39,9 @@ class ModListModel(QAbstractTableModel):
         self._icons['bin'] = QIcon(str(getRuntimePath('resources/icons/folder.ico')))
         self._icons['???'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
 
+        self._sortColumn = None
+        self._sortOrder = None
+
         self._values: List[Mod] = []
         self.update(model)
 
@@ -69,7 +72,22 @@ class ModListModel(QAbstractTableModel):
             return None
         return self._header[section][0] if len(self._header) > section else "?"
 
-    def sort(self, column, order) -> None:
+    def sort(self, column=None, order=None) -> None:
+        # cache last used sort configuration
+        if column is not None:
+            self._sortColumn = column
+        else:
+            column = self._sortColumn
+        if order is not None:
+            self._sortOrder = order
+        else:
+            order = self._sortOrder
+        if column is None or order is None:
+            return
+
+        # remember selected rows
+        selection = [self._values[row.row()].filename for row in self.parent().selectionModel().selectedRows()]
+
         col = self.getColumnKey(column)
 
         def compare(lhs, rhs):
@@ -92,6 +110,15 @@ class ModListModel(QAbstractTableModel):
             self._values,
             key=cmp_to_key(compare),
             reverse=order == Qt.DescendingOrder)
+
+        # restore selected rows
+        self.parent().selectionModel().clear()
+        self.parent().setSelectionMode(QAbstractItemView.MultiSelection)
+        for row, mod in enumerate(self._values):
+            if mod.filename in selection:
+                self.parent().selectRow(row)
+        self.parent().setSelectionMode(QAbstractItemView.ExtendedSelection)
+
         self.update()
 
     def setData(self, index, value, _role) -> bool:
@@ -106,6 +133,7 @@ class ModListModel(QAbstractTableModel):
             self.dataChanged.emit(
                 self.index(index.row(), 0),
                 self.index(index.row(), self.columnCount() - 1))
+            self.sort()
             return True
         return False
 
@@ -135,7 +163,12 @@ class ModListModel(QAbstractTableModel):
 
         if role == Qt.BackgroundRole:
             if not self._values[index.row()].enabled:
-                return QColor(230, 230, 230)
+                return QColor(240, 240, 240)
+            return None
+
+        if role == Qt.ForegroundRole:
+            if not self._values[index.row()].enabled:
+                return QColor(60, 60, 60)
             return None
 
         if role == Qt.DecorationRole:

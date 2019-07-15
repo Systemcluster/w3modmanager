@@ -99,6 +99,7 @@ class ModList(QTableView):
         self.sortByColumn(2, Qt.AscendingOrder)
         self.sortByColumn(1, Qt.AscendingOrder)
         self.sortByColumn(3, Qt.AscendingOrder)
+        self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
         self.setFocus()
 
@@ -119,19 +120,6 @@ class ModList(QTableView):
     def eventFilter(self, obj, event):
         return super().eventFilter(obj, event)
 
-    def sortByColumn(self, column: int = None, order: Qt.SortOrder = None):
-        # TODO: enhancement: keep selection after sort
-        if column is not None:
-            self._sortColumn = column
-        else:
-            column = self._sortColumn
-        if order is not None:
-            self._sortOrder = order
-        else:
-            order = self._sortOrder
-        return super().sortByColumn(column, order)
-
-
     def keyPressEvent(self, event: QKeyEvent):
         if event.matches(QKeySequence.Paste):
             self.pasteEvent()
@@ -143,6 +131,7 @@ class ModList(QTableView):
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
             self.model().update(self._model)
+            self.model().sort()
             self.repaint()
         return super().keyPressEvent(event)
 
@@ -212,6 +201,7 @@ class ModList(QTableView):
                     logger.bind(path=path, name=mod.modname).error(f'Mod exists')
                     errors += 1
             self.model().update(self._model)
+            self.model().sort()
         except InvalidPathError as e:
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
