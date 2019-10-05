@@ -16,6 +16,8 @@ class MainWindow(QMainWindow):
     def __init__(self, model: Model):
         super().__init__()
 
+        self.model = model
+
         self.setWindowTitle(getTitleString('Mod Manager'))
         self.setMinimumSize(QSize(750, 500))
         self.setupMenu()
@@ -36,6 +38,9 @@ class MainWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def nxmUrlEvent(self, event):
+        print(event)
 
     def closeEvent(self, _event):
         settings = QSettings()
@@ -82,8 +87,11 @@ class MainWindow(QMainWindow):
 
         menuMods.aboutToShow.connect(lambda: [
             actionDownloadMod.setDisabled(not str(settings.value('nexusAPIKey'))),
-            actionGetInfo.setDisabled(not str(settings.value('nexusAPIKey'))),
-            actionGetUpdates.setDisabled(not str(settings.value('nexusAPIKey')))
+            actionGetInfo.setDisabled(
+                not str(settings.value('nexusAPIKey')) or not len(self.model)),
+            actionGetUpdates.setDisabled(
+                not str(settings.value('nexusAPIKey')) or not len(self.model)),
+            actionExport.setDisabled(not len(self.model))
         ])
 
         # settings menu

@@ -7,7 +7,7 @@ import html
 from loguru import logger
 from qtpy.QtCore import QSettings, Qt
 from qtpy.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
-    QLabel, QStackedWidget
+    QLabel, QStackedWidget, QLineEdit
 from qtpy.QtGui import QFont, QPixmap
 
 
@@ -25,10 +25,25 @@ class MainWidget(QWidget):
         self.stack = QStackedWidget()
         self.splitter.addWidget(self.stack)
 
+        # mod list widget
+
+        self.modlistwidget = QWidget()
+        self.modlistlayout = QVBoxLayout()
+        self.modlistlayout.setMargin(0)
+        self.modlistwidget.setLayout(self.modlistlayout)
+        self.stack.addWidget(self.modlistwidget)
+
+        # search bar
+
+        # TODO: incomplete: make search bar functional
+        searchbar = QLineEdit()
+        searchbar.setPlaceholderText('Search...')
+        self.modlistlayout.addWidget(searchbar)
+
         # mod list
 
-        self.modlist = ModList(self, model)
-        self.stack.addWidget(self.modlist)
+        modlist = ModList(self, model)
+        self.modlistlayout.addWidget(modlist)
 
         # welcome message
 
@@ -37,16 +52,16 @@ class MainWidget(QWidget):
         welcomewidget = QWidget()
         welcomewidget.setLayout(welcomelayout)
         welcomewidget.dragEnterEvent = lambda e: [
-            self.modlist.dragEnterEvent(e)
+            modlist.dragEnterEvent(e)
         ]
         welcomewidget.dragMoveEvent = lambda e: [
-            self.modlist.dragMoveEvent(e)
+            modlist.dragMoveEvent(e)
         ]
         welcomewidget.dragLeaveEvent = lambda e: [
-            self.modlist.dragLeaveEvent(e)
+            modlist.dragLeaveEvent(e)
         ]
         welcomewidget.dropEvent = lambda e: [
-            self.modlist.dropEvent(e)
+            modlist.dropEvent(e)
         ]
         welcomewidget.setAcceptDrops(True)
 
@@ -81,7 +96,7 @@ class MainWidget(QWidget):
         self.output.setPlaceholderText('Program output...')
         self.splitter.addWidget(self.output)
 
-        # TODO: enhancement: add a search bar and a launch game icon
+        # TODO: enhancement: add a launch game icon
         # TODO: enhancement: show indicator if scripts have to be merged
 
         self.splitter.setStretchFactor(0, 1)

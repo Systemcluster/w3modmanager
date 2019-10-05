@@ -113,6 +113,7 @@ class Model:
         self._modList[filename].enabled = False
         self.updateCallbacks.fire(self)
 
+
     def __len__(self) -> int:
         return len(self._modList)
 
