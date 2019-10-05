@@ -185,7 +185,7 @@ class ModListModel(QAbstractTableModel):
                 # Right|VCenter
                 return 0x0082
             if col in ('priority', 'date', 'binFiles', 'menuFiles', 'settings',
-                    'inputs', 'contentFiles', 'scriptFiles',):
+                       'inputs', 'contentFiles', 'scriptFiles',):
                 # HCenter|VCenter
                 return 0x0084
             # Left|VCenter

@@ -175,7 +175,9 @@ class MainWindow(QMainWindow):
             {w3modmanager.SUBTITLE}<br>
             <br>
             For updates and information visit <br>
-            <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">{removeUrlScheme(w3modmanager.URL_WEB)}</a><br>
+            <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">\
+                {removeUrlScheme(w3modmanager.URL_WEB)}\
+            </a><br>
             <br>
             Thank you for using {w3modmanager.TITLE}!
             </p>
@@ -200,7 +202,9 @@ class MainWindow(QMainWindow):
             </p>
             <p style="margin:10px 15px 10px 5px;"><small>
                 For updates and information visit <br>
-                <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">{removeUrlScheme(w3modmanager.URL_WEB)}</a>
+                <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">\
+                    {removeUrlScheme(w3modmanager.URL_WEB)}\
+                </a>
             </small></p>
             ''')
         messagebox.setTextFormat(Qt.RichText)
@@ -216,10 +220,13 @@ class MainWindow(QMainWindow):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Critical Error' if self else getTitleString('Critical Error'))
         messagebox.setText(f'''
-            <p><strong>Something unexpected happened. {'Detailed error message:' if error else ''}</strong></p>
+            <p><strong>\
+                Something unexpected happened. {'Detailed error message:' if error else ''}\
+            </strong></p>
             {f'<p><code>{error}</code></p>' if error else ''}
             <p><small>
-                Please check if this is a known issue or create a report detailing the conditions of this error here:<br>
+                Please check if this is a known issue or create a report \
+                detailing the conditions of this error here:<br>
                 <a href="{w3modmanager.URL_ISSUES}" style="text-decoration:none;">
                     {removeUrlScheme(w3modmanager.URL_ISSUES)}
                 </a>

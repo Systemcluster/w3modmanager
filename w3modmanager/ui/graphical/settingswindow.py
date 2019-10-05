@@ -117,7 +117,8 @@ class SettingsWindow(QDialog):
 
         # TODO: enhancement: check if API Key is valid
         nexusAPIKeyInfo = QLabel('''
-            <font color="#888">The API Key is used to check for mod updates, to get mod details and to download mods.<br>\
+            <font color="#888">The API Key is used to check for mod updates, \
+            to get mod details and to download mods. \
             Get your Personal API Key <a href="https://www.nexusmods.com/users/myaccount?tab=api">here</a>.</font>
             ''', self)
         nexusAPIKeyInfo.setOpenExternalLinks(True)

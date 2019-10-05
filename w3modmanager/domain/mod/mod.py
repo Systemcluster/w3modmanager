@@ -58,8 +58,7 @@ class Mod:
     @property
     def binFiles(self):
         return list(filter(
-            lambda f: \
-            f.target.parent not in (
+            lambda f: f.target.parent not in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ),
             self.files))
@@ -67,22 +66,21 @@ class Mod:
     @property
     def menuFiles(self):
         return list(filter(
-            lambda f: \
-            f.target.parent in (
+            lambda f: f.target.parent in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
 
     @classmethod
-    def fromPath(cls: Type[Mod], path: Path) -> List[cls]:
+    def fromPath(cls: Type[Mod], path: Path) -> List[Mod]:
         if path.is_file():
             return cls.fromArchive(path)
         else:
             return cls.fromDirectory(path)
 
     @classmethod
-    def fromArchive(cls: Type[Mod], path: Path, package: Path = None) -> List[cls]:
-        mods: List[cls] = []
+    def fromArchive(cls: Type[Mod], path: Path, package: Path = None) -> List[Mod]:
+        mods: List[Mod] = []
         temp = Path(tempfile.gettempdir()).joinpath('w3modmanager/extract')
         try:
             if isArchive(path):
@@ -105,10 +103,10 @@ class Mod:
         return mods
 
     @classmethod
-    def fromDirectory(cls: Type[Mod], path: Path, package: Path = None) -> List[cls]:
+    def fromDirectory(cls: Type[Mod], path: Path, package: Path = None) -> List[Mod]:
         if not package:
             package = path
-        mods: List[cls] = []
+        mods: List[Mod] = []
         dirs = [path]
         for check in dirs:
             if check.is_dir():

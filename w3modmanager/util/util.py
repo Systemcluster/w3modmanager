@@ -91,7 +91,8 @@ def isValidFileUrl(url: str) -> bool:
 
 
 def isArchive(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in ('.zip', '.rar', '.7z', '.tar', '.lzma')
+    return path.is_file() and path.suffix.lower() in (
+        '.zip', '.rar', '.7z', '.tar', '.lzma')
 
 
 def extractArchive(archive: Path, target: Path) -> Path:
@@ -104,6 +105,7 @@ def extractArchive(archive: Path, target: Path) -> Path:
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
     if result.returncode != 0:
-        raise InvalidPathError(archive,
+        raise InvalidPathError(
+            archive,
             result.stderr if result.stderr else 'Could not extract archive')
     return target

@@ -87,8 +87,10 @@ def isValidModDirectory(path: Path) -> bool:
 def isValidDlcDirectory(path: Path) -> bool:
     # valid if child starts with dlc and contains a non-empty content dir
     # or ends with dlc and doesn't start with mod
-    if path.is_dir() and (re.match('^(dlc).*', path.name, re.IGNORECASE) \
-            or re.match('^((?!mod).)*dlc$', path.name, re.IGNORECASE)):
+    if path.is_dir() and (
+        re.match('^(dlc).*', path.name, re.IGNORECASE)
+        or re.match('^((?!mod).)*dlc$', path.name, re.IGNORECASE)
+    ):
         return containsContentDirectory(path)
     return False
 
@@ -146,8 +148,10 @@ def fetchUnsureDirectories(path: Path) -> List[Path]:
     for check in dirs:
         if maybeModOrDlcDirectory(check, path):
             bins.append(check.relative_to(path))
-        dirs += [d for d in check.iterdir() if d.is_dir() \
-            and not isValidModDirectory(d) and not isValidDlcDirectory(d)]
+        dirs += [
+            d for d in check.iterdir() if d.is_dir()
+            and not isValidModDirectory(d) and not isValidDlcDirectory(d)
+        ]
     return bins
 
 
@@ -187,7 +191,9 @@ class Settings:
         self.config.read_string(content)
 
     def __repr__(self) -> str:
-        return '\'%s\': %s' % (str(self.source), str({section: dict(self.config[section]) for section in self.config.sections()}))
+        return '\'%s\': %s' % (
+            str(self.source),
+            str({section: dict(self.config[section]) for section in self.config.sections()}))
 
 
 class UserSettings(Settings):
@@ -205,8 +211,10 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
     inpu = []
     dirs = [path]
     for check in dirs:
-        for file in [f for f in check.iterdir() \
-                if f.is_file() and f.suffix in ('.ini', '.xml', '.txt', '.settings')]:
+        for file in [
+            f for f in check.iterdir()
+            if f.is_file() and f.suffix in ('.ini', '.xml', '.txt', '.settings')
+        ]:
             relpath: Path = file.relative_to(path)
 
             # if the binfile is placed under bin, use its path relative to its bin dir
@@ -219,12 +227,14 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
             if re.match(r'.+(\.xml|xml\.txt)$', relpath.name):
                 # guess for input.xml
                 if re.match(r'.*input([.]?part)?((\.xml)|([.]?xml\.txt))$', relpath.name):
-                    bins.append(BinFile(relpath, \
+                    bins.append(BinFile(
+                        relpath,
                         Path('bin/config/r4game/user_config_matrix/pc/input.xml')))
                     continue
                 # otherwise assume menu xml
                 if re.match(r'.+\.xml', relpath.name):
-                    bins.append(BinFile(relpath, \
+                    bins.append(BinFile(
+                        relpath,
                         Path('bin/config/r4game/user_config_matrix/pc').joinpath(relpath.name)))
                     continue
 
@@ -238,11 +248,15 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 user.append(UserSettings(relpath, util.readText(file)))
                 continue
 
-        dirs += [d for d in check.iterdir() if d.is_dir() and ( \
-            not onlyUngrouped or \
-            not isValidModDirectory(d) and \
-            not isValidDlcDirectory(d) and \
-            not maybeModOrDlcDirectory(d, path))]
+        dirs += [
+            d for d in check.iterdir()
+            if d.is_dir() and (
+                not onlyUngrouped
+                or not isValidModDirectory(d)
+                and not isValidDlcDirectory(d)
+                and not maybeModOrDlcDirectory(d, path)
+            )
+        ]
     return (bins, user, inpu)
 
 
@@ -251,7 +265,10 @@ def fetchContentFiles(path: Path) -> List[ContentFile]:
     dirs = [path]
     for check in dirs:
         if check.is_dir() and check.name == 'content':
-            contents.extend([ContentFile(x.relative_to(path)) for x in check.glob('**/*') if x.is_file()])
+            contents.extend([
+                ContentFile(x.relative_to(path))
+                for x in check.glob('**/*') if x.is_file()
+            ])
         else:
             dirs += [d for d in check.iterdir() if d.is_dir()]
     return contents
@@ -270,7 +287,10 @@ def findGamePath() -> Union[Path, None]:
     try:
         # try to read Witcher 3 GOG installation path directly
         # see https://www.gog.com/forum/general/querying_gog_install_path
-        key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE', access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
+        key = winreg.OpenKeyEx(
+            winreg.HKEY_LOCAL_MACHINE,
+            r'SOFTWARE',
+            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
         subkey = winreg.OpenKeyEx(key, r'WOW6432Node\GOG.com\Games\1207664663')
         game = winreg.QueryValueEx(subkey, 'exe')
         game = Path(str(game[0]))
@@ -283,7 +303,10 @@ def findGamePath() -> Union[Path, None]:
     try:
         # try to read Steam installation path
         # see https://stackoverflow.com/questions/34090258/find-steam-games-folder
-        key = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE', access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
+        key = winreg.OpenKeyEx(
+            winreg.HKEY_LOCAL_MACHINE,
+            r'SOFTWARE',
+            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
         subkey = winreg.OpenKeyEx(key, r'WOW6432Node\Valve\Steam')
         steam = winreg.QueryValueEx(subkey, 'installPath')
         steam = Path(str(steam[0]))

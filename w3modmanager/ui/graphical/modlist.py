@@ -1,11 +1,12 @@
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import Union
+from typing import Union, List, Tuple
 
 from loguru import logger
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, QItemSelectionModel
-from qtpy.QtWidgets import QApplication, QStyledItemDelegate, QStyleOptionViewItem, \
+from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
+    QStyleOptionViewItem, \
     QStyle, QAbstractItemView, QWidget, QTableView
 from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent
 
