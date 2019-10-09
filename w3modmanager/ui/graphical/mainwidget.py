@@ -118,6 +118,13 @@ class MainWidget(QWidget):
         else:
             self.stack.setCurrentIndex(1)
 
+    def unhideOutput(self):
+        if self.splitter.sizes()[1] < 10:
+            self.splitter.setSizes([self.splitter.size().height(), 50])
+
+    def unhideModList(self):
+        if self.splitter.sizes()[0] < 10:
+            self.splitter.setSizes([50, self.splitter.size().height()])
 
     def log(self, message):
         # format log messages to user readable output
@@ -133,6 +140,7 @@ class MainWidget(QWidget):
         dots = bool(extra['dots']) if 'dots' in extra else False
         newline = bool(extra['newline']) if 'newline' in extra else False
         output = bool(extra['output']) if 'output' in extra else bool(len(message))
+        modlist = bool(extra['modlist']) if 'modlist' in extra else False
 
         if level in ['debug'] and settings.value('debugOutput') != 'True':
             if newline:
@@ -167,6 +175,7 @@ class MainWidget(QWidget):
         self.output.verticalScrollBar().setValue(self.output.verticalScrollBar().maximum())
         self.output.repaint()
 
-        if settings.value('unhideOutput') == 'True':
-            if self.splitter.sizes()[1] < 10:
-                self.splitter.setSizes([self.splitter.size().height(), 50])
+        if modlist:
+            self.unhideModList()
+        if settings.value('unhideOutput') == 'True' and output:
+            self.unhideOutput()
