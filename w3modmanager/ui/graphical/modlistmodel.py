@@ -18,7 +18,7 @@ class ModListModel(QAbstractTableModel):
             ('', 'enabled'),
             ('Type', 'datatype'),
             ('Name', 'filename'),
-            ('Package', 'modname'),
+            ('Package', 'package'),
             ('Category', 'category'),
             ('Priority', 'priority'),
             ('Content', 'contentFiles'),

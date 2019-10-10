@@ -11,7 +11,7 @@ import re
 # string formatting
 #
 
-def formatModName(name: str) -> str:
+def formatPackageName(name: str) -> str:
     # remove mod prefix
     if re.match('^mod.*', name, re.IGNORECASE):
         name = name[3:]
@@ -59,7 +59,7 @@ def formatFileName(name: str, prefix: str = '') -> str:
 # mod validation
 #
 
-def containsValidMod(path: Path) -> bool:
+def containsValidMod(path: Path, searchlimit=0) -> bool:
     # valid if contains a valid mod or dlc dir
     dirs = [path]
     for check in dirs:
@@ -71,7 +71,8 @@ def containsValidMod(path: Path) -> bool:
             bins = fetchBinFiles(check, onlyUngrouped=True)
             if len(bins[0]) or len(bins[1]) or len(bins[2]):
                 return True
-            dirs += [d for d in check.iterdir() if d.is_dir()]
+            if searchlimit and len(dirs) < searchlimit:
+                dirs += [d for d in check.iterdir() if d.is_dir()]
     return False
 
 

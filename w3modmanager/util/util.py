@@ -5,6 +5,7 @@ import re
 import hashlib
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union
@@ -13,6 +14,13 @@ from qtpy import API_NAME, QT_VERSION
 
 
 class InvalidPathError(IOError):
+    def __init__(self, path: Path, message: str = ''):
+        super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
+        self.path = path
+        self.message = message
+
+
+class UnexpectedInputError(IOError):
     def __init__(self, path: Path, message: str = ''):
         super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
         self.path = path
@@ -108,4 +116,12 @@ def extractArchive(archive: Path, target: Path) -> Path:
         raise InvalidPathError(
             archive,
             result.stderr if result.stderr else 'Could not extract archive')
+    return target
+
+
+def extractMod(archive: Path) -> Path:
+    if not isArchive(archive):
+        raise InvalidPathError(archive, 'Invalid archive')
+    target = Path(tempfile.gettempdir()).joinpath('w3modmanager/mod').joinpath(archive.stem)
+    extractArchive(archive, target)
     return target

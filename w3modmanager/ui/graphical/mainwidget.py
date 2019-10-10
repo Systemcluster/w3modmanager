@@ -42,8 +42,8 @@ class MainWidget(QWidget):
 
         # mod list
 
-        modlist = ModList(self, model)
-        self.modlistlayout.addWidget(modlist)
+        self.modlist = ModList(self, model)
+        self.modlistlayout.addWidget(self.modlist)
 
         # welcome message
 
@@ -52,16 +52,16 @@ class MainWidget(QWidget):
         welcomewidget = QWidget()
         welcomewidget.setLayout(welcomelayout)
         welcomewidget.dragEnterEvent = lambda e: [
-            modlist.dragEnterEvent(e)
+            self.modlist.dragEnterEvent(e)
         ]
         welcomewidget.dragMoveEvent = lambda e: [
-            modlist.dragMoveEvent(e)
+            self.modlist.dragMoveEvent(e)
         ]
         welcomewidget.dragLeaveEvent = lambda e: [
-            modlist.dragLeaveEvent(e)
+            self.modlist.dragLeaveEvent(e)
         ]
         welcomewidget.dropEvent = lambda e: [
-            modlist.dropEvent(e)
+            self.modlist.dropEvent(e)
         ]
         welcomewidget.setAcceptDrops(True)
 

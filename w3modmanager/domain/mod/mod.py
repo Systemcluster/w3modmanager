@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Type
 from pathlib import Path
-import tempfile
-import shutil
 
 from loguru import logger
 
@@ -16,7 +14,7 @@ from loguru import logger
 @dataclass
 class Mod:
 
-    modname: str = ''
+    package: str = ''
     filename: str = ''
     priority: int = -1
     installed: bool = False
@@ -24,7 +22,6 @@ class Mod:
     datatype: str = 'mod'
     date: str = ''
     source: Path = Path()
-    package: Path = Path()
     size: int = 0
     version: str = ''
     category: str = ''
@@ -35,9 +32,6 @@ class Mod:
     settings: List[fetcher.UserSettings] = field(default_factory=list)
     inputs: List[fetcher.InputSettings] = field(default_factory=list)
 
-
-    def __post_init__(self):
-        self.modname = fetcher.formatModName(self.modname)
 
     def __getitem__(self, attr: str):
         return getattr(self, attr)
@@ -70,44 +64,11 @@ class Mod:
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
-
     @classmethod
-    def fromPath(cls: Type[Mod], path: Path) -> List[Mod]:
-        if path.is_file():
-            return cls.fromArchive(path)
-        else:
-            return cls.fromDirectory(path)
-
-    @classmethod
-    def fromArchive(cls: Type[Mod], path: Path, package: Path = None) -> List[Mod]:
-        mods: List[Mod] = []
-        temp = Path(tempfile.gettempdir()).joinpath('w3modmanager/extract')
-        try:
-            if isArchive(path):
-                logger.bind(path=str(path), dots=True).debug('Unpacking archive')
-                target = temp.joinpath(path.name)
-                extractArchive(path, target)
-                if fetcher.containsValidMod(target):
-                    mods = cls.fromDirectory(target)
-                else:
-                    raise InvalidPathError(path, 'Invalid mod')
-            else:
-                raise InvalidPathError(path, 'Invalid archive')
-        finally:
-            if temp.exists():
-                shutil.rmtree(temp)
-        md5hash = getMD5Hash(path)
-        for mod in mods:
-            mod.md5hash = md5hash
-            mod.source = path
-        return mods
-
-    @classmethod
-    def fromDirectory(cls: Type[Mod], path: Path, package: Path = None) -> List[Mod]:
-        if not package:
-            package = path
+    def fromDirectory(cls: Type[Mod], path: Path) -> List[Mod]:
         mods: List[Mod] = []
         dirs = [path]
+        package = fetcher.formatPackageName(path.name)
         for check in dirs:
             if check.is_dir():
                 # fetch mod dirs
@@ -118,11 +79,10 @@ class Mod:
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
-                        modname=path.stem,
+                        package,
                         filename=fetcher.formatFileName(check.name, 'mod'),
                         datatype='mod',
                         source=check,
-                        package=package,
                         size=size,
                         files=files,
                         settings=settings,
@@ -139,11 +99,10 @@ class Mod:
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
-                        modname=path.stem,
+                        package,
                         filename=fetcher.formatFileName(check.name, 'dlc'),
                         datatype='dlc',
                         source=check,
-                        package=package,
                         size=size,
                         files=files,
                         settings=settings,
@@ -160,11 +119,10 @@ class Mod:
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
-                        modname=path.stem,
+                        package,
                         filename=fetcher.formatFileName(check.name, 'mod') + 'Udf',
                         datatype='',
                         source=check,
-                        package=package,
                         size=size,
                         files=files,
                         settings=settings,
@@ -182,11 +140,10 @@ class Mod:
             for file in files:
                 size += path.joinpath(file.source).stat().st_size
             mods.append(cls(
-                modname=path.stem,
+                package,
                 filename=fetcher.formatFileName(path.stem, 'mod') + 'Bin',
                 datatype='bin',
                 source=path,
-                package=package,
                 size=size,
                 files=files,
                 settings=settings,

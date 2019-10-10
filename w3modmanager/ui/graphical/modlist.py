@@ -6,8 +6,8 @@ from loguru import logger
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, QItemSelectionModel
 from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
-    QStyleOptionViewItem, \
-    QStyle, QAbstractItemView, QWidget, QTableView
+    QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
+    QTableView, QMessageBox, QPushButton
 from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent
 
 from w3modmanager.core.model import Model, ModExistsError, ModNotFoundError
@@ -160,9 +160,9 @@ class ModList(QTableView):
                     errors += e
                 elif local and isValidFileUrl(path):
                     self.setDisabled(True)
-                    localpath = Path(QUrl(path).toLocalFile())
-                    logger.bind(dots=True, path=localpath).info(f'Installing mods from')
-                    i, e = self.installFromFile(localpath)
+                    path = Path(QUrl(path).toLocalFile())
+                    logger.bind(dots=True, path=path).info(f'Installing mods from')
+                    i, e = self.installFromFile(path)
                     installed += i
                     errors += e
         except Exception as e:
@@ -191,16 +191,31 @@ class ModList(QTableView):
     def installFromFile(self, path: Path) -> Tuple[int, int]:
         installed = 0
         errors = 0
+        delete = False
+        source = path
+        md5hash = ''
         try:
-            mods = Mod.fromPath(path)
-            # TODO: incomplete: fix mod name, package, etc
+            if path.is_file():
+                logger.bind(path=str(path), dots=True).debug('Unpacking archive')
+                md5hash = getMD5Hash(path)
+                path = extractMod(path)
+                delete = True
+            if not containsValidMod(path, searchlimit=6):
+                if self.showContinueSearchDialog(searchlimit=6):
+                    if not containsValidMod(path):
+                        raise InvalidPathError(path, 'Invalid mod')
+                else:
+                    raise InvalidPathError(path, 'Stopped searching for mod')
+            mods = Mod.fromDirectory(path)
             for mod in mods:
-                # TODO: incomplete: check if mod is installed, ask if replace
+                mod.md5hash = md5hash
+                mod.source = source
                 try:
+                    # TODO: incomplete: check if mod is installed, ask if replace
                     self._model.add(mod)
                     installed += 1
                 except ModExistsError:
-                    logger.bind(path=path, name=mod.modname).error(f'Mod exists')
+                    logger.bind(path=path, name=mod.filename).error(f'Mod exists')
                     errors += 1
             self.model().update(self._model)
             self.model().sort()
@@ -208,7 +223,28 @@ class ModList(QTableView):
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
             errors += 1
+        finally:
+            if delete:
+                shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
+                    'Could not remove temporary directory'
+                ))
         return installed, errors
+
+    def showContinueSearchDialog(self, searchlimit: int):
+        messagebox = QMessageBox(self)
+        messagebox.setWindowTitle('Unusual search depth')
+        messagebox.setText(f'''
+            <p>No mod detected after searching through {searchlimit} directories.</p>
+            <p>Are you sure this is a valid mod?</p>
+            ''')
+        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setStandardButtons(QMessageBox.Cancel)
+        yes: QPushButton = QPushButton(' Yes, continue searching ', messagebox)
+        yes.setAutoDefault(True)
+        yes.setDefault(True)
+        messagebox.addButton(yes, QMessageBox.YesRole)
+        messagebox.exec_()
+        return messagebox.clickedButton() == yes
 
     def dropEvent(self, event):
         event.accept()
@@ -226,18 +262,21 @@ class ModList(QTableView):
             event.ignore()
             return
         for url in urls:
-            parse = urlparse(url.toString())
-            if parse.scheme not in ['file']:
-                self.setDisabled(False)
-                event.ignore()
-                return
-            filepath = Path(url.toLocalFile())
-            if not isArchive(filepath) and not containsValidMod(filepath):
-                self.setDisabled(False)
-                event.ignore()
-                return
+            try:
+                parse = urlparse(url.toString())
+                if parse.scheme not in ['file']:
+                    self.setDisabled(False)
+                    event.ignore()
+                    return
+                filepath = Path(url.toLocalFile())
+                if isArchive(filepath) or containsValidMod(filepath, searchlimit=6):
+                    self.setDisabled(False)
+                    event.accept()
+                    return
+            except Exception as e:
+                logger.debug(str(e))
         self.setDisabled(False)
-        event.accept()
+        event.ignore()
 
     def dragMoveEvent(self, event):
         event.accept()
