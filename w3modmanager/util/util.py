@@ -122,6 +122,6 @@ def extractArchive(archive: Path, target: Path) -> Path:
 def extractMod(archive: Path) -> Path:
     if not isArchive(archive):
         raise InvalidPathError(archive, 'Invalid archive')
-    target = Path(tempfile.gettempdir()).joinpath('w3modmanager/mod').joinpath(archive.stem)
+    target = Path(tempfile.gettempdir()).joinpath('w3modmanager/cache').joinpath(f'.{archive.stem}')
     extractArchive(archive, target)
     return target

@@ -1,5 +1,7 @@
 from w3modmanager.util import util
 
+from loguru import logger
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple, Union
@@ -12,38 +14,42 @@ import re
 #
 
 def formatPackageName(name: str) -> str:
-    # remove mod prefix
-    if re.match('^mod.*', name, re.IGNORECASE):
-        name = name[3:]
-    # remove nexusmods version suffix
-    lenght = len(name)
-    for match in re.finditer(r'-[0-9]+-.+', name):
-        lenght = match.span()[0]
-    name = name[0:lenght]
     # remove file extension
-    if re.search(r'. *\.(zip|rar)$', name, re.IGNORECASE):
+    if re.search(r'. *\.(zip|rar|tar)$', name, re.IGNORECASE):
         name = name[:-4]
     elif re.search(r'.*\.7z$', name, re.IGNORECASE):
         name = name[:-3]
-    # insert spacing
-    name = re.sub(r'([a-z]{2,})(?=[A-Z1-9])', r'\1 ', name)
-    name = re.sub(r'([A-Z][a-z])(?=[A-Z1-9])', r'\1 ', name)
-    name = re.sub(r'(_)', r' ', name)
-    name = re.sub(r'([a-zA-Z])-(?=[0-9])', r'\1 ', name)
-    name = re.sub(r'([0-9])-(?=[a-zA-Z])', r'\1 ', name)
+    elif re.search(r'.*\.lzma$', name, re.IGNORECASE):
+        name = name[:-5]
+    # remove nexusmods version suffix
+    length = len(name)
+    for match in re.finditer(r'-[0-9]+-.+', name):
+        length = match.span()[0]
+    name = name[0:length]
+    # remove mod prefix if package name is long enough
+    if re.match('^mod.*', name, re.IGNORECASE) and length > 6:
+        name = name[3:]
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
+    # insert spacing
+    name = re.sub(r'([a-z]{2,})(?=[A-Z1-9])', r'\1 ', name)
+    name = re.sub(r'([A-Z][a-z])(?=[A-Z]{2}|[1-9])', r'\1 ', name)
+    name = re.sub(r'(_)', r' ', name)
+    name = re.sub(r'([a-zA-Z])-(?=[0-9])', r'\1 ', name)
+    name = re.sub(r'([0-9])-?(?=[a-zA-Z])', r'\1 ', name)
     return name
 
 
 def formatFileName(name: str, prefix: str = '') -> str:
+    # remove trailing file copy suffix
+    name = re.sub(r'(-[ ]*Copy)+$', '', name)
     # remove non-alphanumeric characters
     name = re.sub(r'[^a-zA-Z0-9-_ ]', '', name)
     # join separated words and uppercase following characters
-    name = re.sub(r'(?<=[a-zA-Z0-9])[-_ ]+([a-zA-Z0-9])',
+    name = re.sub(r'(?<=[a-zA-Z0-9])(?:[- ]|(?!___)[_])+([a-zA-Z0-9])',
                   lambda m: m.group(1).upper(), name)
     # remove trailing version
-    name = re.sub(r'(v?[0-9.]+)[ ]*$', r'', name)
+    name = re.sub(r'([vVxX]?[0-9.]+)[ ]*$', r'', name)
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
     # add prefix and capitalize
@@ -59,7 +65,7 @@ def formatFileName(name: str, prefix: str = '') -> str:
 # mod validation
 #
 
-def containsValidMod(path: Path, searchlimit=0) -> bool:
+def containsValidMod(path: Path, searchlimit=0) -> Tuple[bool, bool]:
     # valid if contains a valid mod or dlc dir
     dirs = [path]
     for check in dirs:
@@ -67,30 +73,42 @@ def containsValidMod(path: Path, searchlimit=0) -> bool:
             if isValidModDirectory(check) \
             or isValidDlcDirectory(check) \
             or maybeModOrDlcDirectory(check, path):
-                return True
+                return True, True
             bins = fetchBinFiles(check, onlyUngrouped=True)
             if len(bins[0]) or len(bins[1]) or len(bins[2]):
-                return True
-            if searchlimit and len(dirs) < searchlimit:
-                dirs += [d for d in check.iterdir() if d.is_dir()]
-    return False
+                return True, True
+            dirs += [d for d in check.iterdir() if d.is_dir()]
+            if searchlimit and len(dirs) > searchlimit:
+                return False, False
+    return False, True
 
 
 def isValidModDirectory(path: Path) -> bool:
-    # valid if child starts with mod and contains a non-empty content dir
-    if path.is_dir() and re.match('^(mod).*', path.name, re.IGNORECASE):
-        return containsContentDirectory(path)
-    # TODO: enhancement: check if scripts are in it, then it's always mod
-    # return path.is_dir() and containsContentDirectory(path) and containsScripts(path)
+    # valid if path starts with mod and contains a non-empty content dir
+    # and is not contained in a dlc dir
+    if path.is_dir() \
+    and re.match('^(mod).*', path.name, re.IGNORECASE) \
+    and not re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE) \
+    and containsContentDirectory(path):
+        return True
+    # valid if path contains a non-empty content dir
+    # and is contained in a mods dir
+    if path.is_dir() \
+    and containsContentDirectory(path) \
+    and re.match('^(mod[s]?)$', path.parent.name, re.IGNORECASE):
+        return True
     return False
 
 
 def isValidDlcDirectory(path: Path) -> bool:
-    # valid if child starts with dlc and contains a non-empty content dir
+    # valid if path starts with dlc and contains a non-empty content dir
     # or ends with dlc and doesn't start with mod
+    # or starts with mod and is contained in a dlc dir
     if path.is_dir() and (
         re.match('^(dlc).*', path.name, re.IGNORECASE)
         or re.match('^((?!mod).)*dlc$', path.name, re.IGNORECASE)
+        or re.match('^(mod).*', path.name, re.IGNORECASE)
+            and re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE)
     ):
         return containsContentDirectory(path)
     return False
@@ -113,8 +131,10 @@ def containsContentDirectory(path: Path) -> bool:
 
 def containsScripts(path: Path) -> bool:
     # check if path contains .ws scripts inside content/scripts/
-    # TODO: enhancement: check if path contains scripts
-    pass
+    for f in path.glob("content/**/*.ws"):
+        if f.is_file():
+            return True
+    return False
 
 
 #
@@ -185,11 +205,19 @@ class Settings:
     source: Path
     config: ConfigParser
 
-    def __init__(self, source, content):
+    def __init__(self, source: Path, content: str):
         self.source = source
         self.config = ConfigParser(strict=False)
-        self.config.optionxform = str
-        self.config.read_string(content)
+        self.config.optionxform = str  # type: ignore
+
+        # remove any instructions or comments included at the top of the file
+        cleanContent = content.splitlines()
+        start = 0
+        for line in cleanContent:
+            if line.strip().startswith('['):
+                break
+            start += 1
+        self.config.read_string('\n'.join(cleanContent[start:]))
 
     def __repr__(self) -> str:
         return '\'%s\': %s' % (
@@ -214,39 +242,65 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
     for check in dirs:
         for file in [
             f for f in check.iterdir()
-            if f.is_file() and f.suffix in ('.ini', '.xml', '.txt', '.settings')
+            if f.is_file() and f.suffix.lower() in ('.ini', '.xml', '.txt', '.settings', '.dll', '.asi')
         ]:
             relpath: Path = file.relative_to(path)
 
             # if the binfile is placed under bin, use its path relative to its bin dir
             if 'bin' in relpath.parts:
-                minpath = Path(re.sub(r'^((?!bin\\|bin\/).)*', r'', str(relpath)))
+                minpath = Path(re.sub(r'^((?!bin\\|bin\/).)*', r'', str(relpath), flags=re.IGNORECASE))
                 bins.append(BinFile(relpath, minpath))
                 continue
 
             # otherwise guess path based on name
-            if re.match(r'.+(\.xml|xml\.txt)$', relpath.name):
+            if re.match(r'.+(\.xml|xml\.txt)$', relpath.name, re.IGNORECASE):
                 # guess for input.xml
-                if re.match(r'.*input([.]?part)?((\.xml)|([.]?xml\.txt))$', relpath.name):
+                if re.match(r'.*input([.]?part)?((\.xml)|([.]?xml\.txt))$', relpath.name, re.IGNORECASE):
                     bins.append(BinFile(
                         relpath,
                         Path('bin/config/r4game/user_config_matrix/pc/input.xml')))
                     continue
+                # guess for hidden.xml
+                if re.match(r'.*hidden([.]?part)?((\.xml)|([.]?xml\.txt))$', relpath.name, re.IGNORECASE):
+                    bins.append(BinFile(
+                        relpath,
+                        Path('bin/config/r4game/user_config_matrix/pc/hidden.xml')))
+                    continue
                 # otherwise assume menu xml
-                if re.match(r'.+\.xml', relpath.name):
+                if re.match(r'.+\.xml', relpath.name, re.IGNORECASE):
                     bins.append(BinFile(
                         relpath,
                         Path('bin/config/r4game/user_config_matrix/pc').joinpath(relpath.name)))
                     continue
 
+            # detect dll and asi files
+            if re.match(r'.+(\.dll|\.asi)$', relpath.name, re.IGNORECASE):
+                bins.append(BinFile(
+                    relpath,
+                    Path(f'bin/x64/{relpath.name}')
+                ))
+                # add cfgs coming with it
+                bins.extend([BinFile(
+                    cfg.relative_to(path),
+                    Path(f'bin/x64/{cfg.name}')
+                ) for cfg in file.parent.iterdir()
+                    if re.match(r'.+(\.cfg)$', cfg.name, re.IGNORECASE) and cfg not in bins
+                ])
+
             # detect input.settings
-            if re.match(r'.*input[.]?settings(\.part)?(\.txt)?$', relpath.name):
-                inpu.append(InputSettings(relpath, util.readText(file)))
+            if re.match(r'.*input[.]?s(ettings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
+                try:
+                    inpu.append(InputSettings(relpath, util.readText(file)))
+                except Exception:
+                    logger.bind(file=file).debug('Could not parse input settings')
                 continue
 
             # detect user.settings
-            if re.match(r'.*user[.]?settings(\.part)?(\.txt)?$', relpath.name):
-                user.append(UserSettings(relpath, util.readText(file)))
+            if re.match(r'.*user[.]?(settings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
+                try:
+                    user.append(UserSettings(relpath, util.readText(file)))
+                except Exception:
+                    logger.bind(file=file).debug('Could not parse user settings')
                 continue
 
         dirs += [
@@ -272,6 +326,18 @@ def fetchContentFiles(path: Path) -> List[ContentFile]:
             ])
         else:
             dirs += [d for d in check.iterdir() if d.is_dir()]
+    return contents
+
+
+def fetchPatchFiles(path: Path) -> List[ContentFile]:
+    contents = []
+    dirs = path.iterdir()
+    for check in dirs:
+        if check.is_dir() and check.name == 'content':
+            contents.extend([
+                ContentFile(x.relative_to(path))
+                for x in check.glob('**/*') if x.is_file()
+            ])
     return contents
 
 

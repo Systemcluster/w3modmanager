@@ -64,6 +64,7 @@ class Mod:
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
+
     @classmethod
     def fromDirectory(cls: Type[Mod], path: Path) -> List[Mod]:
         mods: List[Mod] = []
@@ -73,14 +74,15 @@ class Mod:
             if check.is_dir():
                 # fetch mod dirs
                 if fetcher.isValidModDirectory(check):
-                    logger.bind(name=fetcher.formatFileName(check.name, 'mod')).info("Installing MOD")
+                    name = fetcher.formatFileName(check.name, 'mod')
+                    logger.bind(name=name).info("Installing MOD")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
                         package,
-                        filename=fetcher.formatFileName(check.name, 'mod'),
+                        filename=name,
                         datatype='mod',
                         source=check,
                         size=size,
@@ -93,14 +95,15 @@ class Mod:
                     continue
                 # fetch dlc dirs
                 elif fetcher.isValidDlcDirectory(check):
-                    logger.bind(name=fetcher.formatFileName(check.name, 'dlc')).info("Installing DLC")
+                    name = fetcher.formatFileName(check.name, 'dlc')
+                    logger.bind(name=name).info("Installing DLC")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
                         package,
-                        filename=fetcher.formatFileName(check.name, 'dlc'),
+                        filename=name,
                         datatype='dlc',
                         source=check,
                         size=size,
@@ -113,14 +116,15 @@ class Mod:
                     continue
                 # fetch unspecified mod or doc dirs
                 if fetcher.maybeModOrDlcDirectory(check, path):
-                    logger.bind(name=fetcher.formatFileName(check.name, 'mod')).info("Installing MOD")
+                    name = fetcher.formatFileName(check.name, 'mod') + 'Udf'
+                    logger.bind(name=name).info("Installing MOD")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
                     files, settings, inputs = fetcher.fetchBinFiles(check)
                     mods.append(cls(
                         package,
-                        filename=fetcher.formatFileName(check.name, 'mod') + 'Udf',
+                        filename=name,
                         datatype='',
                         source=check,
                         size=size,
@@ -135,13 +139,14 @@ class Mod:
         # fetch loose bin files
         files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
         if files:
-            logger.bind(name=fetcher.formatFileName(path.stem, 'mod') + 'Bin').info("Installing BIN")
+            name = fetcher.formatFileName(path.name, 'bin')
+            logger.bind(name=name).info("Installing BIN")
             size = 0
             for file in files:
                 size += path.joinpath(file.source).stat().st_size
             mods.append(cls(
                 package,
-                filename=fetcher.formatFileName(path.stem, 'mod') + 'Bin',
+                filename=name,
                 datatype='bin',
                 source=path,
                 size=size,
@@ -150,6 +155,26 @@ class Mod:
                 inputs=inputs,
                 date=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             ))
+        # fetch patch files
+        if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':
+            contents = fetcher.fetchPatchFiles(path)  # ignore: type
+            if contents:
+                name = fetcher.formatFileName(path.name, 'pat')
+                logger.bind(name=name).info("Installing PAT")
+                size = 0
+                for content in contents:
+                    size += path.joinpath(content.source).stat().st_size
+                mods.append(cls(
+                    package,
+                    filename=name,
+                    datatype='pat',
+                    source=path,
+                    size=size,
+                    settings=settings,
+                    inputs=inputs,
+                    contents=contents,
+                    date=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                ))
         if not mods:
             raise InvalidPathError(path, 'Invalid mod')
         return mods

@@ -37,6 +37,7 @@ class ModListModel(QAbstractTableModel):
         self._icons['mod'] = QIcon(str(getRuntimePath('resources/icons/dia.ico')))
         self._icons['dlc'] = QIcon(str(getRuntimePath('resources/icons/puzzle.ico')))
         self._icons['bin'] = QIcon(str(getRuntimePath('resources/icons/folder.ico')))
+        self._icons['pat'] = QIcon(str(getRuntimePath('resources/icons/patch.ico')))
         self._icons['???'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
 
         self._sortColumn = None

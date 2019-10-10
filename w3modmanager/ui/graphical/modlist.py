@@ -200,12 +200,15 @@ class ModList(QTableView):
                 md5hash = getMD5Hash(path)
                 path = extractMod(path)
                 delete = True
-            if not containsValidMod(path, searchlimit=6):
-                if self.showContinueSearchDialog(searchlimit=6):
+            valid, exhausted = containsValidMod(path, searchlimit=8)
+            if not valid:
+                if not exhausted and self.showContinueSearchDialog(searchlimit=8):
                     if not containsValidMod(path):
                         raise InvalidPathError(path, 'Invalid mod')
-                else:
+                elif not exhausted:
                     raise InvalidPathError(path, 'Stopped searching for mod')
+                else:
+                    raise InvalidPathError(path, 'Invalid mod')
             mods = Mod.fromDirectory(path)
             for mod in mods:
                 mod.md5hash = md5hash
@@ -269,7 +272,7 @@ class ModList(QTableView):
                     event.ignore()
                     return
                 filepath = Path(url.toLocalFile())
-                if isArchive(filepath) or containsValidMod(filepath, searchlimit=6):
+                if isArchive(filepath) or containsValidMod(filepath, searchlimit=8)[0]:
                     self.setDisabled(False)
                     event.accept()
                     return
