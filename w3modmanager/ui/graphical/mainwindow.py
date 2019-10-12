@@ -215,6 +215,47 @@ class MainWindow(QMainWindow):
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
         return messagebox.exec_()
 
+    def showInvalidPermissionsDialog(self, path: Path):
+        messagebox = QMessageBox(self)
+        messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
+        messagebox.setText(f'''
+            <p style="margin:10px 15px 10px 5px;">
+                <b>Invalid permissions for directory:</b>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                <code>{path}</code>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                Write permissions to this directory are required for mod management.<br>
+                Automatically set the correct permissions?
+            </p>
+        ''')
+        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setIconPixmap(
+            messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
+        )
+        messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        return messagebox.exec_() == QMessageBox.Yes
+
+    def showInvalidPermissionsErrorDialog(self):
+        messagebox = QMessageBox(self)
+        messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
+        messagebox.setText(f'''
+            <p style="margin:10px 15px 10px 5px;">
+                <b>Invalid permissions for the game directory.</b>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                Please restart w3modmanager to try to automatically fix the permissions,
+                or fix the permissions manually.
+            </p>
+        ''')
+        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setIconPixmap(
+            messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
+        )
+        messagebox.setStandardButtons(QMessageBox.Ok)
+        return messagebox.exec_()
+
     def showCritcalErrorDialog(self, error: str):
         import traceback
         messagebox = QMessageBox(self)

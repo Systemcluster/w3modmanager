@@ -6,6 +6,8 @@ import hashlib
 import shutil
 import subprocess
 import tempfile
+import ctypes
+import os
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union
@@ -66,12 +68,21 @@ def getRuntimePath(subpath: Union[Path, str, None]) -> Path:
 
 
 def getUserDocumentsPath() -> Path:
-    import ctypes.wintypes
+    from ctypes import windll, wintypes
     CSIDL_PERSONAL = 5       # user documents
     SHGFP_TYPE_CURRENT = 0   # get current, not default value
-    buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-    ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
+    buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+    windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
     return Path(buf.value)
+
+
+def getWindowsPath() -> Path:
+    from ctypes import windll
+    windows_directory_buffer = ctypes.create_unicode_buffer(1024)
+    if not windll.kernel32.GetWindowsDirectoryW(windows_directory_buffer, 1024):
+        return Path(os.environ['WINDIR'])
+    else:
+        return Path(windows_directory_buffer.value)
 
 
 def removeUrlScheme(url: str) -> str:

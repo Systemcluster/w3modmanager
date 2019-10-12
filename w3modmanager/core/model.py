@@ -132,6 +132,10 @@ class Model:
     def lockfile(self):
         return self._cachePath.joinpath('w3mm.lock')
 
+    @property
+    def gamepath(self):
+        return self._gamePath
+
 
 def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
     if not path:

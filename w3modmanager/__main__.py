@@ -29,6 +29,8 @@ def main():
     from w3modmanager.core.model import Model, OtherInstanceError, \
         InvalidGamePath, InvalidConfigPath, InvalidCachePath
     from w3modmanager.ui.graphical.mainwindow import MainWindow
+    from w3modmanager.domain.system.permissions import \
+        getWritePermissions, setWritePermissions
 
     from qtpy.QtCore import Qt, QSettings
     from qtpy.QtWidgets import QApplication
@@ -80,6 +82,12 @@ def main():
                 MainWindow.showInvalidConfigDialog(None)
                 sys.exit(f'error: {str(e)}')
 
+        # check for write access to the game directory
+        if not getWritePermissions(model.gamepath):
+            if not MainWindow.showInvalidPermissionsDialog(None, model.gamepath) \
+            or not setWritePermissions(model.gamepath):
+                raise PermissionError(f'Not enough permissions for {model.gamepath}')
+
         window = MainWindow(model)
         app.setActiveWindow(window)
         sys.exit(app.exec_())
@@ -91,6 +99,10 @@ def main():
     except InvalidCachePath as e:
         # TODO: enhancement: show informative message
         raise e
+
+    except PermissionError as e:
+        MainWindow.showInvalidPermissionsErrorDialog(None)
+        sys.exit(f'error: {str(e)}')
 
     except Exception as e:
         MainWindow.showCritcalErrorDialog(None, str(e))
