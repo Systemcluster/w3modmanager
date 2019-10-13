@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple, Union
 from configparser import ConfigParser
+import itertools
 import re
 
 
@@ -43,8 +44,11 @@ def formatPackageName(name: str) -> str:
 def formatFileName(name: str, prefix: str = '') -> str:
     # remove trailing file copy suffix
     name = re.sub(r'(-[ ]*Copy)+$', '', name)
+    name = re.sub(r'([ ]*\([0-9]+\))$', '', name)
     # remove non-alphanumeric characters
     name = re.sub(r'[^a-zA-Z0-9-_ ]', '', name)
+    # remove infix versions
+    name = re.sub(r'( ([vVxX]?[0-9.]+)* )', r' ', name)
     # join separated words and uppercase following characters
     name = re.sub(r'(?<=[a-zA-Z0-9])(?:[- ]|(?!___)[_])+([a-zA-Z0-9])',
                   lambda m: m.group(1).upper(), name)
@@ -55,6 +59,10 @@ def formatFileName(name: str, prefix: str = '') -> str:
     # add prefix and capitalize
     pl = len(prefix)
     if prefix and name[:pl].lower() != prefix.lower():
+        # always remove existing mod prefix if not mod
+        # and name is long enough
+        if name[:3].lower() == 'mod' and len(name) > 6:
+            name = name[3:]
         name = prefix + name[:1].upper() + name[1:]
     else:
         name = name[:pl].lower() + name[pl:pl + 1].upper() + name[pl + 1:]
@@ -90,12 +98,6 @@ def isValidModDirectory(path: Path) -> bool:
     and re.match('^(mod).*', path.name, re.IGNORECASE) \
     and not re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE) \
     and containsContentDirectory(path):
-        return True
-    # valid if path contains a non-empty content dir
-    # and is contained in a mods dir
-    if path.is_dir() \
-    and containsContentDirectory(path) \
-    and re.match('^(mod[s]?)$', path.parent.name, re.IGNORECASE):
         return True
     return False
 
@@ -337,6 +339,22 @@ def fetchPatchFiles(path: Path) -> List[ContentFile]:
             for x in sorted(check.glob('**/*')) if x.is_file()
         ])
     return contents
+
+
+def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
+    # find the innermost common root path for bin files
+    common = None
+    for file in files:
+        parents = file.source.parent.parts
+        fileroot = Path(*itertools.takewhile(lambda d: d != 'bin', parents))
+        if not common or fileroot in common.parents:
+            common = fileroot
+            continue
+    if not common:
+        common = Path('.')
+    for file in files:
+        file.source = file.source.relative_to(common)
+    return root.joinpath(common)
 
 
 #

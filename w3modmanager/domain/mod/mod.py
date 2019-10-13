@@ -116,7 +116,7 @@ class Mod:
                     continue
                 # fetch unspecified mod or doc dirs
                 if fetcher.maybeModOrDlcDirectory(check, path):
-                    name = fetcher.formatFileName(check.name, 'mod') + 'Udf'
+                    name = fetcher.formatFileName(check.name, 'mod')
                     logger.bind(name=name).info("Installing MOD")
                     size = 0
                     for p in check.glob('**/*'):
@@ -125,7 +125,7 @@ class Mod:
                     mods.append(cls(
                         package,
                         filename=name,
-                        datatype='',
+                        datatype='udf',
                         source=check,
                         size=size,
                         files=files,
@@ -138,17 +138,18 @@ class Mod:
                 dirs += sorted([d for d in check.iterdir() if d.is_dir()])
         # fetch loose bin files
         files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
+        commonroot = fetcher.resolveCommonBinRoot(path, files)
         if files:
-            name = fetcher.formatFileName(path.name, 'bin')
+            name = fetcher.formatFileName(commonroot.name, 'bin')
             logger.bind(name=name).info("Installing BIN")
             size = 0
             for file in files:
-                size += path.joinpath(file.source).stat().st_size
+                size += commonroot.joinpath(file.source).stat().st_size
             mods.append(cls(
                 package,
                 filename=name,
                 datatype='bin',
-                source=path,
+                source=commonroot,
                 size=size,
                 files=files,
                 settings=settings,
