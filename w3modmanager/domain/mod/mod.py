@@ -74,7 +74,7 @@ class Mod:
             if check.is_dir():
                 # fetch mod dirs
                 if fetcher.isValidModDirectory(check):
-                    name = fetcher.formatFileName(check.name, 'mod')
+                    name = fetcher.formatModName(check.name, 'mod')
                     logger.bind(name=name).info("Installing MOD")
                     size = 0
                     for p in check.glob('**/*'):
@@ -95,7 +95,7 @@ class Mod:
                     continue
                 # fetch dlc dirs
                 elif fetcher.isValidDlcDirectory(check):
-                    name = fetcher.formatFileName(check.name, 'dlc')
+                    name = fetcher.formatDlcName(check.name)
                     logger.bind(name=name).info("Installing DLC")
                     size = 0
                     for p in check.glob('**/*'):
@@ -116,7 +116,7 @@ class Mod:
                     continue
                 # fetch unspecified mod or doc dirs
                 if fetcher.maybeModOrDlcDirectory(check, path):
-                    name = fetcher.formatFileName(check.name, 'mod')
+                    name = fetcher.formatModName(check.name, 'mod')
                     logger.bind(name=name).info("Installing MOD")
                     size = 0
                     for p in check.glob('**/*'):
@@ -140,7 +140,7 @@ class Mod:
         files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
         commonroot = fetcher.resolveCommonBinRoot(path, files)
         if files:
-            name = fetcher.formatFileName(commonroot.name, 'bin')
+            name = fetcher.formatModName(commonroot.name, 'bin')
             logger.bind(name=name).info("Installing BIN")
             size = 0
             for file in files:
@@ -160,7 +160,7 @@ class Mod:
         if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':
             contents = fetcher.fetchPatchFiles(path)  # ignore: type
             if contents:
-                name = fetcher.formatFileName(path.name, 'pat')
+                name = fetcher.formatModName(path.name, 'pat')
                 logger.bind(name=name).info("Installing PAT")
                 size = 0
                 for content in contents:

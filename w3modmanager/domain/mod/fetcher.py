@@ -41,7 +41,7 @@ def formatPackageName(name: str) -> str:
     return name
 
 
-def formatFileName(name: str, prefix: str = '') -> str:
+def formatModName(name: str, prefix: str = '') -> str:
     # remove trailing file copy suffix
     name = re.sub(r'(-[ ]*Copy)+$', '', name)
     name = re.sub(r'([ ]*\([0-9]+\))$', '', name)
@@ -66,6 +66,15 @@ def formatFileName(name: str, prefix: str = '') -> str:
         name = prefix + name[:1].upper() + name[1:]
     else:
         name = name[:pl].lower() + name[pl:pl + 1].upper() + name[pl + 1:]
+    return name
+
+
+def formatDlcName(name: str):
+    # remove trailing file copy suffix
+    name = re.sub(r'(-[ ]*Copy)+$', '', name)
+    name = re.sub(r'([ ]*\([0-9]+\))$', '', name)
+    # remove non-alphanumeric characters
+    name = re.sub(r'[^a-zA-Z0-9-_ ]', '', name)
     return name
 
 
@@ -193,6 +202,18 @@ class BinFile:
         else:
             return '\'%s (%s)\'' % (str(self.source), str(self.target))
 
+    def __eq__(self, other):
+        if isinstance(other, BinFile):
+            return self.source == other.source and self.target == other.target
+        if isinstance(other, str):
+            if self.source == self.target:
+                return self.source == Path(other)
+            match = re.findall(r'^(.*) \((.*)\)$', other)
+            if len(match) != 1 or len(match[0]) != 2:
+                return False
+            return match and self.source == Path(match[0][0]) \
+                and self.target == Path(match[0][1])
+
 
 @dataclass
 class ContentFile:
@@ -200,6 +221,12 @@ class ContentFile:
 
     def __repr__(self) -> str:
         return '\'%s\'' % str(self.source)
+
+    def __eq__(self, other):
+        if isinstance(other, ContentFile):
+            return self.source == other.source
+        if isinstance(other, str):
+            return self.source == Path(other)
 
 
 @dataclass(init=False)
