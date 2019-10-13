@@ -135,7 +135,7 @@ class Mod:
                         date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     ))
                     continue
-                dirs += [d for d in check.iterdir() if d.is_dir()]
+                dirs += sorted([d for d in check.iterdir() if d.is_dir()])
         # fetch loose bin files
         files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
         if files:

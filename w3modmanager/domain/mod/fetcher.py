@@ -77,7 +77,7 @@ def containsValidMod(path: Path, searchlimit=0) -> Tuple[bool, bool]:
             bins = fetchBinFiles(check, onlyUngrouped=True)
             if len(bins[0]) or len(bins[1]) or len(bins[2]):
                 return True, True
-            dirs += [d for d in check.iterdir() if d.is_dir()]
+            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
             if searchlimit and len(dirs) > searchlimit:
                 return False, False
     return False, True
@@ -148,7 +148,7 @@ def fetchModDirectories(path: Path) -> List[Path]:
         if isValidModDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidDlcDirectory(check):
-            dirs += [d for d in check.iterdir() if d.is_dir()]
+            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
     return bins
 
 
@@ -159,7 +159,7 @@ def fetchDlcDirectories(path: Path) -> List[Path]:
         if isValidDlcDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidModDirectory(check):
-            dirs += [d for d in check.iterdir() if d.is_dir()]
+            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
     return bins
 
 
@@ -169,10 +169,10 @@ def fetchUnsureDirectories(path: Path) -> List[Path]:
     for check in dirs:
         if maybeModOrDlcDirectory(check, path):
             bins.append(check.relative_to(path))
-        dirs += [
+        dirs += sorted([
             d for d in check.iterdir() if d.is_dir()
             and not isValidModDirectory(d) and not isValidDlcDirectory(d)
-        ]
+        ])
     return bins
 
 
@@ -240,10 +240,10 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
     inpu = []
     dirs = [path]
     for check in dirs:
-        for file in [
+        for file in sorted([
             f for f in check.iterdir()
             if f.is_file() and f.suffix.lower() in ('.ini', '.xml', '.txt', '.settings', '.dll', '.asi')
-        ]:
+        ]):
             relpath: Path = file.relative_to(path)
 
             # if the binfile is placed under bin, use its path relative to its bin dir
@@ -280,12 +280,12 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                     Path(f'bin/x64/{relpath.name}')
                 ))
                 # add cfgs coming with it
-                bins.extend([BinFile(
+                bins.extend(sorted([BinFile(
                     cfg.relative_to(path),
                     Path(f'bin/x64/{cfg.name}')
                 ) for cfg in file.parent.iterdir()
                     if re.match(r'.+(\.cfg)$', cfg.name, re.IGNORECASE) and cfg not in bins
-                ])
+                ]))
 
             # detect input.settings
             if re.match(r'.*input[.]?s(ettings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
@@ -303,7 +303,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                     logger.bind(file=file).debug('Could not parse user settings')
                 continue
 
-        dirs += [
+        dirs += sorted([
             d for d in check.iterdir()
             if d.is_dir() and (
                 not onlyUngrouped
@@ -311,7 +311,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 and not isValidDlcDirectory(d)
                 and not maybeModOrDlcDirectory(d, path)
             )
-        ]
+        ])
     return (bins, user, inpu)
 
 
@@ -325,19 +325,17 @@ def fetchContentFiles(path: Path) -> List[ContentFile]:
                 for x in check.glob('**/*') if x.is_file()
             ])
         else:
-            dirs += [d for d in check.iterdir() if d.is_dir()]
+            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
     return contents
 
 
 def fetchPatchFiles(path: Path) -> List[ContentFile]:
     contents = []
-    dirs = path.iterdir()
-    for check in dirs:
-        if check.is_dir() and check.name == 'content':
-            contents.extend([
-                ContentFile(x.relative_to(path))
-                for x in check.glob('**/*') if x.is_file()
-            ])
+    for check in sorted([d for d in path.iterdir() if d.is_dir() and d.name == 'content']):
+        contents.extend([
+            ContentFile(x.relative_to(path))
+            for x in sorted(check.glob('**/*')) if x.is_file()
+        ])
     return contents
 
 
