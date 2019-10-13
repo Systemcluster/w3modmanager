@@ -60,27 +60,21 @@ def main():
     icon.addFile(str(getRuntimePath('resources/icons/w3b.ico')))
     app.setWindowIcon(icon)
 
-    try:
+    def createModel():
         settings = QSettings()
-
+        return Model(
+            Path(str(settings.value('gamePath'))),
+            Path(str(settings.value('configPath'))),
+            Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)))
+    try:
         # try to initialize the mod management model
         try:
-            model = Model(
-                Path(str(settings.value('gamePath'))),
-                Path(str(settings.value('configPath'))),
-                Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)))
+            model = createModel()
+        # if game path or config path is invalid or not set,
+        # show a special settings dialog and retry
         except (InvalidGamePath, InvalidConfigPath):
-            # if game path or config path is invalid or not set, show a special settings dialog
-            # and retry
             MainWindow.showSettingsDialog(None, True)
-            try:
-                model = Model(
-                    Path(str(settings.value('gamePath'))),
-                    Path(str(settings.value('configPath'))),
-                    Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)))
-            except (InvalidGamePath, InvalidConfigPath) as e:
-                MainWindow.showInvalidConfigDialog(None)
-                sys.exit(f'error: {str(e)}')
+            model = createModel()
 
         # check for write access to the game directory
         if not getWritePermissions(model.gamepath):
@@ -91,6 +85,10 @@ def main():
         window = MainWindow(model)
         app.setActiveWindow(window)
         sys.exit(app.exec_())
+
+    except (InvalidGamePath, InvalidConfigPath) as e:
+        MainWindow.showInvalidConfigErrorDialog(None)
+        sys.exit(f'error: {str(e)}')
 
     except OtherInstanceError as e:
         # TODO: incomplete: ask to start anyway

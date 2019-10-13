@@ -192,13 +192,14 @@ class MainWindow(QMainWindow):
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
         return messagebox.exec_()
 
-    def showInvalidConfigDialog(self):
+    def showInvalidConfigErrorDialog(self):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid game path' if self else getTitleString('Invalid game path'))
         messagebox.setText(f'''
             <p style="margin:10px 15px 10px 5px;"><b>Invalid game or config path.</b><br>
-                Please restart w3modmanager and enter the locations of witcher3.exe<br>
-                and the game config folder (usually <code>User/Documents/The Witcher 3</code>).
+                Please restart w3modmanager and enter the paths of<br>
+                your The Witcher 3 installation and the game config folder<br>
+                (usually <code>User/Documents/The Witcher 3</code>).
             </p>
             <p style="margin:10px 15px 10px 5px;"><small>
                 For updates and information visit <br>
