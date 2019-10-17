@@ -4,20 +4,30 @@ simple invoke task collection
 
 
 from pathlib import Path
-from shutil import rmtree, copytree
+from shutil import rmtree
+from distutils.dir_util import copy_tree
 
 from invoke import task
 
 
 @task
-def start(ctx, cleancopy=False):
+def start(ctx, mock=False, clean=False):
     """start the w3modmanager application"""
     from tests.framework import _mockdata, _root
-    if cleancopy:
-        print('creating clean testdata...')
-        rmtree(_root.joinpath('testdata'), ignore_errors=True)
-        copytree(_mockdata, _root.joinpath('testdata'))
-    from w3modmanager import __main__  # noqa
+    from w3modmanager import __main__
+    _testdata = _root.joinpath('testdata')
+    if clean:
+        print('cleaning up testdata...')
+        rmtree(_testdata, ignore_errors=True)
+    if mock:
+        from qtpy.QtCore import QSettings
+        print('setting up testdata...')
+        copy_tree(str(_mockdata), str(_testdata))
+        QSettings.setDefaultFormat(QSettings.IniFormat)
+        QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(_testdata.joinpath('settings')))
+        __main__.main(_testdata.joinpath('programs'), _testdata.joinpath('documents'))
+    else:
+        __main__.main()
 
 
 @task

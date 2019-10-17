@@ -6,6 +6,9 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 import sys
 import os
 from pathlib import Path
+from typing import Optional, Union
+from argparse import ArgumentParser
+from enum import Enum
 
 import appdirs
 
@@ -24,7 +27,16 @@ os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 os.environ['QT_API'] = 'pyside2'
 
 
-def main():
+class StartupMode(Enum):
+    Main = 0
+    Settings = 1
+    About = 2
+
+
+def main(gamePath: Optional[str] = None,
+         configPath: Optional[str] = None,
+         startupMode: StartupMode = StartupMode.Main) -> Union[int, str]:
+
     from w3modmanager.util.util import getRuntimePath
     from w3modmanager.core.model import Model, OtherInstanceError, \
         InvalidGamePath, InvalidConfigPath, InvalidCachePath
@@ -60,8 +72,21 @@ def main():
     icon.addFile(str(getRuntimePath('resources/icons/w3b.ico')))
     app.setWindowIcon(icon)
 
+    # configure startup overrides
+    settings = QSettings()
+    if gamePath:
+        settings.setValue('gamePath', gamePath)
+    if configPath:
+        settings.setValue('configPath', configPath)
+    if startupMode == StartupMode.About:
+        MainWindow.showAboutDialog(None)
+        sys.exit()
+    if startupMode == StartupMode.Settings:
+        MainWindow.showSettingsDialog(None)
+        sys.exit()
+
     def createModel():
-        settings = QSettings()
+        nonlocal settings
         return Model(
             Path(str(settings.value('gamePath'))),
             Path(str(settings.value('configPath'))),
@@ -106,5 +131,38 @@ def main():
         MainWindow.showCritcalErrorDialog(None, str(e))
         sys.exit(f'error: {str(e)}')
 
+    sys.exit()
 
-main()
+
+if __name__ == '__main__':
+    argp = ArgumentParser(
+        prog=w3modmanager.NAME,
+        description=w3modmanager.SUBTITLE,
+        epilog=f'See {w3modmanager.URL_WEB} for the latest updates.')
+    argp.add_argument(
+        '-v', '--version', default=False, action='version',
+        help='show the version number and exit', version=f'%(prog)s {w3modmanager.VERSION}')
+    mode = argp.add_argument_group(
+        title='start overrides'
+    ).add_mutually_exclusive_group()
+    mode.add_argument(
+        '--settings', default=False, action='store_true',
+        help='open the settings dialog and exit')
+    mode.add_argument(
+        '--about', default=False, action='store_true',
+        help='open the about dialog and exit')
+    dirs = argp.add_argument_group(
+        title='path overrides')
+    dirs.add_argument(
+        '-g', '--game-path', type=str, default='',
+        help='start with a different game installation path')
+    dirs.add_argument(
+        '-s', '--config-path', type=str, default='',
+        help='start with a different game config path')
+    args = argp.parse_args()
+    startupMode: StartupMode = StartupMode.Main
+    if args.settings:
+        startupMode = StartupMode.Settings
+    if args.about:
+        startupMode = StartupMode.About
+    main(args.game_path, args.config_path, startupMode)
