@@ -5,6 +5,8 @@ from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.ui.graphical.mainwidget import MainWidget
 from w3modmanager.ui.graphical.settingswindow import SettingsWindow
 
+from typing import Any
+
 from qtpy.QtCore import QSize, QSettings, Qt
 from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QFileDialog, QInputDialog, QDialogButtonBox, QSizePolicy, \
@@ -161,12 +163,12 @@ class MainWindow(QMainWindow):
             return
         # TODO: incomplete: show file selection etc.
 
-    def showSettingsDialog(self, firstStart=False):
+    def showSettingsDialog(self: Any, firstStart=False):
         settingswindow = SettingsWindow(self, firstStart)
         settingswindow.setAttribute(Qt.WA_DeleteOnClose)
         return settingswindow.exec_()
 
-    def showAboutDialog(self):
+    def showAboutDialog(self: Any):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('About' if self else getTitleString('About'))
         messagebox.setText(f'''
@@ -192,7 +194,7 @@ class MainWindow(QMainWindow):
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
         return messagebox.exec_()
 
-    def showInvalidConfigErrorDialog(self):
+    def showInvalidConfigErrorDialog(self: Any):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid game path' if self else getTitleString('Invalid game path'))
         messagebox.setText(f'''
@@ -216,7 +218,7 @@ class MainWindow(QMainWindow):
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
         return messagebox.exec_()
 
-    def showInvalidPermissionsDialog(self, path: Path):
+    def showInvalidPermissionsDialog(self: Any, path: Path):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -238,7 +240,7 @@ class MainWindow(QMainWindow):
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         return messagebox.exec_() == QMessageBox.Yes
 
-    def showInvalidPermissionsErrorDialog(self):
+    def showInvalidPermissionsErrorDialog(self: Any):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -257,7 +259,7 @@ class MainWindow(QMainWindow):
         messagebox.setStandardButtons(QMessageBox.Ok)
         return messagebox.exec_()
 
-    def showCritcalErrorDialog(self, error: str):
+    def showCritcalErrorDialog(self: Any, error: str):
         import traceback
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Critical Error' if self else getTitleString('Critical Error'))
