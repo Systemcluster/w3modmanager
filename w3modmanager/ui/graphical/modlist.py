@@ -192,12 +192,13 @@ class ModList(QTableView):
         installed = 0
         errors = 0
         archive = path.is_file()
-        source = path
+        source = None
         md5hash = ''
         try:
             if archive:
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
                 md5hash = getMD5Hash(path)
+                source = path
                 path = extractMod(path)
             valid, exhausted = containsValidMod(path, searchlimit=8)
             if not valid:
@@ -211,7 +212,8 @@ class ModList(QTableView):
             mods = Mod.fromDirectory(path, searchCommonRoot=not archive)
             for mod in mods:
                 mod.md5hash = md5hash
-                mod.source = source
+                if source:
+                    mod.source = source
                 try:
                     # TODO: incomplete: check if mod is installed, ask if replace
                     self._model.add(mod)
