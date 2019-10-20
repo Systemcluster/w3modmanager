@@ -9,6 +9,7 @@ import distutils
 if distutils.distutils_path.endswith('__init__.py'):  # type: ignore
     distutils.distutils_path = path.dirname(distutils.distutils_path)  # type: ignore
 
+runtime_hooks = ['.\\runtime.py'] if path.isfile('.\\runtime.py') else []
 
 a = Analysis(
     ['.\\w3modmanager\\__main__.py'],
@@ -17,7 +18,7 @@ a = Analysis(
     datas=[('resources', 'resources'), ('tools', 'tools')],
     hiddenimports=['distutils'],
     hookspath=[],
-    runtime_hooks=[],
+    runtime_hooks=runtime_hooks,
     excludes=['PyQt5'],  # ignore QtPy's PyQt5 since we use PySide2
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

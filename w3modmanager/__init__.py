@@ -3,7 +3,8 @@ w3modmanager - Mod Manager for The Witcher 3
 """
 
 
-VERSION = '0.1.0-dev'
+VERSION = 'unreleased'
+VERSION_HASH = ''
 NAME = 'w3modmanager'
 TITLE = 'w3modmanager'
 SUBTITLE = 'Mod Manager and Installer for The Witcher 3'

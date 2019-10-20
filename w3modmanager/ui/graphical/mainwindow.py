@@ -173,7 +173,8 @@ class MainWindow(QMainWindow):
         messagebox.setWindowTitle('About' if self else getTitleString('About'))
         messagebox.setText(f'''
             <p style="margin:0 15px 0 0;">
-            <b>{w3modmanager.TITLE} {w3modmanager.VERSION}</b><br>
+            <b>{w3modmanager.TITLE} {w3modmanager.VERSION}</b>
+            {f'({w3modmanager.VERSION_HASH})' if w3modmanager.VERSION_HASH else ''}<br>
             {w3modmanager.SUBTITLE}<br>
             <br>
             For updates and information visit <br>

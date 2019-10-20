@@ -34,7 +34,7 @@ def getQtVersionString() -> str:
 
 
 def getVersionString() -> str:
-    return w3modmanager.TITLE + ' ' + w3modmanager.__version__
+    return w3modmanager.TITLE + ' ' + w3modmanager.VERSION
 
 
 def getTitleString(title: str) -> str:
