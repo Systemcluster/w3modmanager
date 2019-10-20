@@ -91,21 +91,23 @@ class ModListModel(QAbstractTableModel):
 
         col = self.getColumnKey(column)
 
-        def compare(lhs, rhs):
+        def compare(lhs, rhs, col=col):
             item1 = lhs[col]
             item2 = rhs[col]
             bothinstance = lambda t: isinstance(item1, t) and isinstance(item2, t) # noqa
             if bothinstance(bool):
-                return int(item1) - int(item2)
-            if bothinstance(int) or bothinstance(str) and item1.isdecimal():
-                return int(item1) - int(item2)
-            if bothinstance(str):
-                return 1 if item1.lower() > item2.lower() else -1 if item1.lower() < item2.lower() else 0
-            if bothinstance((list, )):
-                return len(item1) - len(item2)
-            return 0
-
-        # TODO: enhancement: when sorting for priority, take implicit priority into account
+                diff = int(item1) - int(item2)
+            elif bothinstance(int) or bothinstance(str) and item1.isdecimal():
+                diff = int(item1) - int(item2)
+            elif bothinstance(str):
+                diff = 1 if item1.lower() > item2.lower() else -1 if item1.lower() < item2.lower() else 0
+            elif bothinstance((list, )):
+                diff = len(item1) - len(item2)
+            else:
+                diff = 0
+            if not diff and col == 'priority':
+                return compare(lhs, rhs, 'filename')
+            return diff
 
         self._values = sorted(
             self._values,
@@ -164,6 +166,8 @@ class ModListModel(QAbstractTableModel):
 
         if role == Qt.BackgroundRole:
             if not self._values[index.row()].enabled:
+                return QColor(240, 240, 240)
+            if col in ('priority',) and self._values[index.row()].datatype not in ('mod', 'udf'):
                 return QColor(240, 240, 240)
             return None
 
