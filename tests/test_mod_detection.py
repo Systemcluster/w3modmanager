@@ -228,3 +228,21 @@ def test_only_dlc(mockdata):
     assert mod.menuFiles == []
     assert mod.settings == []
     assert mod.inputs == []
+
+
+def test_mod_with_split_bins(mockdata):
+    source = mockdata.joinpath('mods/mod-with-split-bins')
+    mods = Mod.fromDirectory(source)
+    assert len(mods) == 1
+    mod = mods[0]
+    assert mod.package == 'with-split-bins'
+    assert mod.filename == 'binWithSplitBins'
+    assert mod.datatype == 'bin'
+    assert mod.contentFiles == []
+    assert mod.scriptFiles == []
+    assert mod.binFiles == [
+        'a\\bin\\config\\graphics.xml (bin\\config\\graphics.xml)',
+        'b\\bin\\config\\performance.xml (bin\\config\\performance.xml)']
+    assert mod.menuFiles == []
+    assert mod.settings == []
+    assert mod.inputs == []

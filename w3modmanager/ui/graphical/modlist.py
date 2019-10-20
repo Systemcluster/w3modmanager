@@ -191,15 +191,14 @@ class ModList(QTableView):
     def installFromFile(self, path: Path) -> Tuple[int, int]:
         installed = 0
         errors = 0
-        delete = False
+        archive = path.is_file()
         source = path
         md5hash = ''
         try:
-            if path.is_file():
+            if archive:
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
                 md5hash = getMD5Hash(path)
                 path = extractMod(path)
-                delete = True
             valid, exhausted = containsValidMod(path, searchlimit=8)
             if not valid:
                 if not exhausted and self.showContinueSearchDialog(searchlimit=8):
@@ -209,7 +208,7 @@ class ModList(QTableView):
                     raise InvalidPathError(path, 'Stopped searching for mod')
                 else:
                     raise InvalidPathError(path, 'Invalid mod')
-            mods = Mod.fromDirectory(path)
+            mods = Mod.fromDirectory(path, searchCommonRoot=not archive)
             for mod in mods:
                 mod.md5hash = md5hash
                 mod.source = source
@@ -227,7 +226,7 @@ class ModList(QTableView):
             logger.bind(path=e.path).error(e.message)
             errors += 1
         finally:
-            if delete:
+            if archive:
                 shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
                     'Could not remove temporary directory'
                 ))

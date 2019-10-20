@@ -66,7 +66,7 @@ class Mod:
 
 
     @classmethod
-    def fromDirectory(cls: Type[Mod], path: Path) -> List[Mod]:
+    def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot=True) -> List[Mod]:
         mods: List[Mod] = []
         dirs = [path]
         package = fetcher.formatPackageName(path.name)
@@ -138,7 +138,10 @@ class Mod:
                 dirs += sorted([d for d in check.iterdir() if d.is_dir()])
         # fetch loose bin files
         files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
-        commonroot = fetcher.resolveCommonBinRoot(path, files)
+        if searchCommonRoot:
+            commonroot = fetcher.resolveCommonBinRoot(path, files)
+        else:
+            commonroot = path
         if files:
             name = fetcher.formatModName(commonroot.name, 'bin')
             logger.bind(name=name).info("Installing BIN")
@@ -158,7 +161,7 @@ class Mod:
             ))
         # fetch patch files
         if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':
-            contents = fetcher.fetchPatchFiles(path)  # ignore: type
+            contents = fetcher.fetchPatchFiles(path)
             if contents:
                 name = fetcher.formatModName(path.name, 'pat')
                 logger.bind(name=name).info("Installing PAT")

@@ -370,6 +370,8 @@ def fetchPatchFiles(path: Path) -> List[ContentFile]:
 
 def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
     # find the innermost common root path for bin files
+    if not files:
+        return root
     common = None
     for file in files:
         parents = file.source.parent.parts
@@ -379,6 +381,9 @@ def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
             continue
     if not common:
         common = Path('.')
+    for file in files:
+        while common != '.' and common not in file.source.parents:
+            common = common.parent
     for file in files:
         file.source = file.source.relative_to(common)
     return root.joinpath(common)
