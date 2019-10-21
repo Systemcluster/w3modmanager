@@ -71,6 +71,7 @@ class Model:
         if (mod.filename, mod.target) in self._modList:
             raise ModExistsError(mod)
         self._modList[(mod.filename, mod.target)] = mod
+        logger.trace(self._modList)
         self.updateCallbacks.fire(self)
 
     def set(self, filename: str, target: str, mod: Mod):

@@ -167,7 +167,7 @@ class ModList(QTableView):
                     errors += e
         except Exception as e:
             # we should never land here, but don't lock up the UI if it happens
-            logger.critical(str(e))
+            logger.exception(e)
             errors += 1
 
         if installed > 0 or errors > 0:

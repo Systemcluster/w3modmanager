@@ -76,7 +76,7 @@ class Mod:
                 # fetch mod dirs
                 if fetcher.isValidModDirectory(check):
                     name = fetcher.formatModName(check.name, 'mod')
-                    logger.bind(name=name).info("Installing MOD")
+                    logger.bind(name=name, path=check).debug("Detected MOD")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
@@ -99,7 +99,7 @@ class Mod:
                 # fetch dlc dirs
                 elif fetcher.isValidDlcDirectory(check):
                     name = fetcher.formatDlcName(check.name)
-                    logger.bind(name=name).info("Installing DLC")
+                    logger.bind(name=name, path=check).debug("Detected DLC")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
@@ -122,7 +122,7 @@ class Mod:
                 # fetch unspecified mod or doc dirs
                 if fetcher.maybeModOrDlcDirectory(check, path):
                     name = fetcher.formatModName(check.name, 'mod')
-                    logger.bind(name=name).info("Installing MOD")
+                    logger.bind(name=name, path=check).debug("Detected MOD")
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
@@ -151,7 +151,7 @@ class Mod:
             commonroot = path
         if files:
             name = fetcher.formatModName(commonroot.name, 'bin')
-            logger.bind(name=name).info("Installing BIN")
+            logger.bind(name=name, path=commonroot).debug("Detected BIN")
             size = 0
             for file in files:
                 size += commonroot.joinpath(file.source).stat().st_size
@@ -173,7 +173,7 @@ class Mod:
             contents = fetcher.fetchPatchFiles(path)
             if contents:
                 name = fetcher.formatModName(path.name, 'pat')
-                logger.bind(name=name).info("Installing PAT")
+                logger.bind(name=name, path=path).debug("Detected PAT")
                 size = 0
                 for content in contents:
                     size += path.joinpath(content.source).stat().st_size

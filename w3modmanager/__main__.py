@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 from enum import Enum
 
 import appdirs
+from loguru import logger
 
 import w3modmanager
 
@@ -25,6 +26,23 @@ if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
     del os.environ['QT_DEVICE_PIXEL_RATIO']
 os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 os.environ['QT_API'] = 'pyside2'
+
+# setup logger if tty is attached
+logger.remove(0)
+if sys.stdout.isatty():
+    logger.add(
+        sys.stderr,
+        level='TRACE',
+        backtrace=True,
+        colorize=True,
+        filter='w3modmanager',
+        format='\
+<g>{time:YYYY-MM-DD HH:mm:ss.SSS}</> | \
+<level>{level:8}</> | \
+<m>{name}</>:<m>{function}</>:<m>{line}</> - \
+<level>{message}</> - \
+<e>{extra}</>'
+    )
 
 
 class StartupMode(Enum):
