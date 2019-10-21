@@ -3,7 +3,7 @@ from w3modmanager.domain.mod.mod import Mod
 from loguru import logger
 
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 from fasteners import InterProcessLock
 
 
@@ -42,7 +42,7 @@ class Model:
         logger.debug(f'Config path: {self._configPath}')
         logger.debug(f'Cache path: {self._cachePath}')
 
-        self._modList: Dict[str, Mod] = {}
+        self._modList: Dict[Tuple[str, str], Mod] = {}
 
         self.loadInstalled()
 
@@ -54,71 +54,77 @@ class Model:
         pass
 
 
-    def get(self, modname: str) -> Mod:
-        return self._modList[modname]
+    def get(self, modname: str, target: str) -> Mod:
+        return self._modList[(modname, target)]
 
-    def list(self) -> List[str]:
+    def list(self) -> List[Tuple[str, str]]:
         return list(self._modList.keys())
 
     def all(self) -> List[Mod]:
         return list(self._modList.values())
 
-    def data(self) -> Dict[str, Mod]:
+    def data(self) -> Dict[Tuple[str, str], Mod]:
         return self._modList
 
 
     def add(self, mod: Mod):
-        if mod.filename in self._modList:
+        if (mod.filename, mod.target) in self._modList:
             raise ModExistsError(mod)
-        self._modList[mod.filename] = mod
+        self._modList[(mod.filename, mod.target)] = mod
         self.updateCallbacks.fire(self)
 
-    def set(self, filename: str, mod: Mod):
-        self._modList[filename] = mod
+    def set(self, filename: str, target: str, mod: Mod):
+        self._modList[(filename, target)] = mod
         self.updateCallbacks.fire(self)
 
-    def remove(self, mod: Union[Mod, str]):
+    def remove(self, mod: Union[Mod, Tuple[str, str]]):
         try:
             if isinstance(mod, Mod):
                 filename = mod.filename
+                target = mod.target
             else:
-                filename = mod
-                mod = self._modList[filename]
+                filename = mod[0]
+                target = mod[1]
+                mod = self._modList[(filename, target)]
         except KeyError:
             raise ModNotFoundError(filename)
-        del self._modList[filename]
+        del self._modList[(filename, target)]
         self.updateCallbacks.fire(self)
 
-    def enable(self, mod: Union[Mod, str]):
+    def enable(self, mod: Union[Mod, Tuple[str, str]]):
         try:
             if isinstance(mod, Mod):
                 filename = mod.filename
+                target = mod.target
             else:
-                filename = mod
-                mod = self._modList[filename]
+                filename = mod[0]
+                target = mod[1]
+                mod = self._modList[(filename, target)]
         except KeyError:
             raise ModNotFoundError(filename)
-        self._modList[filename].enabled = True
+        self._modList[(filename, target)].enabled = True
         self.updateCallbacks.fire(self)
 
     def disable(self, mod: Union[Mod, str]):
         try:
             if isinstance(mod, Mod):
                 filename = mod.filename
+                target = mod.target
             else:
-                filename = mod
-                mod = self._modList[filename]
+                filename = mod[0]
+                target = mod[1]
+                mod = self._modList[(filename, target)]
         except KeyError:
             raise ModNotFoundError(filename)
-        self._modList[filename].enabled = False
+        self._modList[(filename, target)].enabled = False
         self.updateCallbacks.fire(self)
 
 
     def __len__(self) -> int:
         return len(self._modList)
 
-    def __getitem__(self, filename: str) -> Mod:
-        return self.get(filename)
+    def __getitem__(self, mod: Tuple[str, str]) -> Mod:
+        return self.get(mod[0], mod[1])
 
     def __iter__(self):
         yield from self._modList

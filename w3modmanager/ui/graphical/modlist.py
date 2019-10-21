@@ -128,7 +128,7 @@ class ModList(QTableView):
             for index in self.selectionModel().selectedRows():
                 mod: Mod = self.model().getMod(index.row())
                 try:
-                    self._model.remove(mod.filename)
+                    self._model.remove(mod)
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
             self.model().update(self._model)

@@ -20,6 +20,7 @@ class Mod:
     installed: bool = False
     enabled: bool = True
     datatype: str = 'mod'
+    target: str = 'mods'
     date: str = ''
     source: Path = Path()
     size: int = 0
@@ -84,6 +85,7 @@ class Mod:
                         package,
                         filename=name,
                         datatype='mod',
+                        target='mods',
                         priority=-1,
                         source=check,
                         size=size,
@@ -106,6 +108,7 @@ class Mod:
                         package,
                         filename=name,
                         datatype='dlc',
+                        target='dlc',
                         priority=-2,
                         source=check,
                         size=size,
@@ -128,6 +131,7 @@ class Mod:
                         package,
                         filename=name,
                         datatype='udf',
+                        target='mods',
                         priority=-1,
                         source=check,
                         size=size,
@@ -155,6 +159,7 @@ class Mod:
                 package,
                 filename=name,
                 datatype='bin',
+                target='mods',
                 priority=-2,
                 source=commonroot,
                 size=size,
@@ -176,6 +181,7 @@ class Mod:
                     package,
                     filename=name,
                     datatype='pat',
+                    target='mods',
                     priority=-2,
                     source=path,
                     size=size,
