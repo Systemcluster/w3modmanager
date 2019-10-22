@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         messagebox.setText(f'''
             <p style="margin:0 15px 0 0;">
             <b>{w3modmanager.TITLE} {w3modmanager.VERSION}</b>
-            {f'({w3modmanager.VERSION_HASH})' if w3modmanager.VERSION_HASH else ''}<br>
+            <small>{f'({w3modmanager.VERSION_HASH})' if w3modmanager.VERSION_HASH else ''}</small><br>
             {w3modmanager.SUBTITLE}<br>
             <br>
             For updates and information visit <br>

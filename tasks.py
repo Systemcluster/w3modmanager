@@ -6,6 +6,7 @@ simple invoke task collection
 from pathlib import Path
 from shutil import rmtree, which
 from distutils.dir_util import copy_tree
+from datetime import datetime, timezone
 import subprocess
 
 from invoke import task
@@ -23,12 +24,14 @@ def start(ctx, mock=False, clean=False):
         rmtree(_testdata, ignore_errors=True)
     git = which('git')
     if git:
-        hash = subprocess.run([git, 'rev-parse', '--short=auto', 'HEAD'], capture_output=True).stdout
+        hash = subprocess.run([git, 'rev-parse', '--short=7', 'HEAD'], capture_output=True).stdout
         if hash:
             w3modmanager.VERSION_HASH = str(hash, 'utf-8').strip()
         date = subprocess.run([git, 'show', '-s', '--format=%cI', 'HEAD'], capture_output=True).stdout
         if date:
-            w3modmanager.VERSION = str(date, 'utf-8').strip()[:10].replace('-', '.')
+            date = datetime.fromisoformat(str(date, 'utf-8').strip()).astimezone(timezone.utc).isoformat()
+            date = date[:10].replace('-', '.')
+            w3modmanager.VERSION = date
     if mock:
         from qtpy.QtCore import QSettings
         print('setting up testdata...')
@@ -58,14 +61,14 @@ def build(ctx, clean=False, spec='w3modmanager.spec', version=''):
             hook.append(f'w3modmanager.VERSION = \'{version}\'')
         git = which('git')
         if git:
-            hash = subprocess.run([git, 'rev-parse', '--short=auto', 'HEAD'], capture_output=True).stdout
+            hash = subprocess.run([git, 'rev-parse', '--short=7', 'HEAD'], capture_output=True).stdout
             if hash:
                 hash = str(hash, 'utf-8').strip()
                 hook.append(f'w3modmanager.VERSION_HASH = \'{hash}\'')
             if not version:
                 date = subprocess.run([git, 'show', '-s', '--format=%cI', 'HEAD'], capture_output=True).stdout
                 if date:
-                    date = str(date, 'utf-8').strip()
+                    date = datetime.fromisoformat(str(date, 'utf-8').strip()).astimezone(timezone.utc).isoformat()
                     date = date[:10].replace('-', '.')
                     hook.append(f'w3modmanager.VERSION = \'{date}\'')
         rt.write('\n'.join(hook))
