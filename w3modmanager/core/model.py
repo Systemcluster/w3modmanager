@@ -5,6 +5,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Tuple
 from fasteners import InterProcessLock
+from datetime import datetime
 
 
 class CallbackList(list):
@@ -34,6 +35,7 @@ class Model:
                 raise OtherInstanceError(self.lockfile)
 
         self.updateCallbacks = CallbackList()
+        self.lastUpdate = datetime.utcnow()
 
         # TODO: enhancement: watch mod directory for changes
 
@@ -72,10 +74,12 @@ class Model:
             raise ModExistsError(mod)
         self._modList[(mod.filename, mod.target)] = mod
         logger.trace(self._modList)
+        self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
     def set(self, filename: str, target: str, mod: Mod):
         self._modList[(filename, target)] = mod
+        self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
     def remove(self, mod: Union[Mod, Tuple[str, str]]):
@@ -90,6 +94,7 @@ class Model:
         except KeyError:
             raise ModNotFoundError(filename)
         del self._modList[(filename, target)]
+        self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
     def enable(self, mod: Union[Mod, Tuple[str, str]]):
@@ -104,6 +109,7 @@ class Model:
         except KeyError:
             raise ModNotFoundError(filename)
         self._modList[(filename, target)].enabled = True
+        self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
     def disable(self, mod: Union[Mod, str]):
@@ -118,6 +124,7 @@ class Model:
         except KeyError:
             raise ModNotFoundError(filename)
         self._modList[(filename, target)].enabled = False
+        self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
 

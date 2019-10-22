@@ -1,6 +1,7 @@
 from pathlib import Path
 from urllib.parse import urlparse
 from typing import Union, List, Tuple
+from datetime import datetime
 
 from loguru import logger
 
@@ -194,6 +195,7 @@ class ModList(QTableView):
         archive = path.is_file()
         source = None
         md5hash = ''
+        installtime = datetime.utcnow()
         try:
             if archive:
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
@@ -221,8 +223,6 @@ class ModList(QTableView):
                 except ModExistsError:
                     logger.bind(path=path, name=mod.filename).error(f'Mod exists')
                     errors += 1
-            self.model().update(self._model)
-            self.model().sort()
         except InvalidPathError as e:
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
@@ -232,6 +232,9 @@ class ModList(QTableView):
                 shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
                     'Could not remove temporary directory'
                 ))
+            self._model.lastUpdate = installtime
+            self.model().update(self._model)
+            self.model().sort()
         return installed, errors
 
     def showContinueSearchDialog(self, searchlimit: int):

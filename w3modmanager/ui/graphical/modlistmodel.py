@@ -51,6 +51,7 @@ class ModListModel(QAbstractTableModel):
         if model:
             self.layoutAboutToBeChanged.emit()
             self._values = model.all()
+            self._lastUpdate = model.lastUpdate
             self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
 
@@ -169,6 +170,8 @@ class ModListModel(QAbstractTableModel):
                 return QColor(240, 240, 240)
             if col in ('priority',) and self._values[index.row()].datatype not in ('mod', 'udf'):
                 return QColor(240, 240, 240)
+            if self._values[index.row()].date > self._lastUpdate:
+                return QColor(238, 242, 255)
             return None
 
         if role == Qt.ForegroundRole:
@@ -206,6 +209,8 @@ class ModListModel(QAbstractTableModel):
                 if val < 0:
                     return 'none'
                 return val
+            if col in ('date',):
+                return self._values[index.row()][col].strftime('%Y-%m-%d %H:%M:%S')
             if col in ('size',):
                 val = self._values[index.row()][col]
                 frm = 'b'

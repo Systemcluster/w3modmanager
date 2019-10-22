@@ -21,7 +21,7 @@ class Mod:
     enabled: bool = True
     datatype: str = 'mod'
     target: str = 'mods'
-    date: str = ''
+    date: datetime = field(default_factory=lambda: datetime.utcnow())
     source: Path = Path()
     size: int = 0
     version: str = ''
@@ -92,8 +92,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check),
-                        date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        contents=fetcher.fetchContentFiles(check)
                     ))
                     continue
                 # fetch dlc dirs
@@ -115,8 +114,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check),
-                        date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        contents=fetcher.fetchContentFiles(check)
                     ))
                     continue
                 # fetch unspecified mod or doc dirs
@@ -138,8 +136,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check),
-                        date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        contents=fetcher.fetchContentFiles(check)
                     ))
                     continue
                 dirs += sorted([d for d in check.iterdir() if d.is_dir()])
@@ -165,8 +162,7 @@ class Mod:
                 size=size,
                 files=files,
                 settings=settings,
-                inputs=inputs,
-                date=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                inputs=inputs
             ))
         # fetch patch files
         if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':
@@ -187,8 +183,7 @@ class Mod:
                     size=size,
                     settings=settings,
                     inputs=inputs,
-                    contents=contents,
-                    date=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    contents=contents
                 ))
         if not mods:
             raise InvalidPathError(path, 'Invalid mod')
