@@ -49,7 +49,7 @@ def test_mod_contains_no_dlc(mockdata):
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
     mod = mods[0]
-    assert mod.package == 'without-dlc'
+    assert mod.package == 'without dlc'
     assert mod.filename == 'modWithoutDlc'
     assert mod.datatype == 'mod'
     assert mod.source == source
@@ -70,7 +70,7 @@ def test_mod_dlc(mockdata):
     mods = Mod.fromDirectory(source)
     assert len(mods) == 2
     mod = mods[0]
-    assert mod.package == 'with-dlc'
+    assert mod.package == 'with dlc'
     assert mod.filename == 'mod-dlc'
     assert mod.datatype == 'dlc'
     assert mod.source == source.joinpath('dlc/mod-dlc')
@@ -81,7 +81,7 @@ def test_mod_dlc(mockdata):
     assert mod.settings == []
     assert mod.inputs == []
     mod = mods[1]
-    assert mod.package == 'with-dlc'
+    assert mod.package == 'with dlc'
     assert mod.filename == 'modDlc'
     assert mod.datatype == 'mod'
     assert mod.source == source.joinpath('mods/mod-dlc')
@@ -177,7 +177,7 @@ def test_mod_weird(mockdata):
     assert mod.inputs == []
     mod = mods[2]
     assert mod.package == 'weird'
-    assert mod.filename == 'binFooMenus'
+    assert mod.filename == 'binFoo12Menus'
     assert mod.datatype == 'bin'
     assert mod.source == source.joinpath('foo 1.2 menus')
     assert mod.contentFiles == []
@@ -219,7 +219,7 @@ def test_only_dlc(mockdata):
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
     mod = mods[0]
-    assert mod.package == 'only-dlc'
+    assert mod.package == 'only dlc'
     assert mod.filename == 'dlc__only'
     assert mod.datatype == 'dlc'
     assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
@@ -235,14 +235,14 @@ def test_mod_with_split_bins(mockdata):
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
     mod = mods[0]
-    assert mod.package == 'with-split-bins'
+    assert mod.package == 'with split bins'
     assert mod.filename == 'binWithSplitBins'
     assert mod.datatype == 'bin'
     assert mod.contentFiles == []
     assert mod.scriptFiles == []
     assert mod.binFiles == [
-        'a\\bin\\config\\graphics.xml (bin\\config\\graphics.xml)',
-        'b\\bin\\config\\performance.xml (bin\\config\\performance.xml)']
+        'a/bin/config/graphics.xml (bin/config/graphics.xml)',
+        'b/bin/config/performance.xml (bin/config/performance.xml)']
     assert mod.menuFiles == []
     assert mod.settings == []
     assert mod.inputs == []

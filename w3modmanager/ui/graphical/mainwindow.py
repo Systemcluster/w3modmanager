@@ -132,7 +132,8 @@ class MainWindow(QMainWindow):
             self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
     def showAddModFromFileDialog(self):
-        dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', 'Archives (*.zip *.rar *.7z)')
+        extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
+        dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.ExistingFiles)
         if (dialog.exec_()):

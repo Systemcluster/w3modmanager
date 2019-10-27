@@ -10,7 +10,7 @@ import ctypes
 import os
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
-from typing import Union
+from typing import Union, List
 from threading import Timer
 
 import cchardet
@@ -41,6 +41,10 @@ def getVersionString() -> str:
 
 def getTitleString(title: str) -> str:
     return '%s (%s)' % (title, getVersionString())
+
+
+def getSupportedExtensions() -> List[str]:
+    return ['.zip', '.rar', '.7z', '.tar', '.lzma']
 
 
 def detectEncoding(path: Path) -> str:
@@ -119,8 +123,7 @@ def isValidFileUrl(url: str) -> bool:
 
 
 def isArchive(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in (
-        '.zip', '.rar', '.7z', '.tar', '.lzma')
+    return path.is_file() and path.suffix.lower() in getSupportedExtensions()
 
 
 def extractArchive(archive: Path, target: Path) -> Path:

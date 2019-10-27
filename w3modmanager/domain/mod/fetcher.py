@@ -15,42 +15,49 @@ import re
 #
 
 def formatPackageName(name: str) -> str:
+    original = name
     # remove file extension
-    if re.search(r'. *\.(zip|rar|tar)$', name, re.IGNORECASE):
-        name = name[:-4]
-    elif re.search(r'.*\.7z$', name, re.IGNORECASE):
-        name = name[:-3]
-    elif re.search(r'.*\.lzma$', name, re.IGNORECASE):
-        name = name[:-5]
+    extensions = '|'.join(map(lambda e: e[1:], util.getSupportedExtensions()))
+    name = re.sub(rf'.*(\.({extensions}))$', '', name, re.IGNORECASE)
     # remove nexusmods version suffix
     length = len(name)
-    for match in re.finditer(r'-[0-9]+-.+', name):
+    for match in re.finditer(r'-[0-9]+-.*', name):
         length = match.span()[0]
     name = name[0:length]
+    # remove leading and trailing non-alphanumeric characters
+    name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
     # remove mod prefix if package name is long enough
-    if re.match('^mod.*', name, re.IGNORECASE) and length > 6:
+    if re.match(r'^mod.*', name, re.IGNORECASE) and len(name) > 4:
         name = name[3:]
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
     # insert spacing
     name = re.sub(r'([a-z]{2,})(?=[A-Z1-9])', r'\1 ', name)
     name = re.sub(r'([A-Z][a-z])(?=[A-Z]{2}|[1-9])', r'\1 ', name)
-    name = re.sub(r'(_)', r' ', name)
+    name = re.sub(r'([_-])', r' ', name)
     name = re.sub(r'([a-zA-Z])-(?=[0-9])', r'\1 ', name)
-    name = re.sub(r'([0-9])-?(?=[a-zA-Z])', r'\1 ', name)
+    name = re.sub(r'([0-9])-?(?=[a-zA-Z]{3,})', r'\1 ', name)
+    if len(name) < 4 and len(original) >= 4:
+        return original
     return name
 
 
 def formatModName(name: str, prefix: str = '') -> str:
+    original = name
     # remove trailing file copy suffix
     name = re.sub(r'(-[ ]*Copy)+$', '', name)
     name = re.sub(r'([ ]*\([0-9]+\))$', '', name)
     # remove non-alphanumeric characters
     name = re.sub(r'[^a-zA-Z0-9-_ ]', '', name)
+    # remove nexusmods version suffix
+    length = len(name)
+    for match in re.finditer(r'-[0-9]+-.+', name):
+        length = match.span()[0]
+    name = name[0:length]
     # remove infix versions
-    name = re.sub(r'( ([vVxX]?[0-9.]+)* )', r' ', name)
+    name = re.sub(r'([ -]([vVxX][0-9.]+)*[ -])', r' ', name)
     # join separated words and uppercase following characters
-    name = re.sub(r'(?<=[a-zA-Z0-9])(?:[- ]|(?!___)[_])+([a-zA-Z0-9])',
+    name = re.sub(r'(?<=[a-zA-Z0-9])(?:[- ]|(?<!00)[_])+([a-zA-Z0-9])',
                   lambda m: m.group(1).upper(), name)
     # remove trailing version
     name = re.sub(r'([vVxX]?[0-9.]+)[ ]*$', r'', name)
@@ -61,20 +68,25 @@ def formatModName(name: str, prefix: str = '') -> str:
     if prefix and name[:pl].lower() != prefix.lower():
         # always remove existing mod prefix if not mod
         # and name is long enough
-        if name[:3].lower() == 'mod' and len(name) > 6:
+        if name[:3].lower() == 'mod' and len(name) > 4:
             name = name[3:]
         name = prefix + name[:1].upper() + name[1:]
     else:
-        name = name[:pl].lower() + name[pl:pl + 1].upper() + name[pl + 1:]
+        name = name[:pl].lower() + name[pl: pl + 1].upper() + name[pl + 1:]
+    if len(name) < 4 and len(original) >= 4:
+        return original
     return name
 
 
 def formatDlcName(name: str):
+    original = name
     # remove trailing file copy suffix
     name = re.sub(r'(-[ ]*Copy)+$', '', name)
     name = re.sub(r'([ ]*\([0-9]+\))$', '', name)
     # remove non-alphanumeric characters
-    name = re.sub(r'[^a-zA-Z0-9-_ ]', '', name)
+    name = re.sub(r'[^a-zA-Z0-9-_]', '', name)
+    if len(name) < 4 and len(original) >= 4:
+        return original
     return name
 
 
@@ -277,7 +289,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
 
             # if the binfile is placed under bin, use its path relative to its bin dir
             if 'bin' in relpath.parts:
-                minpath = Path(re.sub(r'^((?!bin\\|bin\/).)*', r'', str(relpath), flags=re.IGNORECASE))
+                minpath = Path(re.sub(r'^((?!bin\/).)*', r'', relpath.as_posix(), flags=re.IGNORECASE))
                 bins.append(BinFile(relpath, minpath))
                 continue
 
