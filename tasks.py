@@ -55,7 +55,7 @@ def clean(ctx,):
 def build(ctx, clean=False, spec='w3modmanager.spec', version=''):
     """build the binary distribution"""
     runtime = Path(__file__).parent.joinpath('runtime.py')
-    with open(runtime, 'w') as rt:
+    with open(runtime, 'w', encoding='utf-8') as rt:
         hook = ['import w3modmanager']
         if version:
             hook.append(f'w3modmanager.VERSION = \'{version}\'')

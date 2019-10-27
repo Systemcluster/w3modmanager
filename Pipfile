@@ -20,6 +20,7 @@ loguru = ">=0.2.5"
 vdf = ">=3.1"
 appdirs = ">=1.4"
 pywin32 = "==224"
+cchardet = "*"
 
 [requires]
 python_version = "3.7"

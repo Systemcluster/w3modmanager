@@ -13,6 +13,7 @@ from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union
 from threading import Timer
 
+import cchardet
 from qtpy import API_NAME, QT_VERSION
 
 
@@ -42,6 +43,13 @@ def getTitleString(title: str) -> str:
     return '%s (%s)' % (title, getVersionString())
 
 
+def detectEncoding(path: Path) -> str:
+    encoding = cchardet.detect(path.read_bytes())
+    if encoding['confidence'] > 0.7:
+        return encoding['encoding']
+    return 'utf-8'
+
+
 def readText(path: Path) -> str:
     b = path.read_bytes()
     if b.startswith(codecs.BOM_UTF16_LE):
@@ -50,7 +58,7 @@ def readText(path: Path) -> str:
         return path.read_text(encoding='utf-16')
     if b.startswith(codecs.BOM_UTF16):
         return path.read_text(encoding='utf-16')
-    return path.read_text()
+    return path.read_text(encoding=detectEncoding(path))
 
 
 def getMD5Hash(path: Path) -> str:
