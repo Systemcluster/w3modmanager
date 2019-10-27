@@ -205,6 +205,7 @@ class ModList(QTableView):
         return 0, 0
 
     def installFromFile(self, path: Path) -> Tuple[int, int]:
+        originalpath = path
         installed = 0
         errors = 0
         archive = path.is_file()
@@ -243,7 +244,7 @@ class ModList(QTableView):
             logger.bind(path=e.path).error(e.message)
             errors += 1
         finally:
-            if archive:
+            if archive and not path == originalpath:
                 shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
                     'Could not remove temporary directory'
                 ))
