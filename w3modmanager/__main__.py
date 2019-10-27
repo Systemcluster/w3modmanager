@@ -6,7 +6,7 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 import sys
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, NoReturn
 from argparse import ArgumentParser
 from enum import Enum
 
@@ -53,7 +53,7 @@ class StartupMode(Enum):
 
 def main(gamePath: Optional[str] = None,
          configPath: Optional[str] = None,
-         startupMode: StartupMode = StartupMode.Main) -> Union[int, str]:
+         startupMode: StartupMode = StartupMode.Main) -> NoReturn:
 
     from w3modmanager.util.util import getRuntimePath
     from w3modmanager.core.model import Model, OtherInstanceError, \
@@ -119,11 +119,12 @@ def main(gamePath: Optional[str] = None,
             MainWindow.showSettingsDialog(None, True)
             model = createModel()
 
-        # check for write access to the game directory
-        if not getWritePermissions(model.gamepath):
-            if not MainWindow.showInvalidPermissionsDialog(None, model.gamepath) \
-            or not setWritePermissions(model.gamepath):
-                raise PermissionError(f'Not enough permissions for {model.gamepath}')
+        # check for write access to the game and config directories
+        for path in (model.gamepath, model.configpath, model.cachepath,):
+            if not getWritePermissions(path):
+                if not MainWindow.showInvalidPermissionsDialog(None, path) \
+                or not setWritePermissions(path):
+                    raise PermissionError(f'Not enough permissions for {path}')
 
         window = MainWindow(model)
         app.setActiveWindow(window)

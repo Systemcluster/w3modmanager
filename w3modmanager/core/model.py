@@ -137,11 +137,6 @@ class Model:
     def __iter__(self):
         yield from self._modList
 
-
-    @property
-    def xmlfile(self):
-        return self._cachePath.joinpath('installed.xml')
-
     @property
     def lockfile(self):
         return self._cachePath.joinpath('w3mm.lock')
@@ -149,6 +144,14 @@ class Model:
     @property
     def gamepath(self):
         return self._gamePath
+
+    @property
+    def configpath(self):
+        return self._configPath
+
+    @property
+    def cachepath(self):
+        return self._cachePath
 
 
 def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
