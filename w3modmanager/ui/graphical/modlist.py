@@ -91,6 +91,7 @@ class ModList(QTableView):
         self.setCornerButtonEnabled(False)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionsMovable(True)
         # self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
         self.setItemDelegate(ModListItemDelegate(self))
@@ -98,16 +99,30 @@ class ModList(QTableView):
         self.setSelectionModel(ModListSelectionModel(self.model()))
 
         self.resizeColumnsToContents()
-        self.sortByColumn(2, Qt.AscendingOrder)
-        self.sortByColumn(1, Qt.AscendingOrder)
         self.sortByColumn(3, Qt.AscendingOrder)
+        self.sortByColumn(1, Qt.AscendingOrder)
+        self.sortByColumn(1, Qt.AscendingOrder)
         self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
+
+        settings = QSettings()
+        if settings.value('modlistHorizontalHeaderState'):
+            self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))
+
+        self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
+        self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
 
         self.setFocus()
 
         QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
 
         # TODO: enhancement: notify of inconsistencies like enabled-but-unconfigured-mods
+
+        # TODO: enhancement: offer option to read readme and other additional text files
+
+    @debounce(200)
+    def headerChangedEvent(self):
+        settings = QSettings()
+        settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 
     def modelUpdateEvent(self, model: Model):
         self.sortByColumn()

@@ -17,8 +17,8 @@ class ModListModel(QAbstractTableModel):
         self._header = [
             ('', 'enabled'),
             ('Type', 'datatype'),
-            ('Name', 'filename'),
             ('Package', 'package'),
+            ('Name', 'filename'),
             ('Category', 'category'),
             ('Priority', 'priority'),
             ('Content', 'contentFiles'),

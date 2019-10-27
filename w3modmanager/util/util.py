@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union
+from threading import Timer
 
 from qtpy import API_NAME, QT_VERSION
 
@@ -136,3 +137,19 @@ def extractMod(archive: Path) -> Path:
     target = Path(tempfile.gettempdir()).joinpath('w3modmanager/cache').joinpath(f'.{archive.stem}')
     extractArchive(archive, target)
     return target
+
+
+def debounce(ms: int):
+    """Debounce a functions execution by {ms} milliseconds"""
+    def decorator(fun):
+        def debounced(*args, **kwargs):
+            def deferred():
+                fun(*args, **kwargs)
+            try:
+                debounced.timer.cancel()
+            except AttributeError:
+                pass
+            debounced.timer = Timer(ms / 1000.0, deferred)
+            debounced.timer.start()
+        return debounced
+    return decorator
