@@ -3,6 +3,7 @@
 from w3modmanager.util.util import getWindowsPath
 
 from pathlib import Path
+import pywintypes  # noqa
 import win32api  # noqa
 import win32security  # noqa
 import subprocess

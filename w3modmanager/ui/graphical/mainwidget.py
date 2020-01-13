@@ -133,7 +133,7 @@ class MainWidget(QWidget):
         record = message.record
         message = record['message']
         extra = record['extra']
-        level = record['level'].lower()
+        level = record['level'].name.lower()
 
         name = str(extra['name']) if 'name' in extra else ''
         path = str(extra['path']) if 'path' in extra else ''

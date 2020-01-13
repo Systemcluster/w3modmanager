@@ -4,11 +4,6 @@ from os import path
 from PyInstaller.building.build_main import Analysis, PYZ, EXE
 
 
-# work-around for https://github.com/pyinstaller/pyinstaller/issues/4064
-import distutils
-if distutils.distutils_path.endswith('__init__.py'):  # type: ignore
-    distutils.distutils_path = path.dirname(distutils.distutils_path)  # type: ignore
-
 runtime_hooks = ['.\\runtime.py'] if path.isfile('.\\runtime.py') else []
 
 a = Analysis(

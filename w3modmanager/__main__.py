@@ -24,7 +24,6 @@ if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
 # setup Qt environment
 if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
     del os.environ['QT_DEVICE_PIXEL_RATIO']
-os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 os.environ['QT_API'] = 'pyside2'
 
 # setup logger if tty is attached

@@ -188,13 +188,13 @@ class ModList(QTableView):
 
         if installed > 0 or errors > 0:
             log = logger.bind(modlist=bool(installed))
+            message = 'Installed {0} mods{1}'.format(installed, f' ({errors} errors)' if errors else '')
             if installed > 0 and errors > 0:
-                log = log.warning
+                log.warning(message)
             elif installed > 0:
-                log = log.success
+                log.success(message)
             else:
-                log = log.error
-            log('Installed {0} mods{1}'.format(installed, f' ({errors} errors)' if errors else ''))
+                log.error(message)
         if not installedBefore:
             # if list was empty before, auto resize columns
             self.resizeColumnsToContents()
