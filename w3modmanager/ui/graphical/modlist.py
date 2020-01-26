@@ -99,10 +99,6 @@ class ModList(QTableView):
         self.setSelectionModel(ModListSelectionModel(self.model()))
 
         self.resizeColumnsToContents()
-        self.sortByColumn(3, Qt.AscendingOrder)
-        self.sortByColumn(1, Qt.AscendingOrder)
-        self.sortByColumn(1, Qt.AscendingOrder)
-        self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
         settings = QSettings()
         if settings.value('modlistHorizontalHeaderState'):
@@ -112,6 +108,21 @@ class ModList(QTableView):
         self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
 
         self.setFocus()
+
+        self.sortByColumn(3, Qt.AscendingOrder, False)
+        self.sortByColumn(2, Qt.AscendingOrder, False)
+        self.sortByColumn(1, Qt.AscendingOrder, False)
+        if settings.value('modlistSortColumn') is not None and \
+           settings.value('modlistSortOrder') is not None:
+            try:
+                self.sortByColumn(
+                    settings.value('modlistSortColumn', 1, int),
+                    Qt.SortOrder(settings.value('modlistSortOrder', 1, int)),
+                    False
+                )
+            except Exception as e:
+                print(f'could not restore sort order: {e}')
+        self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
         QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
 
@@ -125,7 +136,7 @@ class ModList(QTableView):
         settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 
     def modelUpdateEvent(self, model: Model):
-        self.sortByColumn()
+        self.sortByColumn(None, None)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         self.hoverIndexRow = self.indexAt(event.pos()).row()
@@ -136,6 +147,13 @@ class ModList(QTableView):
 
     def eventFilter(self, obj, event):
         return super().eventFilter(obj, event)
+
+    def sortByColumn(self, col, order, save=True):
+        if save and col is not None and order is not None:
+            settings = QSettings()
+            settings.setValue('modlistSortColumn', col)
+            settings.setValue('modlistSortOrder', int(order))
+        return super().sortByColumn(col, order)
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.matches(QKeySequence.Paste):
