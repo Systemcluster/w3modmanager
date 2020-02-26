@@ -56,7 +56,7 @@ def main(gamePath: Optional[str] = None,
 
     from w3modmanager.util.util import getRuntimePath
     from w3modmanager.core.model import Model, OtherInstanceError, \
-        InvalidGamePath, InvalidConfigPath, InvalidCachePath
+        InvalidGamePath, InvalidConfigPath
     from w3modmanager.ui.graphical.mainwindow import MainWindow
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions
@@ -82,7 +82,6 @@ def main(gamePath: Optional[str] = None,
     palette = QPalette(app.palette())
     palette.setColor(QPalette.Link, Qt.red)
     palette.setColor(QPalette.LinkVisited, Qt.red)
-    palette.setColor(QPalette.LinkVisited, Qt.red)
     app.setPalette(palette)
 
     icon = QIcon()
@@ -102,16 +101,23 @@ def main(gamePath: Optional[str] = None,
         MainWindow.showSettingsDialog(None)
         sys.exit()
 
-    def createModel():
+    def createModel(ignorelock=False):
         nonlocal settings
         return Model(
             Path(str(settings.value('gamePath'))),
             Path(str(settings.value('configPath'))),
-            Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)))
+            Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)),
+            ignorelock)
     try:
         # try to initialize the mod management model
         try:
             model = createModel()
+        # if another instance is already open, inform and ask to open anyway
+        except OtherInstanceError as e:
+            if MainWindow.showOtherInstanceDialog(None):
+                model = createModel(True)
+            else:
+                raise e
         # if game path or config path is invalid or not set,
         # show a special settings dialog and retry
         except (InvalidGamePath, InvalidConfigPath):
@@ -129,17 +135,12 @@ def main(gamePath: Optional[str] = None,
         app.setActiveWindow(window)
         sys.exit(app.exec_())
 
+    except OtherInstanceError as e:
+        sys.exit(f'error: {str(e)}')
+
     except (InvalidGamePath, InvalidConfigPath) as e:
         MainWindow.showInvalidConfigErrorDialog(None)
         sys.exit(f'error: {str(e)}')
-
-    except OtherInstanceError as e:
-        # TODO: incomplete: ask to start anyway
-        raise e
-
-    except InvalidCachePath as e:
-        # TODO: enhancement: show informative message
-        raise e
 
     except PermissionError as e:
         MainWindow.showInvalidPermissionsErrorDialog(None)

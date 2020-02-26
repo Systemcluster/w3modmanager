@@ -261,6 +261,29 @@ class MainWindow(QMainWindow):
         messagebox.setStandardButtons(QMessageBox.Ok)
         return messagebox.exec_()
 
+    def showOtherInstanceDialog(self: Any):
+        messagebox = QMessageBox(self)
+        messagebox.setWindowTitle('Other instance' if self else getTitleString('Other instance'))
+        messagebox.setText(f'''
+            <p style="margin:10px 15px 10px 5px;">
+                <b>Another instance of the application is currently running.</b>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                Only one instance should be opened at the same time<br>
+                to prevent data corruption.
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                Continue anyway?
+            </p>
+        ''')
+        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setIconPixmap(
+            messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
+        )
+        messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        messagebox.setDefaultButton(QMessageBox.Cancel)
+        return messagebox.exec_() == QMessageBox.Yes
+
     def showCritcalErrorDialog(self: Any, error: str):
         import traceback
         messagebox = QMessageBox(self)
