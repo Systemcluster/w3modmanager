@@ -181,6 +181,7 @@ class ModList(QTableView):
         installed = 0
         errors = 0
         installedBefore = len(self._model)
+        installtime = datetime.utcnow()
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
         try:
             for path in paths:
@@ -189,14 +190,14 @@ class ModList(QTableView):
                 if web and isValidNexusModsUrl(path):
                     self.setDisabled(True)
                     logger.bind(dots=True, path=path).info(f'Installing mods from')
-                    i, e = self.installFromNexusmods(path)
+                    i, e = self.installFromNexusmods(path, installtime)
                     installed += i
                     errors += e
                 elif local and isValidFileUrl(path):
                     self.setDisabled(True)
                     path = Path(QUrl(path).toLocalFile())
                     logger.bind(dots=True, path=path).info(f'Installing mods from')
-                    i, e = self.installFromFile(path)
+                    i, e = self.installFromFile(path, installtime)
                     installed += i
                     errors += e
         except Exception as e:
@@ -218,18 +219,17 @@ class ModList(QTableView):
             self.resizeColumnsToContents()
         self.setDisabled(False)
 
-    def installFromNexusmods(self, url: str) -> Tuple[int, int]:
+    def installFromNexusmods(self, url: str, installtime=datetime.utcnow()) -> Tuple[int, int]:
         # TODO: incomplete: ask if install and which files
         return 0, 0
 
-    def installFromFile(self, path: Path) -> Tuple[int, int]:
+    def installFromFile(self, path: Path, installtime=datetime.utcnow()) -> Tuple[int, int]:
         originalpath = path
         installed = 0
         errors = 0
         archive = path.is_file()
         source = None
         md5hash = ''
-        installtime = datetime.utcnow()
         try:
             if archive:
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
