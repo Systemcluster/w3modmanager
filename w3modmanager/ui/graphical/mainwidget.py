@@ -8,7 +8,7 @@ from loguru import logger
 from qtpy.QtCore import QSettings, Qt
 from qtpy.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
     QLabel, QStackedWidget, QLineEdit
-from qtpy.QtGui import QFont, QPixmap
+from qtpy.QtGui import QFont, QPixmap, QKeyEvent, QKeySequence
 
 
 class MainWidget(QWidget):
@@ -35,15 +35,18 @@ class MainWidget(QWidget):
 
         # search bar
 
-        # TODO: incomplete: make search bar functional
-        searchbar = QLineEdit()
-        searchbar.setPlaceholderText('Search...')
-        self.modlistlayout.addWidget(searchbar)
+        self.searchbar = QLineEdit()
+        self.searchbar.setPlaceholderText('Search...')
+        self.modlistlayout.addWidget(self.searchbar)
 
         # mod list
 
         self.modlist = ModList(self, model)
         self.modlistlayout.addWidget(self.modlist)
+
+        self.searchbar.textChanged.connect(lambda e: [
+            self.modlist.setFilter(e)
+        ])
 
         # welcome message
 
@@ -111,6 +114,13 @@ class MainWidget(QWidget):
             self.splitter.setSizes([self.splitter.size().height(), 0])
         model.updateCallbacks.append(self.modelUpdateEvent)
 
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.matches(QKeySequence.Find):
+            self.searchbar.setFocus()
+        if event.key() == Qt.Key_Escape:
+            self.modlist.setFocus()
+            self.searchbar.setText('')
+        return super().keyPressEvent(event)
 
     def modelUpdateEvent(self, model: Model):
         if len(model) > 0:

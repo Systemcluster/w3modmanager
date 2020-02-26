@@ -5,7 +5,9 @@ from datetime import datetime
 
 from loguru import logger
 
-from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, QItemSelectionModel
+from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
+    QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
+    QAbstractTableModel
 from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
@@ -44,12 +46,23 @@ class ModListItemDelegate(QStyledItemDelegate):
 
 
 class ModListSelectionModel(QItemSelectionModel):
+    def __init__(self, parent: QWidget, model: QAbstractItemModel):
+        super().__init__(model, parent)
+
     def setCurrentIndex(self, index, command):
         if not index.isValid():
             return
-        # always focus column 2
-        index = self.model().index(index.row(), 2)
+        # always focus column 3
+        index = self.model().index(index.row(), 3)
         super().setCurrentIndex(index, command)
+
+
+class ModListFilterModel(QSortFilterProxyModel):
+    def __init__(self, parent: QWidget, source: QAbstractTableModel):
+        super().__init__(parent)
+        self.setSourceModel(source)
+        self.setFilterKeyColumn(3)
+        self.setSortRole(Qt.UserRole)
 
 
 class ModList(QTableView):
@@ -57,7 +70,7 @@ class ModList(QTableView):
         super().__init__(parent)
 
         self.hoverIndexRow = -1
-        self._model = model
+        self.modmodel = model
 
         self.setMouseTracking(True)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -94,9 +107,12 @@ class ModList(QTableView):
         self.horizontalHeader().setSectionsMovable(True)
         # self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
+        self.listmodel = ModListModel(self, model)
+        self.filtermodel = ModListFilterModel(self, self.listmodel)
+        self.setModel(self.filtermodel)
+
         self.setItemDelegate(ModListItemDelegate(self))
-        self.setModel(ModListModel(self, model))
-        self.setSelectionModel(ModListSelectionModel(self.model()))
+        self.setSelectionModel(ModListSelectionModel(self, self.filtermodel))
 
         self.resizeColumnsToContents()
 
@@ -126,6 +142,8 @@ class ModList(QTableView):
 
         QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
 
+        model.updateCallbacks.append(self.modelUpdateEvent)
+
         # TODO: enhancement: notify of inconsistencies like enabled-but-unconfigured-mods
 
         # TODO: enhancement: offer option to read readme and other additional text files
@@ -136,7 +154,7 @@ class ModList(QTableView):
         settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 
     def modelUpdateEvent(self, model: Model):
-        self.sortByColumn(None, None)
+        pass
 
     def mouseMoveEvent(self, event: QMouseEvent):
         self.hoverIndexRow = self.indexAt(event.pos()).row()
@@ -160,13 +178,13 @@ class ModList(QTableView):
             self.pasteEvent()
         elif event.matches(QKeySequence.Delete):
             for index in self.selectionModel().selectedRows():
-                mod: Mod = self.model().getMod(index.row())
+                mod: Mod = self.listmodel.getMod(self.filtermodel.mapToSource(index).row())
                 try:
-                    self._model.remove(mod)
+                    self.modmodel.remove(mod)
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
-            self.model().update(self._model)
-            self.model().sort()
+            self.selectionModel().clear()
+            self.listmodel.update(self.modmodel)
             self.repaint()
         return super().keyPressEvent(event)
 
@@ -177,10 +195,13 @@ class ModList(QTableView):
     def pasteEvent(self):
         self.checkInstallFromURLs(QApplication.clipboard().text().splitlines())
 
+    def setFilter(self, filter: str):
+        self.filtermodel.setFilterFixedString(filter)
+
     def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local=True, web=True):
         installed = 0
         errors = 0
-        installedBefore = len(self._model)
+        installedBefore = len(self.modmodel)
         installtime = datetime.utcnow()
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
         try:
@@ -252,7 +273,7 @@ class ModList(QTableView):
                     mod.source = source
                 try:
                     # TODO: incomplete: check if mod is installed, ask if replace
-                    self._model.add(mod)
+                    self.modmodel.add(mod)
                     installed += 1
                 except ModExistsError:
                     logger.bind(path=path, name=mod.filename).error(f'Mod exists')
@@ -266,9 +287,8 @@ class ModList(QTableView):
                 shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
                     'Could not remove temporary directory'
                 ))
-            self._model.lastUpdate = installtime
-            self.model().update(self._model)
-            self.model().sort()
+            self.modmodel.lastUpdate = installtime
+            self.listmodel.update(self.modmodel)
         return installed, errors
 
     def showContinueSearchDialog(self, searchlimit: int):

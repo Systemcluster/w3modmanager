@@ -2,12 +2,12 @@ from w3modmanager.core.model import Model
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import getRuntimePath
 
-from functools import lru_cache, cmp_to_key
+from functools import lru_cache
 from typing import List, Optional, Dict, Any
 
 from qtpy.QtCore import Qt, QAbstractTableModel, QModelIndex
 from qtpy.QtGui import QFontDatabase, QColor, QIcon
-from qtpy.QtWidgets import QWidget, QAbstractItemView
+from qtpy.QtWidgets import QWidget
 
 
 class ModListModel(QAbstractTableModel):
@@ -40,9 +40,6 @@ class ModListModel(QAbstractTableModel):
         self._icons['pat'] = QIcon(str(getRuntimePath('resources/icons/patch.ico')))
         self._icons['???'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
 
-        self._sortColumn = None
-        self._sortOrder = None
-
         self._values: List[Mod] = []
         self.update(model)
 
@@ -74,57 +71,6 @@ class ModListModel(QAbstractTableModel):
             return None
         return self._header[section][0] if len(self._header) > section else "?"
 
-    def sort(self, column=None, order=None) -> None:
-        # cache last used sort configuration
-        if column is not None:
-            self._sortColumn = column
-        else:
-            column = self._sortColumn
-        if order is not None:
-            self._sortOrder = order
-        else:
-            order = self._sortOrder
-        if column is None or order is None:
-            return
-
-        # remember selected rows
-        selection = [self._values[row.row()].filename for row in self.parent().selectionModel().selectedRows()]
-
-        col = self.getColumnKey(column)
-
-        def compare(lhs, rhs, col=col):
-            item1 = lhs[col]
-            item2 = rhs[col]
-            bothinstance = lambda t: isinstance(item1, t) and isinstance(item2, t) # noqa
-            if bothinstance(bool):
-                diff = int(item1) - int(item2)
-            elif bothinstance(int) or bothinstance(str) and item1.isdecimal():
-                diff = int(item1) - int(item2)
-            elif bothinstance(str):
-                diff = 1 if item1.lower() > item2.lower() else -1 if item1.lower() < item2.lower() else 0
-            elif bothinstance((list, )):
-                diff = len(item1) - len(item2)
-            else:
-                diff = 0
-            if not diff and col == 'priority':
-                return compare(lhs, rhs, 'filename')
-            return diff
-
-        self._values = sorted(
-            self._values,
-            key=cmp_to_key(compare),
-            reverse=order == Qt.DescendingOrder)
-
-        # restore selected rows
-        self.parent().selectionModel().clear()
-        self.parent().setSelectionMode(QAbstractItemView.MultiSelection)
-        for row, mod in enumerate(self._values):
-            if mod.filename in selection:
-                self.parent().selectRow(row)
-        self.parent().setSelectionMode(QAbstractItemView.ExtendedSelection)
-
-        self.update()
-
     def setData(self, index, value, _role) -> bool:
         if not index.isValid():
             return False
@@ -137,7 +83,6 @@ class ModListModel(QAbstractTableModel):
             self.dataChanged.emit(
                 self.index(index.row(), 0),
                 self.index(index.row(), self.columnCount() - 1))
-            self.sort()
             return True
         return False
 
@@ -198,6 +143,17 @@ class ModListModel(QAbstractTableModel):
                 return 0x0084
             # Left|VCenter
             return 0x0081
+
+        # role used for sorting
+        if role == Qt.UserRole:
+            if col in ('priority',):
+                return f'{int(self._values[index.row()][col]): >20} {self._values[index.row()]["filename"]}'
+            if col in ('size',):
+                return int(self._values[index.row()][col])
+            if col in ('binFiles', 'menuFiles', 'contentFiles', \
+                       'scriptFiles', 'settings', 'inputs',):
+                return len(self._values[index.row()][col])
+            return str(self._values[index.row()][col])
 
         if role == Qt.DisplayRole:
             if col in ('enabled',):
