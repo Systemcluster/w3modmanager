@@ -177,15 +177,16 @@ class ModList(QTableView):
         if event.matches(QKeySequence.Paste):
             self.pasteEvent()
         elif event.matches(QKeySequence.Delete):
-            for index in self.selectionModel().selectedRows():
-                mod: Mod = self.listmodel.getMod(self.filtermodel.mapToSource(index).row())
+            mods: List[Mod] = [
+                self.modmodel[self.filtermodel.mapToSource(index).row()]
+                for index in self.selectionModel().selectedRows()
+            ]
+            for mod in mods:
                 try:
                     self.modmodel.remove(mod)
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
             self.selectionModel().clear()
-            self.listmodel.update(self.modmodel)
-            self.repaint()
         return super().keyPressEvent(event)
 
     def copyBufferChanged(self):
@@ -287,8 +288,8 @@ class ModList(QTableView):
                 shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
                     'Could not remove temporary directory'
                 ))
-            self.modmodel.lastUpdate = installtime
-            self.listmodel.update(self.modmodel)
+            self.modmodel.setLastUpdateTime(installtime)
+            self.repaint()
         return installed, errors
 
     def showContinueSearchDialog(self, searchlimit: int):

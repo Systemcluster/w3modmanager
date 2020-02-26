@@ -3,7 +3,7 @@ from w3modmanager.domain.mod.mod import Mod
 from loguru import logger
 
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView
 from fasteners import InterProcessLock
 from datetime import datetime
 
@@ -59,14 +59,17 @@ class Model:
     def get(self, modname: str, target: str) -> Mod:
         return self._modList[(modname, target)]
 
-    def list(self) -> List[Tuple[str, str]]:
-        return list(self._modList.keys())
+    def keys(self) -> KeysView[Tuple[str, str]]:
+        return self._modList.keys()
 
-    def all(self) -> List[Mod]:
-        return list(self._modList.values())
+    def values(self) -> ValuesView[Mod]:
+        return self._modList.values()
 
     def data(self) -> Dict[Tuple[str, str], Mod]:
         return self._modList
+
+    def index(self, index: int) -> Mod:
+        return list(self._modList.values())[index]
 
 
     def add(self, mod: Mod):
@@ -128,11 +131,20 @@ class Model:
         self.updateCallbacks.fire(self)
 
 
+    def setLastUpdateTime(self, time: datetime):
+        self.lastUpdate = time
+        self.updateCallbacks.fire(self)
+
     def __len__(self) -> int:
         return len(self._modList)
 
-    def __getitem__(self, mod: Tuple[str, str]) -> Mod:
-        return self.get(mod[0], mod[1])
+    def __getitem__(self, mod: Union[Tuple[str, str], int]) -> Mod:
+        if isinstance(mod, int):
+            return self.index(mod)
+        if isinstance(mod, Tuple[str, str]):
+            return self.get(mod[0], mod[1])
+        raise IndexError(f'invalid index type {type(mod)}')
+
 
     def __iter__(self):
         yield from self._modList
