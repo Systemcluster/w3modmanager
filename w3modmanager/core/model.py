@@ -14,6 +14,10 @@ class CallbackList(list):
             listener(*args, **kwargs)
 
 
+ModelIndexType = Union[Mod, Tuple[str, str], int]
+'''The type for indexing the model - options are mod, (modname, target) tuple, or index'''
+
+
 class Model:
     '''The mod management model'''
 
@@ -56,8 +60,8 @@ class Model:
         pass
 
 
-    def get(self, modname: str, target: str) -> Mod:
-        return self._modList[(modname, target)]
+    def get(self, mod: ModelIndexType) -> Mod:
+        return self[mod]
 
     def keys(self) -> KeysView[Tuple[str, str]]:
         return self._modList.keys()
@@ -68,15 +72,11 @@ class Model:
     def data(self) -> Dict[Tuple[str, str], Mod]:
         return self._modList
 
-    def index(self, index: int) -> Mod:
-        return list(self._modList.values())[index]
-
 
     def add(self, mod: Mod):
         if (mod.filename, mod.target) in self._modList:
             raise ModExistsError(mod)
         self._modList[(mod.filename, mod.target)] = mod
-        logger.trace(self._modList)
         self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
@@ -85,49 +85,43 @@ class Model:
         self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
-    def remove(self, mod: Union[Mod, Tuple[str, str]]):
-        try:
-            if isinstance(mod, Mod):
-                filename = mod.filename
-                target = mod.target
-            else:
-                filename = mod[0]
-                target = mod[1]
-                mod = self._modList[(filename, target)]
-        except KeyError:
-            raise ModNotFoundError(filename)
-        del self._modList[(filename, target)]
+    def remove(self, mod: ModelIndexType):
+        mod = self[mod]
+        del self._modList[(mod.filename, mod.target)]
         self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
-    def enable(self, mod: Union[Mod, Tuple[str, str]]):
-        try:
-            if isinstance(mod, Mod):
-                filename = mod.filename
-                target = mod.target
-            else:
-                filename = mod[0]
-                target = mod[1]
-                mod = self._modList[(filename, target)]
-        except KeyError:
-            raise ModNotFoundError(filename)
-        self._modList[(filename, target)].enabled = True
+    def enable(self, mod: ModelIndexType):
+        mod = self[mod]
+        mod.enabled = True
         self.lastUpdate = datetime.utcnow()
         self.updateCallbacks.fire(self)
 
-    def disable(self, mod: Union[Mod, str]):
-        try:
-            if isinstance(mod, Mod):
-                filename = mod.filename
-                target = mod.target
-            else:
-                filename = mod[0]
-                target = mod[1]
-                mod = self._modList[(filename, target)]
-        except KeyError:
-            raise ModNotFoundError(filename)
-        self._modList[(filename, target)].enabled = False
+    def disable(self, mod: ModelIndexType):
+        mod = self[mod]
+        mod.enabled = False
         self.lastUpdate = datetime.utcnow()
+        self.updateCallbacks.fire(self)
+
+
+    def setFilename(self, mod: ModelIndexType, filename: str):
+        mod = self[mod]
+        mod.filename = filename
+        self.updateCallbacks.fire(self)
+
+    def setPackage(self, mod: ModelIndexType, package: str):
+        mod = self[mod]
+        mod.package = package
+        self.updateCallbacks.fire(self)
+
+    def setCategory(self, mod: ModelIndexType, category: str):
+        mod = self[mod]
+        mod.category = category
+        self.updateCallbacks.fire(self)
+
+    def setPriority(self, mod: ModelIndexType, priority: int):
+        mod = self[mod]
+        mod.priority = priority
         self.updateCallbacks.fire(self)
 
 
@@ -135,14 +129,17 @@ class Model:
         self.lastUpdate = time
         self.updateCallbacks.fire(self)
 
+
     def __len__(self) -> int:
         return len(self._modList)
 
-    def __getitem__(self, mod: Union[Tuple[str, str], int]) -> Mod:
+    def __getitem__(self, mod: ModelIndexType) -> Mod:
         if isinstance(mod, int):
-            return self.index(mod)
-        if isinstance(mod, Tuple[str, str]):
-            return self.get(mod[0], mod[1])
+            return list(self._modList.values())[mod]
+        if isinstance(mod, tuple) and len(mod) == 2:
+            return self._modList[(mod[0], mod[1])]
+        if isinstance(mod, Mod) and mod in self.values():
+            return mod
         raise IndexError(f'invalid index type {type(mod)}')
 
 

@@ -124,9 +124,13 @@ class MainWidget(QWidget):
 
     def modelUpdateEvent(self, model: Model):
         if len(model) > 0:
-            self.stack.setCurrentIndex(0)
+            if self.stack.currentIndex() != 0:
+                self.stack.setCurrentIndex(0)
+                self.repaint()
         else:
-            self.stack.setCurrentIndex(1)
+            if self.stack.currentIndex() != 1:
+                self.stack.setCurrentIndex(1)
+                self.repaint()
 
     def unhideOutput(self):
         if self.splitter.sizes()[1] < 10:

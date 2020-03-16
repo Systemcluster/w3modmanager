@@ -37,7 +37,14 @@ class ModListModel(QAbstractTableModel):
         self._icons['dlc'] = QIcon(str(getRuntimePath('resources/icons/puzzle.ico')))
         self._icons['bin'] = QIcon(str(getRuntimePath('resources/icons/folder.ico')))
         self._icons['pat'] = QIcon(str(getRuntimePath('resources/icons/patch.ico')))
-        self._icons['???'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
+        self._icons['udf'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
+
+        self._datatypes: Dict[str, str] = {}
+        self._datatypes['mod'] = 'Mod'
+        self._datatypes['dlc'] = 'DLC'
+        self._datatypes['bin'] = 'Binary Files'
+        self._datatypes['pat'] = 'Patch'
+        self._datatypes['udf'] = 'Undefined / Mod?'
 
         self.modmodel = model
         model.updateCallbacks.append(self.update)
@@ -46,19 +53,56 @@ class ModListModel(QAbstractTableModel):
     def update(self, model: Model) -> None:
         self.layoutAboutToBeChanged.emit()
         self.data.cache_clear()
+        self.rowCount.cache_clear()
+        self.columnCount.cache_clear()
+        self.flags.cache_clear()
+        self.headerData.cache_clear()
         self._lastUpdate = model.lastUpdate
         self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
 
-    def getColumnKey(self, column) -> str:
+    def getColumnKey(self, column: int) -> str:
         return self._header[column][1]
 
+    def setData(self, index, value, _role) -> bool:
+        if not index.isValid():
+            return False
+        col = self.getColumnKey(index.column())
+        if col in ('filename',):
+            mod = self.modmodel[index.row()]
+            self.modmodel.setFilename(mod, value)
+            self.dataChanged.emit(
+                self.index(index.row(), 0),
+                self.index(index.row(), self.columnCount() - 1))
+        if col in ('package',):
+            mod = self.modmodel[index.row()]
+            self.modmodel.setPackage(mod, value)
+            self.dataChanged.emit(
+                self.index(index.row(), 0),
+                self.index(index.row(), self.columnCount() - 1))
+        if col in ('category',):
+            mod = self.modmodel[index.row()]
+            self.modmodel.setCategory(mod, value)
+            self.dataChanged.emit(
+                self.index(index.row(), 0),
+                self.index(index.row(), self.columnCount() - 1))
+        if col in ('priority',):
+            mod = self.modmodel[index.row()]
+            self.modmodel.setPriority(mod, int(value))
+            self.dataChanged.emit(
+                self.index(index.row(), 0),
+                self.index(index.row(), self.columnCount() - 1))
+        return True
+
+    @lru_cache(maxsize=None)
     def rowCount(self, _index=QModelIndex()) -> int:
         return len(self.modmodel)
 
+    @lru_cache(maxsize=None)
     def columnCount(self, _index=QModelIndex()) -> int:
         return len(self._header)
 
+    @lru_cache(maxsize=None)
     def headerData(self, section, orientation, role=Qt.EditRole):
         if role != Qt.DisplayRole:
             return None
@@ -66,25 +110,17 @@ class ModListModel(QAbstractTableModel):
             return None
         return self._header[section][0] if len(self._header) > section else "?"
 
-    def setData(self, index, value, _role) -> bool:
-        if not index.isValid():
-            return False
-        mod = self.modmodel[index.row()]
-        col = self.getColumnKey(index.column())
-        if col in ('enabled',):
-            if col == 'enabled':
-                mod.enabled = True if value == Qt.Checked else False
-            self.data.cache_clear()
-            self.dataChanged.emit(
-                self.index(index.row(), 0),
-                self.index(index.row(), self.columnCount() - 1))
-            return True
-        return False
-
+    @lru_cache(maxsize=None)
     def flags(self, index) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.NoItemFlags
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        col = self.getColumnKey(index.column())
+        if col in ('package', 'filename', 'category', 'priority',):
+            mod = self.modmodel[index.row()]
+            if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
+                return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     @lru_cache(maxsize=None)
     def data(self, index, role=Qt.DisplayRole) -> Any:
@@ -95,22 +131,22 @@ class ModListModel(QAbstractTableModel):
             return None
 
         if role == Qt.FontRole:
-            if col in ('datatype', 'size'):
+            if col in ('datatype', 'size',):
                 return QFontDatabase.systemFont(QFontDatabase.FixedFont)
             return None
 
         if role == Qt.CheckStateRole:
             if col in ('enabled',):
                 mod = self.modmodel[index.row()]
-                item = mod[col]
-                return Qt.Checked if item else Qt.Unchecked
+                val = mod[col]
+                return Qt.Checked if val else Qt.Unchecked
             return None
 
         if role == Qt.BackgroundRole:
             mod = self.modmodel[index.row()]
             if not mod.enabled:
                 return QColor(240, 240, 240)
-            if col in ('priority',) and mod.datatype not in ('mod', 'udf'):
+            if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
                 return QColor(240, 240, 240)
             if mod.date > self._lastUpdate:
                 return QColor(238, 242, 255)
@@ -126,11 +162,17 @@ class ModListModel(QAbstractTableModel):
             if col in ('datatype',):
                 mod = self.modmodel[index.row()]
                 val = mod[col]
-                return self._icons[val] if val in self._icons else self._icons['???']
+                return self._icons[val] if val in self._icons else self._icons['udf']
             return None
 
         if role == Qt.ToolTipRole:
             mod = self.modmodel[index.row()]
+            if col in ('datatype',):
+                val = mod[col]
+                return self._datatypes[val] if val in self._datatypes else self._datatypes['udf']
+            if col in ('enabled',):
+                val = mod[col]
+                return 'Enabled' if val else 'Disabled'
             return str(mod[col])
 
         if role == Qt.TextAlignmentRole:
@@ -143,6 +185,12 @@ class ModListModel(QAbstractTableModel):
                 return 0x0084
             # Left|VCenter
             return 0x0081
+
+        if role == Qt.EditRole:
+            if col in ('package', 'filename', 'category', 'priority',):
+                mod = self.modmodel[index.row()]
+                return str(mod[col])
+            return None
 
         # role used for sorting
         if role == Qt.UserRole:

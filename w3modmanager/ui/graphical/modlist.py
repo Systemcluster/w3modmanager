@@ -7,11 +7,12 @@ from loguru import logger
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
-    QAbstractTableModel
+    QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
+    QObject, QEvent, QTimer, QSize
 from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
-from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent
+from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap
 
 from w3modmanager.core.model import Model, ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
@@ -25,24 +26,33 @@ class ModListItemDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self.linepen = QPen(QColor(200, 200, 200), 0, parent.gridStyle())
 
-    def paint(self, painter, option, index):
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
         itemOption = QStyleOptionViewItem(option)
 
         # disable focus outline
         if itemOption.state & QStyle.State_HasFocus:
             itemOption.state ^= QStyle.State_HasFocus
+        # hover whole row
         if index.row() == option.styleObject.hoverIndexRow:
             itemOption.state |= QStyle.State_MouseOver
+        # draw lines around numeric columns
         if index.column() in (5, 11):
             oldpen = painter.pen()
             painter.setPen(self.linepen)
             painter.drawLine(
-                option.rect.topRight() + QPoint(2, 0),
-                option.rect.bottomRight() + QPoint(2, 0)
+                itemOption.rect.topRight() + QPoint(2, 0),
+                itemOption.rect.bottomRight() + QPoint(2, 0)
             )
             painter.setPen(oldpen)
 
         super().paint(painter, itemOption, index)
+
+    def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex):
+        itemOption = QStyleOptionViewItem(option)
+        # set size of editor to size of cell
+        geom: QRect = QApplication.style().subElementRect(QStyle.SE_ItemViewItemText, itemOption, editor)
+        geom.setTop(geom.top())
+        editor.setGeometry(geom)
 
 
 class ModListSelectionModel(QItemSelectionModel):
@@ -141,8 +151,19 @@ class ModList(QTableView):
         self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
         QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
-
+        self.doubleClicked.connect(self.doubleClickEvent)
         model.updateCallbacks.append(self.modelUpdateEvent)
+
+        # setup viewport caching to counter slow resizing with many table elements
+        self.resizeTimer = QTimer(self)
+        self.resizeTimer.setSingleShot(True)
+        self.resizeTimer.setInterval(250)
+        self.resizeTimer.timeout.connect(lambda: [
+            self.resizeTimer.stop(),
+            self.viewport().repaint(),
+        ])
+        self.viewportCache = QPixmap()
+        self.viewportCacheSize = QSize(0, 0)
 
         # TODO: enhancement: notify of inconsistencies like enabled-but-unconfigured-mods
 
@@ -160,13 +181,35 @@ class ModList(QTableView):
         self.hoverIndexRow = self.indexAt(event.pos()).row()
         return super().mouseMoveEvent(event)
 
-    def selectionChanged(self, selected, deselected):
+    def doubleClickEvent(self, index: QModelIndex):
+        if self.filtermodel.mapToSource(index).column() == 0:
+            mod = self.modmodel[self.filtermodel.mapToSource(index).row()]
+            if mod.enabled:
+                self.modmodel.disable(mod)
+            else:
+                self.modmodel.enable(mod)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if not self.resizeTimer.isActive() and event.size() != self.viewportCacheSize:
+            self.viewportCacheSize = event.size()
+            self.viewportCache = self.viewport().grab()
+            self.resizeTimer.start()
+
+    def paintEvent(self, event):
+        if self.resizeTimer.isActive():
+            painter = QPainter(self.viewport())
+            painter.drawPixmap(0, 0, self.viewportCache)
+        else:
+            super().paintEvent(event)
+
+    def selectionChanged(self, selected: QItemSelection, deselected: QItemSelection):
         return super().selectionChanged(selected, deselected)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent):
         return super().eventFilter(obj, event)
 
-    def sortByColumn(self, col, order, save=True):
+    def sortByColumn(self, col: int, order: Qt.SortOrder, save=True):
         if save and col is not None and order is not None:
             settings = QSettings()
             settings.setValue('modlistSortColumn', col)
@@ -177,6 +220,7 @@ class ModList(QTableView):
         if event.matches(QKeySequence.Paste):
             self.pasteEvent()
         elif event.matches(QKeySequence.Delete):
+            self.setDisabled(True)
             mods: List[Mod] = [
                 self.modmodel[self.filtermodel.mapToSource(index).row()]
                 for index in self.selectionModel().selectedRows()
@@ -187,6 +231,7 @@ class ModList(QTableView):
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
             self.selectionModel().clear()
+            self.setDisabled(False)
         return super().keyPressEvent(event)
 
     def copyBufferChanged(self):
