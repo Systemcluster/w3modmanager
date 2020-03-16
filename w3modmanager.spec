@@ -4,11 +4,11 @@ from os import path
 from PyInstaller.building.build_main import Analysis, PYZ, EXE
 
 
-runtime_hooks = ['.\\runtime.py'] if path.isfile('.\\runtime.py') else []
+runtime_hooks = ['./runtime.py'] if path.isfile('./runtime.py') else []
 
 a = Analysis(
-    ['.\\w3modmanager\\__main__.py'],
-    pathex=['.\\w3modmanager'],
+    ['./w3modmanager/__main__.py'],
+    pathex=['./w3modmanager'],
     binaries=[],
     datas=[('resources', 'resources'), ('tools', 'tools')],
     hiddenimports=['distutils'],
@@ -40,5 +40,5 @@ exe = EXE(
     console=False,
     uac_admin=False,
     bootloader_ignore_signals=True,
-    icon='.\\resources\\icons\\w3b.ico',
+    icon='./resources/icons/w3b.ico',
 )
