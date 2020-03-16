@@ -73,9 +73,9 @@ def build(ctx, clean=False, spec='w3modmanager.spec', version=''):
                     hook.append(f'w3modmanager.VERSION = \'{date}\'')
         rt.write('\n'.join(hook))
     if clean:
-        result = ctx.run(f'python -m PyInstaller --clean {spec}').exited
+        result = ctx.run(f'python -m PyInstaller --clean {spec}', env={'PYTHONOPTIMIZE': '2'}).exited
     else:
-        result = ctx.run(f'python -m PyInstaller {spec}').exited
+        result = ctx.run(f'python -m PyInstaller {spec}', env={'PYTHONOPTIMIZE': '2'}).exited
     if runtime.is_file():
         runtime.unlink()
     return result
