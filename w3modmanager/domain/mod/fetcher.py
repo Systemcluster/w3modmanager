@@ -37,6 +37,10 @@ def formatPackageName(name: str) -> str:
     name = re.sub(r'([_-])', r' ', name)
     name = re.sub(r'([a-zA-Z])-(?=[0-9])', r'\1 ', name)
     name = re.sub(r'([0-9])-?(?=[a-zA-Z]{3,})', r'\1 ', name)
+    # replace all whitespace with regular spaces and remove double spacing
+    name = re.sub(r'\s+', r' ', name)
+    name = name.strip()
+    # return orginal name if formatted name is too short
     if len(name) < 4 and len(original) >= 4:
         return original
     return name
