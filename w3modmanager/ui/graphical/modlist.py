@@ -71,8 +71,11 @@ class ModListFilterModel(QSortFilterProxyModel):
     def __init__(self, parent: QWidget, source: QAbstractTableModel):
         super().__init__(parent)
         self.setSourceModel(source)
+        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setSortCaseSensitivity(Qt.CaseInsensitive)
         self.setFilterKeyColumn(3)
         self.setSortRole(Qt.UserRole)
+        # TODO: enhancement: filter for multiple columns
 
 
 class ModList(QTableView):
