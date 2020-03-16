@@ -224,7 +224,7 @@ class ModList(QTableView):
                     errors += e
         except Exception as e:
             # we should never land here, but don't lock up the UI if it happens
-            logger.exception(e)
+            logger.exception(str(e))
             errors += 1
 
         if installed > 0 or errors > 0:
@@ -277,7 +277,7 @@ class ModList(QTableView):
                     self.modmodel.add(mod)
                     installed += 1
                 except ModExistsError:
-                    logger.bind(path=path, name=mod.filename).error(f'Mod exists')
+                    logger.bind(path=mod.source, name=mod.filename).error(f'Mod exists')
                     errors += 1
         except InvalidPathError as e:
             # TODO: enhancement: better install error message
@@ -285,9 +285,10 @@ class ModList(QTableView):
             errors += 1
         finally:
             if archive and not path == originalpath:
-                shutil.rmtree(path, onerror=lambda f, path, e: logger.bind(path=path).warning(
-                    'Could not remove temporary directory'
-                ))
+                try:
+                    util.removeDirectory(path)
+                except Exception:
+                    logger.bind(path=path).warning('Could not remove temporary directory')
             self.modmodel.setLastUpdateTime(installtime)
             self.repaint()
         return installed, errors

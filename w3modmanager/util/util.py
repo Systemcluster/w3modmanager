@@ -126,9 +126,17 @@ def isArchive(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in getSupportedExtensions()
 
 
+def removeDirectory(path: Path):
+    def getWriteAccess(func, path, exc_info):
+        import stat
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    shutil.rmtree(path, onerror=getWriteAccess)
+
+
 def extractArchive(archive: Path, target: Path) -> Path:
     if target.exists():
-        shutil.rmtree(target)
+        removeDirectory(target)
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))
     result: subprocess.CompletedProcess = subprocess.run(
