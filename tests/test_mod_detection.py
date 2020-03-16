@@ -246,3 +246,31 @@ def test_mod_with_split_bins(mockdata):
     assert mod.menuFiles == []
     assert mod.settings == []
     assert mod.inputs == []
+
+
+def test_mod_dlc_same_name(mockdata):
+    source = mockdata.joinpath('mods/mod-with-dlc-same-name')
+    mods = Mod.fromDirectory(source)
+    assert len(mods) == 2
+    mod = mods[0]
+    assert mod.package == 'with dlc same name'
+    assert mod.filename == 'modDlc'
+    assert mod.datatype == 'dlc'
+    assert mod.source == source.joinpath('dlc/modDlc')
+    assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
+    assert mod.scriptFiles == []
+    assert mod.binFiles == []
+    assert mod.menuFiles == []
+    assert mod.settings == []
+    assert mod.inputs == []
+    mod = mods[1]
+    assert mod.package == 'with dlc same name'
+    assert mod.filename == 'modDlc'
+    assert mod.datatype == 'mod'
+    assert mod.source == source.joinpath('mods/modDlc')
+    assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
+    assert mod.scriptFiles == []
+    assert mod.binFiles == []
+    assert mod.menuFiles == []
+    assert mod.settings == []
+    assert mod.inputs == []
