@@ -29,7 +29,7 @@ class MainWidget(QWidget):
 
         self.modlistwidget = QWidget()
         self.modlistlayout = QVBoxLayout()
-        self.modlistlayout.setMargin(0)
+        self.modlistlayout.setContentsMargins(0, 0, 0, 0)
         self.modlistwidget.setLayout(self.modlistlayout)
         self.stack.addWidget(self.modlistwidget)
 
@@ -44,9 +44,7 @@ class MainWidget(QWidget):
         self.modlist = ModList(self, model)
         self.modlistlayout.addWidget(self.modlist)
 
-        self.searchbar.textChanged.connect(lambda e: [
-            self.modlist.setFilter(e)
-        ])
+        self.searchbar.textChanged.connect(lambda e: self.modlist.setFilter(e))
 
         # welcome message
 
@@ -54,18 +52,10 @@ class MainWidget(QWidget):
         welcomelayout.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         welcomewidget = QWidget()
         welcomewidget.setLayout(welcomelayout)
-        welcomewidget.dragEnterEvent = lambda e: [
-            self.modlist.dragEnterEvent(e)
-        ]
-        welcomewidget.dragMoveEvent = lambda e: [
-            self.modlist.dragMoveEvent(e)
-        ]
-        welcomewidget.dragLeaveEvent = lambda e: [
-            self.modlist.dragLeaveEvent(e)
-        ]
-        welcomewidget.dropEvent = lambda e: [
-            self.modlist.dropEvent(e)
-        ]
+        welcomewidget.dragEnterEvent = self.modlist.dragEnterEvent
+        welcomewidget.dragMoveEvent = self.modlist.dragMoveEvent
+        welcomewidget.dragLeaveEvent = self.modlist.dragLeaveEvent
+        welcomewidget.dropEvent = self.modlist.dropEvent
         welcomewidget.setAcceptDrops(True)
 
         iconpixmap = QPixmap(str(getRuntimePath('resources/icons/open-folder.ico')))
@@ -73,7 +63,7 @@ class MainWidget(QWidget):
         icon = QLabel()
         icon.setPixmap(iconpixmap)
         icon.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        icon.setMargin(4)
+        icon.setContentsMargins(4, 4, 4, 4)
         welcomelayout.addWidget(icon)
 
         welcome = QLabel('''<p><font>

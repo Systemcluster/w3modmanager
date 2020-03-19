@@ -33,7 +33,7 @@ class SettingsWindow(QDialog):
                 </p>
                 ''', self)
             firstStartInfo.setWordWrap(True)
-            firstStartInfo.setMargin(10)
+            firstStartInfo.setContentsMargins(10, 10, 10, 10)
             firstStartInfo.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
             mainLayout.addWidget(firstStartInfo)
 
@@ -64,7 +64,7 @@ class SettingsWindow(QDialog):
 
         gamePathInfoLayout = QHBoxLayout()
         self.gamePathInfo = QLabel('', self)
-        self.gamePathInfo.setMargin(4)
+        self.gamePathInfo.setContentsMargins(4, 4, 4, 4)
         self.gamePathInfo.setMinimumHeight(36)
         self.gamePathInfo.setWordWrap(True)
         gamePathInfoLayout.addWidget(self.gamePathInfo)
@@ -97,7 +97,7 @@ class SettingsWindow(QDialog):
 
         configPathInfoLayout = QHBoxLayout()
         self.configPathInfo = QLabel('', self)
-        self.configPathInfo.setMargin(4)
+        self.configPathInfo.setContentsMargins(4, 4, 4, 4)
         self.configPathInfo.setMinimumHeight(36)
         self.configPathInfo.setWordWrap(True)
         configPathInfoLayout.addWidget(self.configPathInfo)
@@ -123,7 +123,7 @@ class SettingsWindow(QDialog):
             ''', self)
         nexusAPIKeyInfo.setOpenExternalLinks(True)
         nexusAPIKeyInfo.setWordWrap(True)
-        nexusAPIKeyInfo.setMargin(4)
+        nexusAPIKeyInfo.setContentsMargins(4, 4, 4, 4)
         nexusAPIKeyInfo.setMinimumHeight(48)
         gbNexusModsAPILayout.addWidget(nexusAPIKeyInfo)
 
