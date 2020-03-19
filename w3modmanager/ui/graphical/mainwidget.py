@@ -146,7 +146,7 @@ class MainWidget(QWidget):
         output = bool(extra['output']) if 'output' in extra else bool(len(message))
         modlist = bool(extra['modlist']) if 'modlist' in extra else False
 
-        if level in ['debug'] and settings.value('debugOutput') != 'True':
+        if level in ['debug'] and settings.value('debugOutput', 'False') != 'True':
             if newline:
                 self.output.append(f'')
             return
@@ -181,5 +181,5 @@ class MainWidget(QWidget):
 
         if modlist:
             self.unhideModList()
-        if settings.value('unhideOutput') == 'True' and output:
+        if settings.value('unhideOutput', 'True') == 'True' and output:
             self.unhideOutput()
