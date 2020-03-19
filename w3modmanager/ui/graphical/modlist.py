@@ -331,6 +331,15 @@ class ModList(QTableView):
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
             errors += 1
+        except FileNotFoundError as e:
+            logger.bind(path=e.filename).error(e.strerror)
+            errors += 1
+        except OSError as e:
+            logger.bind(path=e.filename).error(e.strerror)
+            errors += 1
+        except Exception as e:
+            logger.exception(str(e))
+            errors += 1
         finally:
             if archive and not path == originalpath:
                 try:

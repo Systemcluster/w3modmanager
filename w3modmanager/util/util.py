@@ -108,6 +108,13 @@ def normalizeUrl(url: str) -> str:
     return url
 
 
+def normalizePath(path: Path):
+    normalized = os.fspath(path.resolve())
+    if not normalized.startswith('\\\\?\\'):
+        normalized = '\\\\?\\' + normalized
+    return Path(normalized)
+
+
 def isValidNexusModsUrl(url: str) -> bool:
     url = normalizeUrl(url)
     parse = urlsplit(url, 'https')
@@ -154,6 +161,7 @@ def extractMod(archive: Path) -> Path:
     if not isArchive(archive):
         raise InvalidPathError(archive, 'Invalid archive')
     target = Path(tempfile.gettempdir()).joinpath('w3modmanager/cache').joinpath(f'.{archive.stem}')
+    target = normalizePath(target)
     extractArchive(archive, target)
     return target
 
