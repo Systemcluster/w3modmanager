@@ -13,7 +13,6 @@ invoke = ">=1.4"
 
 [packages]
 fasteners = ">=0.15"
-requests = ">=2.22"
 PySide2 = ">=5.14"
 QtPy = ">=1.9"
 loguru = ">=0.4"
@@ -21,6 +20,8 @@ vdf = ">=3.2"
 appdirs = ">=1.4"
 pywin32 = ">=227"
 cchardet = "==2.1.5"
+httpx = "*"
+asyncqt = "*"
 
 [requires]
 python_version = "3.8"

@@ -5,6 +5,7 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 
 import sys
 import os
+import asyncio
 from pathlib import Path
 from typing import Optional, NoReturn
 from argparse import ArgumentParser
@@ -65,6 +66,8 @@ def main(gamePath: Optional[str] = None,
     from qtpy.QtWidgets import QApplication
     from qtpy.QtGui import QIcon, QPalette
 
+    from asyncqt import QEventLoop  # noqa
+
 
     QApplication.setOrganizationName(w3modmanager.ORG_NAME)
     QApplication.setOrganizationDomain(w3modmanager.ORG_URL)
@@ -78,6 +81,9 @@ def main(gamePath: Optional[str] = None,
     app.setStyleSheet('''
         Link { text-decoration: none; }
     ''')
+
+    eventloop = QEventLoop(app)
+    asyncio.set_event_loop(eventloop)
 
     palette = QPalette(app.palette())
     palette.setColor(QPalette.Link, Qt.red)
@@ -133,7 +139,9 @@ def main(gamePath: Optional[str] = None,
 
         window = MainWindow(model)
         app.setActiveWindow(window)
-        sys.exit(app.exec_())
+
+        with eventloop:
+            sys.exit(eventloop.run_forever())
 
     except OtherInstanceError as e:
         sys.exit(f'error: {str(e)}')

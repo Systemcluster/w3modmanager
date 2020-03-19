@@ -1,5 +1,6 @@
-from w3modmanager.util import util
+from w3modmanager.util.util import getTitleString
 from w3modmanager.domain.mod import fetcher
+from w3modmanager.domain.web.nexus import getUserInformation
 from w3modmanager.core.model import *
 
 from pathlib import Path
@@ -7,6 +8,9 @@ from pathlib import Path
 from qtpy.QtCore import QSettings, Qt, QSize
 from qtpy.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog
+
+from asyncqt import asyncSlot, asyncClose  # noqa
+from httpx import AsyncClient  # noqa
 
 
 class SettingsWindow(QDialog):
@@ -16,11 +20,13 @@ class SettingsWindow(QDialog):
         if parent:
             self.setWindowTitle('Settings')
         else:
-            self.setWindowTitle(util.getTitleString('Settings'))
+            self.setWindowTitle(getTitleString('Settings'))
             self.setAttribute(Qt.WA_DeleteOnClose)
 
         settings = QSettings()
         mainLayout = QVBoxLayout(self)
+
+        self.session = AsyncClient()
 
         # First Start info
 
@@ -48,10 +54,7 @@ class SettingsWindow(QDialog):
         self.gamePath.setPlaceholderText('Path to witcher3.exe...')
         if settings.value('gamePath'):
             self.gamePath.setText(str(settings.value('gamePath')))
-        self.gamePath.textChanged.connect(lambda: [
-            self.validateGamePath(),
-            self.updateSaveButton()
-        ])
+        self.gamePath.textChanged.connect(self.validateGamePath)
         gamePathLayout.addWidget(self.gamePath)
         self.locateGame = QPushButton('Detect', self)
         self.locateGame.clicked.connect(self.locateGameEvent)
@@ -81,10 +84,7 @@ class SettingsWindow(QDialog):
         self.configPath.setPlaceholderText('Path to config folder...')
         if settings.value('configPath'):
             self.configPath.setText(str(settings.value('configPath')))
-        self.configPath.textChanged.connect(lambda: [
-            self.validateConfigPath(),
-            self.updateSaveButton()
-        ])
+        self.configPath.textChanged.connect(self.validateConfigPath)
         configPathLayout.addWidget(self.configPath)
         self.locateConfig = QPushButton('Detect', self)
         self.locateConfig.clicked.connect(self.locateConfigEvent)
@@ -113,19 +113,15 @@ class SettingsWindow(QDialog):
         self.nexusAPIKey.setPlaceholderText('Personal API Key...')
         if settings.value('nexusAPIKey'):
             self.nexusAPIKey.setText(str(settings.value('nexusAPIKey')))
+        self.nexusAPIKey.textChanged.connect(self.validateApiKey)
         gbNexusModsAPILayout.addWidget(self.nexusAPIKey)
 
-        # TODO: enhancement: check if API Key is valid
-        nexusAPIKeyInfo = QLabel('''
-            <font color="#888">The API Key is used to check for mod updates, \
-            to get mod details and to download mods. \
-            Get your Personal API Key <a href="https://www.nexusmods.com/users/myaccount?tab=api">here</a>.</font>
-            ''', self)
-        nexusAPIKeyInfo.setOpenExternalLinks(True)
-        nexusAPIKeyInfo.setWordWrap(True)
-        nexusAPIKeyInfo.setContentsMargins(4, 4, 4, 4)
-        nexusAPIKeyInfo.setMinimumHeight(48)
-        gbNexusModsAPILayout.addWidget(nexusAPIKeyInfo)
+        self.nexusAPIKeyInfo = QLabel('', self)
+        self.nexusAPIKeyInfo.setOpenExternalLinks(True)
+        self.nexusAPIKeyInfo.setWordWrap(True)
+        self.nexusAPIKeyInfo.setContentsMargins(4, 4, 4, 4)
+        self.nexusAPIKeyInfo.setMinimumHeight(48)
+        gbNexusModsAPILayout.addWidget(self.nexusAPIKeyInfo)
 
         self.nexusGetInfo = QCheckBox('Get Mod details after adding a new mod', self)
         self.nexusGetInfo.setChecked(settings.value('nexusGetInfo', 'True') == 'True')
@@ -174,9 +170,11 @@ class SettingsWindow(QDialog):
 
         self.validGamePath = False
         self.validConfigPath = False
+        self.validNexusAPIKey = False
 
-        self.validateGamePath()
-        self.validateConfigPath()
+        self.validateGamePath(self.gamePath.text())
+        self.validateConfigPath(self.configPath.text())
+        self.validateApiKey(self.nexusAPIKey.text())
         self.updateSaveButton()
 
 
@@ -235,9 +233,9 @@ class SettingsWindow(QDialog):
                 or set the path manually.
                 </font>''')
 
-    def validateGamePath(self) -> bool:
+    def validateGamePath(self, text) -> bool:
         # validate game installation path
-        if not verifyGamePath(Path(self.gamePath.text())):
+        if not verifyGamePath(Path(text)):
             self.gamePath.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
@@ -247,17 +245,19 @@ class SettingsWindow(QDialog):
             self.gamePathInfo.setText('<font color="#888">Please enter a valid game path.</font>')
             self.validGamePath = False
             self.locateGame.setDisabled(False)
+            self.updateSaveButton()
             return False
         else:
             self.gamePath.setStyleSheet('')
             self.gamePathInfo.setText('<font color="#888">Everything looks good!</font>')
             self.validGamePath = True
             self.locateGame.setDisabled(True)
+            self.updateSaveButton()
             return True
 
-    def validateConfigPath(self) -> bool:
+    def validateConfigPath(self, text) -> bool:
         # validate game config path
-        if not verifyConfigPath(Path(self.configPath.text())):
+        if not verifyConfigPath(Path(text)):
             self.configPath.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
@@ -271,18 +271,62 @@ class SettingsWindow(QDialog):
                 ''')
             self.validConfigPath = False
             self.locateConfig.setDisabled(False)
+            self.updateSaveButton()
             return False
         else:
             self.configPath.setStyleSheet('')
             self.configPathInfo.setText('<font color="#888">Everything looks good!</font>')
             self.validConfigPath = True
             self.locateConfig.setDisabled(True)
+            self.updateSaveButton()
+            return True
+
+    @asyncSlot()
+    async def validateApiKey(self, text: str) -> bool:
+        # validate neus mods api key
+        # TODO: enhancement: debounce validation
+        if not text:
+            self.nexusAPIKey.setStyleSheet('')
+            self.nexusAPIKeyInfo.setText('''
+                <font color="#888">The API Key is used to check for mod updates, \
+                to get mod details and to download mods. \
+                Get your Personal API Key <a href="https://www.nexusmods.com/users/myaccount?tab=api">here</a>.</font>
+                ''')
+            self.validNexusAPIKey = True
+            self.updateSaveButton()
+            return True
+        self.nexusAPIKeyInfo.setText('🌐')
+        apiUser = await getUserInformation(self.session, text)
+        if not apiUser:
+            self.nexusAPIKey.setStyleSheet('''
+                *{
+                    border: 1px solid #B22222;
+                    padding: 1px;
+                }
+                ''')
+            self.nexusAPIKeyInfo.setText('''
+                <font color="#888">Not a valid API Key. \
+                Get your Personal API Key <a href="https://www.nexusmods.com/users/myaccount?tab=api">here</a>.</font>
+                ''')
+            self.validNexusAPIKey = False
+            self.updateSaveButton()
+            return False
+        else:
+            self.nexusAPIKey.setStyleSheet('')
+            self.nexusAPIKeyInfo.setText(f'<font color="#888">Valid API Key for {apiUser["name"]}</font>')
+            self.validNexusAPIKey = True
+            self.updateSaveButton()
             return True
 
     def updateSaveButton(self):
         # TODO: release: disable saving invalid settings
         # self.save.setDisabled(not all((
         #     self.validConfigPath,
-        #     self.validGamePath
+        #     self.validGamePath,
+        #     self.validNexusAPIKey,
         # )))
         self.save.setDisabled(False)
+
+    @asyncClose
+    async def closeEvent(self, event):
+        await self.session.aclose()
