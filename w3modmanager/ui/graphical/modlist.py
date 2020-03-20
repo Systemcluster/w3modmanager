@@ -232,12 +232,12 @@ class ModList(QTableView):
                 self.modmodel[self.filtermodel.mapToSource(index).row()]
                 for index in self.selectionModel().selectedRows()
             ]
+            self.selectionModel().clear()
             for mod in mods:
                 try:
                     self.modmodel.remove(mod)
                 except ModNotFoundError:
                     logger.bind(name=mod.filename).warning('Mod not found')
-            self.selectionModel().clear()
             self.setDisabled(False)
         return super().keyPressEvent(event)
 
