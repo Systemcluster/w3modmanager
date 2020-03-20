@@ -31,6 +31,8 @@ def formatPackageName(name: str) -> str:
         name = name[3:]
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
+    # replace plus with space
+    name = re.sub(r'([a-zA-Z0-9])\++([a-zA-Z0-9])', r'\1 \2', name)
     # insert spacing
     name = re.sub(r'([a-z]{2,})(?=[A-Z1-9])', r'\1 ', name)
     name = re.sub(r'([A-Z][a-z])(?=[A-Z]{2}|[1-9])', r'\1 ', name)
