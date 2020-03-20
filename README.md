@@ -48,6 +48,7 @@ This list is preliminary and may change before release.
 
 - Watches for changes made to mods and settings outside the manager
 - Automatically detects the game installation path
+- Extracts and installs multiple mods in parallel
 
 ## Source and Development
 

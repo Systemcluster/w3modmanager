@@ -4,10 +4,10 @@ import codecs
 import re
 import hashlib
 import shutil
-import subprocess
 import tempfile
 import ctypes
 import os
+import asyncio
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union, List
@@ -141,28 +141,29 @@ def removeDirectory(path: Path):
     shutil.rmtree(path, onerror=getWriteAccess)
 
 
-def extractArchive(archive: Path, target: Path) -> Path:
+async def extractArchive(archive: Path, target: Path) -> Path:
     if target.exists():
         removeDirectory(target)
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))
-    result: subprocess.CompletedProcess = subprocess.run(
+    process = await asyncio.create_subprocess_shell(
         exe + ' x "' + str(archive) + '" -o"' + str(target) + '"',
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
     )
-    if result.returncode != 0:
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
         raise InvalidPathError(
             archive,
-            result.stderr if result.stderr else 'Could not extract archive')
+            stdout.decode().strip() if stderr else 'Could not extract archive')
     return target
 
 
-def extractMod(archive: Path) -> Path:
+async def extractMod(archive: Path) -> Path:
     if not isArchive(archive):
         raise InvalidPathError(archive, 'Invalid archive')
     target = Path(tempfile.gettempdir()).joinpath('w3modmanager/cache').joinpath(f'.{archive.stem}')
     target = normalizePath(target)
-    extractArchive(archive, target)
+    await extractArchive(archive, target)
     return target
 
 

@@ -2,8 +2,10 @@ from pathlib import Path
 from urllib.parse import urlparse
 from typing import Union, List, Tuple
 from datetime import datetime
+import asyncio
 
 from loguru import logger
+import paco  # noqa
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
@@ -13,6 +15,8 @@ from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
 from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap
+
+from asyncqt import asyncSlot  # noqa
 
 from w3modmanager.core.model import Model, ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
@@ -237,39 +241,34 @@ class ModList(QTableView):
             self.setDisabled(False)
         return super().keyPressEvent(event)
 
-    def copyBufferChanged(self):
+    @asyncSlot()
+    async def copyBufferChanged(self):
         if QSettings().value('nexusCheckClipboard', 'False') == 'True':
-            self.checkInstallFromURLs(QApplication.clipboard().text().splitlines(), local=False)
+            await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines(), local=False)
 
-    def pasteEvent(self):
-        self.checkInstallFromURLs(QApplication.clipboard().text().splitlines())
+    @asyncSlot()
+    async def pasteEvent(self):
+        await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines())
 
     def setFilter(self, filter: str):
         self.filtermodel.setFilterFixedString(filter)
 
-    def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local=True, web=True):
+    async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local=True, web=True):
         installed = 0
         errors = 0
         installedBefore = len(self.modmodel)
         installtime = datetime.utcnow()
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
         try:
-            for path in paths:
-                if isinstance(path, QUrl):
-                    path = path.toString()
-                if web and isValidNexusModsUrl(path):
-                    self.setDisabled(True)
-                    logger.bind(dots=True, path=path).info(f'Installing mods from')
-                    i, e = self.installFromNexusmods(path, installtime)
-                    installed += i
-                    errors += e
-                elif local and isValidFileUrl(path):
-                    self.setDisabled(True)
-                    path = Path(QUrl(path).toLocalFile())
-                    logger.bind(dots=True, path=path).info(f'Installing mods from')
-                    i, e = self.installFromFile(path, installtime)
-                    installed += i
-                    errors += e
+            results = await paco.map(
+                self.installFromURL,
+                paths,
+                loop=asyncio.get_event_loop(),
+                installtime=installtime
+            )
+            for result in results:
+                installed += result[0]
+                errors += result[1]
         except Exception as e:
             # we should never land here, but don't lock up the UI if it happens
             logger.exception(str(e))
@@ -289,11 +288,32 @@ class ModList(QTableView):
             self.resizeColumnsToContents()
         self.setDisabled(False)
 
-    def installFromNexusmods(self, url: str, installtime=datetime.utcnow()) -> Tuple[int, int]:
+    async def installFromURL(self, path: Union[str, QUrl], local=True, web=True, installtime=datetime.utcnow()):
+        installed = 0
+        errors = 0
+        if isinstance(path, QUrl):
+            path = path.toString()
+        if web and isValidNexusModsUrl(path):
+            self.setDisabled(True)
+            logger.bind(dots=True, path=path).info(f'Installing mods from')
+            i, e = await self.installFromNexusmods(path, installtime)
+            installed += i
+            errors += e
+        elif local and isValidFileUrl(path):
+            self.setDisabled(True)
+            path = Path(QUrl(path).toLocalFile())
+            logger.bind(dots=True, path=path).info(f'Installing mods from')
+            i, e = await self.installFromFile(path, installtime)
+            installed += i
+            errors += e
+        return installed, errors
+
+    async def installFromNexusmods(self, url: str, installtime=datetime.utcnow()) -> Tuple[int, int]:
         # TODO: incomplete: ask if install and which files
         return 0, 0
 
-    def installFromFile(self, path: Path, installtime=datetime.utcnow()) -> Tuple[int, int]:
+    async def installFromFile(self, path: Path, installtime=datetime.utcnow()) -> Tuple[int, int]:
+        # TODO: incomplete: never install mods from inside the installation directory
         originalpath = path
         installed = 0
         errors = 0
@@ -305,7 +325,7 @@ class ModList(QTableView):
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
                 md5hash = getMD5Hash(path)
                 source = path
-                path = extractMod(path)
+                path = await extractMod(path)
             valid, exhausted = containsValidMod(path, searchlimit=8)
             if not valid:
                 if not exhausted and self.showContinueSearchDialog(searchlimit=8):
@@ -321,8 +341,9 @@ class ModList(QTableView):
                 if source:
                     mod.source = source
                 try:
-                    # TODO: incomplete: check if mod is installed, ask if replace
-                    self.modmodel.add(mod)
+                    async with self.modmodel.updateLock:
+                        # TODO: incomplete: check if mod is installed, ask if replace
+                        self.modmodel.add(mod)
                     installed += 1
                 except ModExistsError:
                     logger.bind(path=mod.source, name=mod.filename).error(f'Mod exists')
@@ -367,11 +388,13 @@ class ModList(QTableView):
         return messagebox.clickedButton() == yes
 
     def dropEvent(self, event):
+        async def task(urls):
+            await self.checkInstallFromURLs(urls)
+            self.setDisabled(False)
         event.accept()
         self.setDisabled(True)
         self.repaint()
-        self.checkInstallFromURLs(event.mimeData().urls())
-        self.setDisabled(False)
+        asyncio.get_event_loop().create_task(task(event.mimeData().urls()))
 
     def dragEnterEvent(self, event):
         self.setDisabled(True)

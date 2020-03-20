@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView
 from fasteners import InterProcessLock
 from datetime import datetime
+from asyncio import Lock
 
 
 class CallbackList(list):
@@ -40,6 +41,7 @@ class Model:
 
         self.updateCallbacks = CallbackList()
         self.lastUpdate = datetime.utcnow()
+        self.updateLock = Lock()
 
         # TODO: enhancement: watch mod directory for changes
 
