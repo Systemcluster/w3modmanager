@@ -70,7 +70,12 @@ class Mod:
     def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot=True) -> List[Mod]:
         mods: List[Mod] = []
         dirs = [path]
-        package = fetcher.formatPackageName(path.name)
+        if len([d for d in path.iterdir()]) == 1 \
+                and len([d for d in path.iterdir() if d.is_dir() and d.name[:3].lower() not in ('dlc', 'mod',)]) == 1:
+            # if directory contains only one subdirectory and it's not the mod or dlc, use it for the package name
+            package = fetcher.formatPackageName([d for d in path.iterdir()][0].name)
+        else:
+            package = fetcher.formatPackageName(path.name)
         for check in dirs:
             if check.is_dir():
                 # fetch mod dirs
