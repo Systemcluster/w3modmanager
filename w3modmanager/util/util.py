@@ -117,7 +117,10 @@ def normalizePath(path: Path):
 
 def isValidNexusModsUrl(url: str) -> bool:
     url = normalizeUrl(url)
-    parse = urlsplit(url, 'https')
+    try:
+        parse = urlsplit(url, 'https')
+    except ValueError:
+        return False
     return parse.scheme in ['http', 'https', ''] \
         and bool(re.match(r'^(www\.)?nexusmods.com', parse.netloc)) \
         and bool(re.match(r'^/witcher3/mods/[0-9]+', parse.path))
