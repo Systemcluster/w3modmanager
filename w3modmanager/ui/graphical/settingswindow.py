@@ -1,4 +1,4 @@
-from w3modmanager.util.util import getTitleString
+from w3modmanager.util.util import getTitleString, debounce
 from w3modmanager.domain.mod import fetcher
 from w3modmanager.domain.web.nexus import getUserInformation
 from w3modmanager.core.model import *
@@ -9,7 +9,7 @@ from qtpy.QtCore import QSettings, Qt, QSize
 from qtpy.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog
 
-from asyncqt import asyncSlot, asyncClose  # noqa
+from asyncqt import asyncClose  # noqa
 from httpx import AsyncClient  # noqa
 
 
@@ -116,7 +116,7 @@ class SettingsWindow(QDialog):
         self.nexusAPIKey.textChanged.connect(self.validateApiKey)
         gbNexusModsAPILayout.addWidget(self.nexusAPIKey)
 
-        self.nexusAPIKeyInfo = QLabel('', self)
+        self.nexusAPIKeyInfo = QLabel('🌐', self)
         self.nexusAPIKeyInfo.setOpenExternalLinks(True)
         self.nexusAPIKeyInfo.setWordWrap(True)
         self.nexusAPIKeyInfo.setContentsMargins(4, 4, 4, 4)
@@ -125,14 +125,17 @@ class SettingsWindow(QDialog):
 
         self.nexusGetInfo = QCheckBox('Get Mod details after adding a new mod', self)
         self.nexusGetInfo.setChecked(settings.value('nexusGetInfo', 'True') == 'True')
+        self.nexusGetInfo.setDisabled(True)
         gbNexusModsAPILayout.addWidget(self.nexusGetInfo)
 
         self.nexusCheckUpdates = QCheckBox('Check for Mod updates on startup', self)
         self.nexusCheckUpdates.setChecked(settings.value('nexusCheckUpdates', 'False') == 'True')
+        self.nexusCheckUpdates.setDisabled(True)
         gbNexusModsAPILayout.addWidget(self.nexusCheckUpdates)
 
         self.nexusCheckClipboard = QCheckBox('Monitor the Clipboard for Nexus Mods URLs', self)
         self.nexusCheckClipboard.setChecked(settings.value('nexusCheckClipboard', 'False') == 'True')
+        self.nexusCheckClipboard.setDisabled(True)
         gbNexusModsAPILayout.addWidget(self.nexusCheckClipboard)
 
         # Output
@@ -281,10 +284,12 @@ class SettingsWindow(QDialog):
             self.updateSaveButton()
             return True
 
-    @asyncSlot()
+    @debounce(250)
     async def validateApiKey(self, text: str) -> bool:
         # validate neus mods api key
-        # TODO: enhancement: debounce validation
+        self.nexusGetInfo.setDisabled(True)
+        self.nexusCheckUpdates.setDisabled(True)
+        self.nexusCheckClipboard.setDisabled(True)
         if not text:
             self.nexusAPIKey.setStyleSheet('')
             self.nexusAPIKeyInfo.setText('''
@@ -315,6 +320,9 @@ class SettingsWindow(QDialog):
             self.nexusAPIKey.setStyleSheet('')
             self.nexusAPIKeyInfo.setText(f'<font color="#888">Valid API Key for {apiUser["name"]}</font>')
             self.validNexusAPIKey = True
+            self.nexusGetInfo.setDisabled(False)
+            self.nexusCheckUpdates.setDisabled(False)
+            self.nexusCheckClipboard.setDisabled(False)
             self.updateSaveButton()
             return True
 
