@@ -3,6 +3,7 @@ from w3modmanager.util.util import getRuntimePath
 
 from functools import lru_cache
 from typing import Optional, Dict, Any
+import asyncio
 
 from qtpy.QtCore import Qt, QAbstractTableModel, QModelIndex
 from qtpy.QtGui import QFontDatabase, QColor, QIcon
@@ -46,17 +47,21 @@ class ModListModel(QAbstractTableModel):
         self._datatypes['pat'] = 'Patch'
         self._datatypes['udf'] = 'Undefined / Mod?'
 
+        self._lastUpdate = model.lastUpdate
         self.modmodel = model
         model.updateCallbacks.append(self.update)
         self.update(self.modmodel)
 
-    def update(self, model: Model) -> None:
-        self.layoutAboutToBeChanged.emit()
+    def clearCache(self) -> None:
         self.data.cache_clear()
         self.rowCount.cache_clear()
         self.columnCount.cache_clear()
         self.flags.cache_clear()
         self.headerData.cache_clear()
+
+    def update(self, model: Model) -> None:
+        self.layoutAboutToBeChanged.emit()
+        self.clearCache()
         self._lastUpdate = model.lastUpdate
         self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
@@ -64,34 +69,43 @@ class ModListModel(QAbstractTableModel):
     def getColumnKey(self, column: int) -> str:
         return self._header[column][1]
 
+
+    async def setDataInternal(self, col, row, value) -> None:
+        if col in ('filename',):
+            mod = self.modmodel[row]
+            await self.modmodel.setFilename(mod, value)
+            self.data.cache_clear()
+            self.dataChanged.emit(
+                self.index(row, 0),
+                self.index(row, self.columnCount() - 1))
+        if col in ('package',):
+            mod = self.modmodel[row]
+            await self.modmodel.setPackage(mod, value)
+            self.data.cache_clear()
+            self.dataChanged.emit(
+                self.index(row, 0),
+                self.index(row, self.columnCount() - 1))
+        if col in ('category',):
+            mod = self.modmodel[row]
+            await self.modmodel.setCategory(mod, value)
+            self.data.cache_clear()
+            self.dataChanged.emit(
+                self.index(row, 0),
+                self.index(row, self.columnCount() - 1))
+        if col in ('priority',):
+            mod = self.modmodel[row]
+            await self.modmodel.setPriority(mod, int(value))
+            self.data.cache_clear()
+            self.dataChanged.emit(
+                self.index(row, 0),
+                self.index(row, self.columnCount() - 1))
+
     def setData(self, index, value, _role) -> bool:
         if not index.isValid():
             return False
         col = self.getColumnKey(index.column())
-        if col in ('filename',):
-            mod = self.modmodel[index.row()]
-            self.modmodel.setFilename(mod, value)
-            self.dataChanged.emit(
-                self.index(index.row(), 0),
-                self.index(index.row(), self.columnCount() - 1))
-        if col in ('package',):
-            mod = self.modmodel[index.row()]
-            self.modmodel.setPackage(mod, value)
-            self.dataChanged.emit(
-                self.index(index.row(), 0),
-                self.index(index.row(), self.columnCount() - 1))
-        if col in ('category',):
-            mod = self.modmodel[index.row()]
-            self.modmodel.setCategory(mod, value)
-            self.dataChanged.emit(
-                self.index(index.row(), 0),
-                self.index(index.row(), self.columnCount() - 1))
-        if col in ('priority',):
-            mod = self.modmodel[index.row()]
-            self.modmodel.setPriority(mod, int(value))
-            self.dataChanged.emit(
-                self.index(index.row(), 0),
-                self.index(index.row(), self.columnCount() - 1))
+        row = index.row()
+        asyncio.get_running_loop().create_task(self.setDataInternal(col, row, value))
         return True
 
     @lru_cache(maxsize=None)

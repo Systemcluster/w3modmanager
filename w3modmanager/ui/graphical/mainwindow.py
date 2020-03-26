@@ -13,6 +13,8 @@ from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QMessageBox, QMenu
 from qtpy.QtGui import QIcon
 
+from asyncqt import asyncSlot  # noqa
+
 
 class MainWindow(QMainWindow):
     def __init__(self, model: Model):
@@ -124,20 +126,22 @@ class MainWindow(QMainWindow):
         # TODO: incomplete: implement mod update download
         pass
 
-    def showAddModFromFolderDialog(self):
+    @asyncSlot()
+    async def showAddModFromFolderDialog(self):
         dialog: QFileDialog = QFileDialog(self, 'Select Mod to install')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.Directory)
         if (dialog.exec_()):
-            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+            await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
-    def showAddModFromFileDialog(self):
+    @asyncSlot()
+    async def showAddModFromFileDialog(self):
         extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
         dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.ExistingFiles)
         if (dialog.exec_()):
-            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+            await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
     def showDownloadModDialog(self):
         dialog: QInputDialog = QInputDialog(self)

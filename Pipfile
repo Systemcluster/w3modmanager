@@ -9,8 +9,8 @@ mypy = ">=0.761"
 autopep8 = ">=1.4"
 pyinstaller = ">=3.6"
 pytest = ">=5.3"
+pytest-asyncio = ">=0.10"
 invoke = ">=1.4"
-pytest-asyncio = "*"
 
 [packages]
 fasteners = ">=0.15"
@@ -21,9 +21,8 @@ vdf = ">=3.2"
 appdirs = ">=1.4"
 pywin32 = ">=227"
 cchardet = "==2.1.5"
-httpx = "*"
-asyncqt = "*"
-paco = "*"
+httpx = ">=0.12"
+asyncqt = ">=0.8"
 
 [requires]
 python_version = "3.8"

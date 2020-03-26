@@ -5,7 +5,6 @@ from datetime import datetime
 import asyncio
 
 from loguru import logger
-import paco  # noqa
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
@@ -88,6 +87,8 @@ class ModList(QTableView):
 
         self.hoverIndexRow = -1
         self.modmodel = model
+        self.modCountLastUpdate = len(self.modmodel)
+        self.installLock = asyncio.Lock()
 
         self.setMouseTracking(True)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -182,19 +183,23 @@ class ModList(QTableView):
         settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 
     def modelUpdateEvent(self, model: Model):
-        pass
+        if not self.modCountLastUpdate:
+            # if list was empty before, auto resize columns
+            self.resizeColumnsToContents()
+        self.modCountLastUpdate = len(self.modmodel)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         self.hoverIndexRow = self.indexAt(event.pos()).row()
         return super().mouseMoveEvent(event)
 
-    def doubleClickEvent(self, index: QModelIndex):
+    @asyncSlot()
+    async def doubleClickEvent(self, index: QModelIndex):
         if self.filtermodel.mapToSource(index).column() == 0:
             mod = self.modmodel[self.filtermodel.mapToSource(index).row()]
             if mod.enabled:
-                self.modmodel.disable(mod)
+                await self.modmodel.disable(mod)
             else:
-                self.modmodel.enable(mod)
+                await self.modmodel.enable(mod)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -223,22 +228,25 @@ class ModList(QTableView):
             settings.setValue('modlistSortOrder', int(order))
         return super().sortByColumn(col, order)
 
+    async def deleteMods(self):
+        self.setDisabled(True)
+        mods: List[Mod] = [
+            self.modmodel[self.filtermodel.mapToSource(index).row()]
+            for index in self.selectionModel().selectedRows()
+        ]
+        self.selectionModel().clear()
+        for mod in mods:
+            try:
+                await self.modmodel.remove(mod)
+            except ModNotFoundError:
+                logger.bind(name=mod.filename).warning('Mod not found')
+        self.setDisabled(False)
+
     def keyPressEvent(self, event: QKeyEvent):
         if event.matches(QKeySequence.Paste):
-            self.pasteEvent()
+            asyncio.get_running_loop().create_task(self.pasteEvent())
         elif event.matches(QKeySequence.Delete):
-            self.setDisabled(True)
-            mods: List[Mod] = [
-                self.modmodel[self.filtermodel.mapToSource(index).row()]
-                for index in self.selectionModel().selectedRows()
-            ]
-            self.selectionModel().clear()
-            for mod in mods:
-                try:
-                    self.modmodel.remove(mod)
-                except ModNotFoundError:
-                    logger.bind(name=mod.filename).warning('Mod not found')
-            self.setDisabled(False)
+            asyncio.get_running_loop().create_task(self.deleteMods())
         return super().keyPressEvent(event)
 
     @asyncSlot()
@@ -254,17 +262,15 @@ class ModList(QTableView):
         self.filtermodel.setFilterFixedString(filter)
 
     async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local=True, web=True):
+        await self.installLock.acquire()
         installed = 0
         errors = 0
-        installedBefore = len(self.modmodel)
         installtime = datetime.utcnow()
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
         try:
-            results = await paco.map(
-                self.installFromURL,
-                paths,
-                loop=asyncio.get_event_loop(),
-                installtime=installtime
+            results = await asyncio.gather(
+                *[self.installFromURL(path, local, web, installtime) for path in paths],
+                loop=asyncio.get_running_loop()
             )
             for result in results:
                 installed += result[0]
@@ -283,12 +289,12 @@ class ModList(QTableView):
                 log.success(message)
             else:
                 log.error(message)
-        if not installedBefore:
-            # if list was empty before, auto resize columns
-            self.resizeColumnsToContents()
         self.setDisabled(False)
+        self.installLock.release()
 
-    async def installFromURL(self, path: Union[str, QUrl], local=True, web=True, installtime=datetime.utcnow()):
+    async def installFromURL(
+        self, path: Union[str, QUrl], local=True, web=True, installtime=datetime.utcnow()
+    ) -> Tuple[int, int]:
         installed = 0
         errors = 0
         if isinstance(path, QUrl):
@@ -341,9 +347,8 @@ class ModList(QTableView):
                 if source:
                     mod.source = source
                 try:
-                    async with self.modmodel.updateLock:
-                        # TODO: incomplete: check if mod is installed, ask if replace
-                        self.modmodel.add(mod)
+                    # TODO: incomplete: check if mod is installed, ask if replace
+                    await self.modmodel.add(mod)
                     installed += 1
                 except ModExistsError:
                     logger.bind(path=mod.source, name=mod.filename).error(f'Mod exists')
@@ -388,13 +393,10 @@ class ModList(QTableView):
         return messagebox.clickedButton() == yes
 
     def dropEvent(self, event):
-        async def task(urls):
-            await self.checkInstallFromURLs(urls)
-            self.setDisabled(False)
         event.accept()
         self.setDisabled(True)
         self.repaint()
-        asyncio.get_event_loop().create_task(task(event.mimeData().urls()))
+        asyncio.get_running_loop().create_task(self.checkInstallFromURLs(event.mimeData().urls()))
 
     def dragEnterEvent(self, event):
         self.setDisabled(True)

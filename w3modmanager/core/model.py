@@ -1,4 +1,5 @@
 from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.util.util import debounce
 
 from loguru import logger
 
@@ -6,13 +7,19 @@ from pathlib import Path
 from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView
 from fasteners import InterProcessLock
 from datetime import datetime
-from asyncio import Lock
+import asyncio
 
 
 class CallbackList(list):
-    def fire(self, *args, **kwargs):
-        for listener in self:
-            listener(*args, **kwargs)
+    def __init__(self):
+        self.fireLock = asyncio.Lock()
+        super().__init__()
+
+    @debounce(25)
+    async def fire(self, *args, **kwargs):
+        async with self.fireLock:
+            for listener in self:
+                listener(*args, **kwargs)
 
 
 ModelIndexType = Union[Mod, Tuple[str, str], int]
@@ -41,7 +48,7 @@ class Model:
 
         self.updateCallbacks = CallbackList()
         self.lastUpdate = datetime.utcnow()
-        self.updateLock = Lock()
+        self.updateLock = asyncio.Lock()
 
         # TODO: enhancement: watch mod directory for changes
 
@@ -75,61 +82,67 @@ class Model:
         return self._modList
 
 
-    def add(self, mod: Mod):
-        if (mod.filename, mod.target) in self._modList:
-            raise ModExistsError(mod)
-        self._modList[(mod.filename, mod.target)] = mod
-        self.lastUpdate = datetime.utcnow()
-        self.updateCallbacks.fire(self)
+    async def add(self, mod: Mod):
+        # TODO: incomplete: always override compilation trigger mod
+        async with self.updateLock:
+            if (mod.filename, mod.target) in self._modList:
+                raise ModExistsError(mod)
+            self._modList[(mod.filename, mod.target)] = mod
+        self.setLastUpdateTime(datetime.utcnow())
 
-    def set(self, filename: str, target: str, mod: Mod):
-        self._modList[(filename, target)] = mod
-        self.lastUpdate = datetime.utcnow()
-        self.updateCallbacks.fire(self)
+    async def set(self, filename: str, target: str, mod: Mod):
+        # TODO: incomplete: handle possible conflict with existing mods
+        async with self.updateLock:
+            self._modList[(filename, target)] = mod
+        self.setLastUpdateTime(datetime.utcnow())
 
-    def remove(self, mod: ModelIndexType):
-        mod = self[mod]
-        del self._modList[(mod.filename, mod.target)]
-        self.lastUpdate = datetime.utcnow()
-        self.updateCallbacks.fire(self)
+    async def remove(self, mod: ModelIndexType):
+        async with self.updateLock:
+            mod = self[mod]
+            del self._modList[(mod.filename, mod.target)]
+        self.setLastUpdateTime(datetime.utcnow())
 
-    def enable(self, mod: ModelIndexType):
-        mod = self[mod]
-        mod.enabled = True
-        self.lastUpdate = datetime.utcnow()
-        self.updateCallbacks.fire(self)
+    async def enable(self, mod: ModelIndexType):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.enabled = True
+        self.setLastUpdateTime(datetime.utcnow())
 
-    def disable(self, mod: ModelIndexType):
-        mod = self[mod]
-        mod.enabled = False
-        self.lastUpdate = datetime.utcnow()
-        self.updateCallbacks.fire(self)
+    async def disable(self, mod: ModelIndexType):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.enabled = False
+        self.setLastUpdateTime(datetime.utcnow())
+
+    async def setFilename(self, mod: ModelIndexType, filename: str):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.filename = filename
+        self.setLastUpdateTime(datetime.utcnow(), False)
+
+    async def setPackage(self, mod: ModelIndexType, package: str):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.package = package
+        self.setLastUpdateTime(datetime.utcnow(), False)
+
+    async def setCategory(self, mod: ModelIndexType, category: str):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.category = category
+        self.setLastUpdateTime(datetime.utcnow(), False)
+
+    async def setPriority(self, mod: ModelIndexType, priority: int):
+        async with self.updateLock:
+            mod = self[mod]
+            mod.priority = priority
+        self.setLastUpdateTime(datetime.utcnow(), False)
 
 
-    def setFilename(self, mod: ModelIndexType, filename: str):
-        mod = self[mod]
-        mod.filename = filename
-        self.updateCallbacks.fire(self)
-
-    def setPackage(self, mod: ModelIndexType, package: str):
-        mod = self[mod]
-        mod.package = package
-        self.updateCallbacks.fire(self)
-
-    def setCategory(self, mod: ModelIndexType, category: str):
-        mod = self[mod]
-        mod.category = category
-        self.updateCallbacks.fire(self)
-
-    def setPriority(self, mod: ModelIndexType, priority: int):
-        mod = self[mod]
-        mod.priority = priority
-        self.updateCallbacks.fire(self)
-
-
-    def setLastUpdateTime(self, time: datetime):
+    def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks=True):
         self.lastUpdate = time
-        self.updateCallbacks.fire(self)
+        if fireUpdateCallbacks:
+            self.updateCallbacks.fire(self)
 
 
     def __len__(self) -> int:
