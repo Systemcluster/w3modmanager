@@ -177,7 +177,7 @@ class ModList(QTableView):
         # TODO: enhancement: offer option to read readme and other additional text files
 
     @debounce(200)
-    def headerChangedEvent(self):
+    async def headerChangedEvent(self):
         settings = QSettings()
         settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 

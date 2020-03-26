@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union, List
-from threading import Timer
+from functools import wraps
 
 import cchardet
 from qtpy import API_NAME, QT_VERSION
@@ -170,14 +170,14 @@ async def extractMod(archive: Path) -> Path:
 def debounce(ms: int):
     """Debounce a functions execution by {ms} milliseconds"""
     def decorator(fun):
+        @wraps(fun)
         def debounced(*args, **kwargs):
             def deferred():
-                fun(*args, **kwargs)
+                asyncio.get_running_loop().create_task(fun(*args, **kwargs))
             try:
                 debounced.timer.cancel()
             except AttributeError:
                 pass
-            debounced.timer = Timer(ms / 1000.0, deferred)
-            debounced.timer.start()
+            debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)
         return debounced
     return decorator
