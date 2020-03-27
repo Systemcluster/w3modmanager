@@ -7,14 +7,14 @@ from pathlib import Path
 
 
 class InvalidPathError(IOError):
-    def __init__(self, path: Path, message: str = ''):
+    def __init__(self, path: Path, message: str = '') -> None:
         super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
         self.path = path
         self.message = message
 
 
 class UnexpectedInputError(IOError):
-    def __init__(self, path: Path, message: str = ''):
+    def __init__(self, path: Path, message: str = '') -> None:
         super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
         self.path = path
         self.message = message
@@ -26,7 +26,7 @@ class UnexpectedInputError(IOError):
 
 
 class ModelError(IOError):
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         super().__init__(f'{self.message}: \'{str(path.resolve())}\'')
         self.path = path
     message = 'Model Error'
@@ -58,10 +58,10 @@ class ModError(ValueError):
 
 
 class ModExistsError(ModError):
-    def __init__(self, filename: str, target: str):
+    def __init__(self, filename: str, target: str) -> None:
         super().__init__(f'Mod already exists: {target}/{filename}')
 
 
 class ModNotFoundError(ModError):
-    def __init__(self, filename: str, target: str):
+    def __init__(self, filename: str, target: str) -> None:
         super().__init__(f'Mod not found: {target}/{filename}')

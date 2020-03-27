@@ -3,6 +3,7 @@ from w3modmanager.ui.graphical.modlist import ModList
 from w3modmanager.util.util import getRuntimePath
 
 import html
+from typing import Any
 
 from loguru import logger
 from qtpy.QtCore import QSettings, Qt
@@ -12,7 +13,7 @@ from qtpy.QtGui import QFont, QPixmap, QKeyEvent, QKeySequence
 
 
 class MainWidget(QWidget):
-    def __init__(self, parent: QWidget, model: Model):
+    def __init__(self, parent: QWidget, model: Model) -> None:
         super().__init__(parent)
 
         logger.add(self.log)
@@ -104,15 +105,15 @@ class MainWidget(QWidget):
             self.splitter.setSizes([self.splitter.size().height(), 0])
         model.updateCallbacks.append(self.modelUpdateEvent)
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.matches(QKeySequence.Find):
             self.searchbar.setFocus()
         if event.key() == Qt.Key_Escape:
             self.modlist.setFocus()
             self.searchbar.setText('')
-        return super().keyPressEvent(event)
+        super().keyPressEvent(event)
 
-    def modelUpdateEvent(self, model: Model):
+    def modelUpdateEvent(self, model: Model) -> None:
         if len(model) > 0:
             if self.stack.currentIndex() != 0:
                 self.stack.setCurrentIndex(0)
@@ -122,15 +123,15 @@ class MainWidget(QWidget):
                 self.stack.setCurrentIndex(1)
                 self.repaint()
 
-    def unhideOutput(self):
+    def unhideOutput(self) -> None:
         if self.splitter.sizes()[1] < 10:
             self.splitter.setSizes([self.splitter.size().height(), 50])
 
-    def unhideModList(self):
+    def unhideModList(self) -> None:
         if self.splitter.sizes()[0] < 10:
             self.splitter.setSizes([50, self.splitter.size().height()])
 
-    def log(self, message):
+    def log(self, message: Any) -> None:
         # format log messages to user readable output
         settings = QSettings()
 

@@ -11,7 +11,7 @@ from qtpy.QtWidgets import QWidget
 
 
 class ModListModel(QAbstractTableModel):
-    def __init__(self, parent: Optional[QWidget], model: Model):
+    def __init__(self, parent: Optional[QWidget], model: Model) -> None:
         super().__init__(parent)
 
         self._header = [
@@ -70,7 +70,7 @@ class ModListModel(QAbstractTableModel):
         return self._header[column][1]
 
 
-    async def setDataInternal(self, col, row, value) -> None:
+    async def setDataInternal(self, col: str, row: int, value: str) -> None:
         if col in ('filename',):
             mod = self.modmodel[row]
             await self.modmodel.setFilename(mod, value)
@@ -100,32 +100,32 @@ class ModListModel(QAbstractTableModel):
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
 
-    def setData(self, index, value, _role) -> bool:
+    def setData(self, index: QModelIndex, value: Any, _role: int) -> bool:
         if not index.isValid():
             return False
         col = self.getColumnKey(index.column())
         row = index.row()
-        asyncio.get_running_loop().create_task(self.setDataInternal(col, row, value))
+        asyncio.create_task(self.setDataInternal(col, row, str(value)))
         return True
 
     @lru_cache(maxsize=None)
-    def rowCount(self, _index=QModelIndex()) -> int:
+    def rowCount(self, _index: QModelIndex = None) -> int:
         return len(self.modmodel)
 
     @lru_cache(maxsize=None)
-    def columnCount(self, _index=QModelIndex()) -> int:
+    def columnCount(self, _index: QModelIndex = None) -> int:
         return len(self._header)
 
     @lru_cache(maxsize=None)
-    def headerData(self, section, orientation, role=Qt.EditRole):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.EditRole) -> Any:
         if role != Qt.DisplayRole:
             return None
         if orientation != Qt.Horizontal:
             return None
-        return self._header[section][0] if len(self._header) > section else "?"
+        return self._header[section][0] if len(self._header) > section else '?'
 
     @lru_cache(maxsize=None)
-    def flags(self, index) -> Qt.ItemFlag:
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.NoItemFlags
         col = self.getColumnKey(index.column())
@@ -137,7 +137,7 @@ class ModListModel(QAbstractTableModel):
         return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     @lru_cache(maxsize=None)
-    def data(self, index, role=Qt.DisplayRole) -> Any:
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.DisplayRole) -> Any:
         if not index.isValid():
             return None
         col = self.getColumnKey(index.column())

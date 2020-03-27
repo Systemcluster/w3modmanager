@@ -1,6 +1,6 @@
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 from datetime import datetime
 import asyncio
 
@@ -13,7 +13,8 @@ from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
 from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
-from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap
+from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
+    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
 
 from asyncqt import asyncSlot  # noqa
 
@@ -26,11 +27,11 @@ from w3modmanager.ui.graphical.modlistmodel import ModListModel
 
 
 class ModListItemDelegate(QStyledItemDelegate):
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.linepen = QPen(QColor(200, 200, 200), 0, parent.gridStyle())
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
         itemOption = QStyleOptionViewItem(option)
 
         # disable focus outline
@@ -51,7 +52,7 @@ class ModListItemDelegate(QStyledItemDelegate):
 
         super().paint(painter, itemOption, index)
 
-    def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex):
+    def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex) -> None:
         itemOption = QStyleOptionViewItem(option)
         # set size of editor to size of cell
         geom: QRect = QApplication.style().subElementRect(QStyle.SE_ItemViewItemText, itemOption, editor)
@@ -60,10 +61,10 @@ class ModListItemDelegate(QStyledItemDelegate):
 
 
 class ModListSelectionModel(QItemSelectionModel):
-    def __init__(self, parent: QWidget, model: QAbstractItemModel):
+    def __init__(self, parent: QWidget, model: QAbstractItemModel) -> None:
         super().__init__(model, parent)
 
-    def setCurrentIndex(self, index, command):
+    def setCurrentIndex(self, index: QModelIndex, command: QItemSelectionModel) -> None:
         if not index.isValid():
             return
         # always focus column 3
@@ -72,7 +73,7 @@ class ModListSelectionModel(QItemSelectionModel):
 
 
 class ModListFilterModel(QSortFilterProxyModel):
-    def __init__(self, parent: QWidget, source: QAbstractTableModel):
+    def __init__(self, parent: QWidget, source: QAbstractTableModel) -> None:
         super().__init__(parent)
         self.setSourceModel(source)
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
@@ -83,7 +84,7 @@ class ModListFilterModel(QSortFilterProxyModel):
 
 
 class ModList(QTableView):
-    def __init__(self, parent: QWidget, model: Model):
+    def __init__(self, parent: QWidget, model: Model) -> None:
         super().__init__(parent)
 
         self.hoverIndexRow = -1
@@ -124,7 +125,6 @@ class ModList(QTableView):
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
-        # self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
         self.listmodel = ModListModel(self, model)
         self.filtermodel = ModListFilterModel(self, self.listmodel)
@@ -156,7 +156,7 @@ class ModList(QTableView):
                     False
                 )
             except Exception as e:
-                print(f'could not restore sort order: {e}')
+                logger.exception(f'could not restore sort order: {e}')
         self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
         QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
@@ -179,22 +179,22 @@ class ModList(QTableView):
         # TODO: enhancement: offer option to read readme and other additional text files
 
     @debounce(200)
-    async def headerChangedEvent(self):
+    async def headerChangedEvent(self) -> None:
         settings = QSettings()
         settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
 
-    def modelUpdateEvent(self, model: Model):
+    def modelUpdateEvent(self, model: Model) -> None:
         if not self.modCountLastUpdate:
             # if list was empty before, auto resize columns
             self.resizeColumnsToContents()
         self.modCountLastUpdate = len(self.modmodel)
 
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.hoverIndexRow = self.indexAt(event.pos()).row()
         return super().mouseMoveEvent(event)
 
     @asyncSlot()
-    async def doubleClickEvent(self, index: QModelIndex):
+    async def doubleClickEvent(self, index: QModelIndex) -> None:
         if self.filtermodel.mapToSource(index).column() == 0:
             mod = self.modmodel[self.filtermodel.mapToSource(index).row()]
             if mod.enabled:
@@ -202,34 +202,34 @@ class ModList(QTableView):
             else:
                 await self.modmodel.enable(mod)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         if not self.resizeTimer.isActive() and event.size() != self.viewportCacheSize:
             self.viewportCacheSize = event.size()
             self.viewportCache = self.viewport().grab()
             self.resizeTimer.start()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         if self.resizeTimer.isActive():
             painter = QPainter(self.viewport())
             painter.drawPixmap(0, 0, self.viewportCache)
         else:
             super().paintEvent(event)
 
-    def selectionChanged(self, selected: QItemSelection, deselected: QItemSelection):
-        return super().selectionChanged(selected, deselected)
+    def selectionChanged(self, selected: QItemSelection, deselected: QItemSelection) -> None:
+        super().selectionChanged(selected, deselected)
 
-    def eventFilter(self, obj: QObject, event: QEvent):
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         return super().eventFilter(obj, event)
 
-    def sortByColumn(self, col: int, order: Qt.SortOrder, save=True):
+    def sortByColumn(self, col: int, order: Qt.SortOrder, save: bool = True) -> None:
         if save and col is not None and order is not None:
             settings = QSettings()
             settings.setValue('modlistSortColumn', col)
             settings.setValue('modlistSortOrder', int(order))
-        return super().sortByColumn(col, order)
+        super().sortByColumn(col, order)
 
-    async def deleteMods(self):
+    async def deleteMods(self) -> None:
         self.setDisabled(True)
         mods: List[Mod] = [
             self.modmodel[self.filtermodel.mapToSource(index).row()]
@@ -243,26 +243,26 @@ class ModList(QTableView):
                 logger.bind(name=mod.filename).warning('Mod not found')
         self.setDisabled(False)
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.matches(QKeySequence.Paste):
-            asyncio.get_running_loop().create_task(self.pasteEvent())
+            asyncio.create_task(self.pasteEvent())
         elif event.matches(QKeySequence.Delete):
-            asyncio.get_running_loop().create_task(self.deleteMods())
-        return super().keyPressEvent(event)
+            asyncio.create_task(self.deleteMods())
+        super().keyPressEvent(event)
 
     @asyncSlot()
-    async def copyBufferChanged(self):
+    async def copyBufferChanged(self) -> None:
         if QSettings().value('nexusCheckClipboard', 'False') == 'True':
             await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines(), local=False)
 
     @asyncSlot()
-    async def pasteEvent(self):
+    async def pasteEvent(self) -> None:
         await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines())
 
-    def setFilter(self, filter: str):
-        self.filtermodel.setFilterFixedString(filter)
+    def setFilter(self, search: str) -> None:
+        self.filtermodel.setFilterFixedString(search)
 
-    async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local=True, web=True):
+    async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local: bool = True, web: bool = True) -> None:
         await self.installLock.acquire()
         installed = 0
         errors = 0
@@ -294,10 +294,12 @@ class ModList(QTableView):
         self.installLock.release()
 
     async def installFromURL(
-        self, path: Union[str, QUrl], local=True, web=True, installtime=datetime.utcnow()
+        self, path: Union[str, QUrl], local: bool = True, web: bool = True, installtime: Optional[datetime] = None
     ) -> Tuple[int, int]:
         installed = 0
         errors = 0
+        if not installtime:
+            installtime = datetime.utcnow()
         if isinstance(path, QUrl):
             path = path.toString()
         if web and isValidNexusModsUrl(path):
@@ -315,11 +317,13 @@ class ModList(QTableView):
             errors += e
         return installed, errors
 
-    async def installFromNexusmods(self, url: str, installtime=datetime.utcnow()) -> Tuple[int, int]:
+    async def installFromNexusmods(self, url: str, installtime: Optional[datetime] = None) -> Tuple[int, int]:
         # TODO: incomplete: ask if install and which files
+        if not installtime:
+            installtime = datetime.utcnow()
         return 0, 0
 
-    async def installFromFile(self, path: Path, installtime=datetime.utcnow()) -> Tuple[int, int]:
+    async def installFromFile(self, path: Path, installtime: Optional[datetime] = None) -> Tuple[int, int]:
         # TODO: incomplete: never install mods from inside the installation directory
         originalpath = path
         installed = 0
@@ -327,6 +331,8 @@ class ModList(QTableView):
         archive = path.is_file()
         source = None
         md5hash = ''
+        if not installtime:
+            installtime = datetime.utcnow()
         try:
             if archive:
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
@@ -377,7 +383,7 @@ class ModList(QTableView):
             self.repaint()
         return installed, errors
 
-    def showContinueSearchDialog(self, searchlimit: int):
+    def showContinueSearchDialog(self, searchlimit: int) -> bool:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Unusual search depth')
         messagebox.setText(f'''
@@ -393,13 +399,13 @@ class ModList(QTableView):
         messagebox.exec_()
         return messagebox.clickedButton() == yes
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QDropEvent) -> None:
         event.accept()
         self.setDisabled(True)
         self.repaint()
-        asyncio.get_running_loop().create_task(self.checkInstallFromURLs(event.mimeData().urls()))
+        asyncio.create_task(self.checkInstallFromURLs(event.mimeData().urls()))
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         self.setDisabled(True)
         self.repaint()
         urls = event.mimeData().urls()
@@ -424,8 +430,8 @@ class ModList(QTableView):
         self.setDisabled(False)
         event.ignore()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
         event.accept()
 
-    def dragLeaveEvent(self, event):
+    def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
         event.accept()

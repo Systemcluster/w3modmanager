@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from w3modmanager.util.util import *
-import w3modmanager.domain.mod.fetcher as fetcher
+from w3modmanager.domain.mod.fetcher import *
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -28,30 +28,30 @@ class Mod:
     category: str = ''
     md5hash: str = ''
 
-    files: List[fetcher.BinFile] = field(default_factory=list)
-    contents: List[fetcher.ContentFile] = field(default_factory=list)
-    settings: List[fetcher.UserSettings] = field(default_factory=list)
-    inputs: List[fetcher.InputSettings] = field(default_factory=list)
+    files: List[BinFile] = field(default_factory=list)
+    contents: List[ContentFile] = field(default_factory=list)
+    settings: List[UserSettings] = field(default_factory=list)
+    inputs: List[InputSettings] = field(default_factory=list)
 
 
-    def __getitem__(self, attr: str):
+    def __getitem__(self, attr: str) -> Any:
         return getattr(self, attr)
 
 
     @property
-    def contentFiles(self):
+    def contentFiles(self) -> List[ContentFile]:
         return list(filter(
             lambda f: f.source.suffix != '.ws',
             self.contents))
 
     @property
-    def scriptFiles(self):
+    def scriptFiles(self) -> List[ContentFile]:
         return list(filter(
             lambda f: f.source.suffix == '.ws',
             self.contents))
 
     @property
-    def binFiles(self):
+    def binFiles(self) -> List[BinFile]:
         return list(filter(
             lambda f: f.target.parent not in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
@@ -59,7 +59,7 @@ class Mod:
             self.files))
 
     @property
-    def menuFiles(self):
+    def menuFiles(self) -> List[BinFile]:
         return list(filter(
             lambda f: f.target.parent in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
@@ -67,25 +67,25 @@ class Mod:
 
 
     @classmethod
-    def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot=True) -> List[Mod]:
+    def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot: bool = True) -> List[Mod]:
         mods: List[Mod] = []
         dirs = [path]
-        if len([d for d in path.iterdir()]) == 1 \
+        if len(list(path.iterdir())) == 1 \
                 and len([d for d in path.iterdir() if d.is_dir() and d.name[:3].lower() not in ('dlc', 'mod',)]) == 1:
             # if directory contains only one subdirectory and it's not the mod or dlc, use it for the package name
-            package = fetcher.formatPackageName([d for d in path.iterdir()][0].name)
+            package = formatPackageName(list(path.iterdir())[0].name)
         else:
-            package = fetcher.formatPackageName(path.name)
+            package = formatPackageName(path.name)
         for check in dirs:
             if check.is_dir():
                 # fetch mod dirs
-                if fetcher.isValidModDirectory(check):
-                    name = fetcher.formatModName(check.name, 'mod')
-                    logger.bind(name=name, path=check).debug("Detected MOD")
+                if isValidModDirectory(check):
+                    name = formatModName(check.name, 'mod')
+                    logger.bind(name=name, path=check).debug('Detected MOD')
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
-                    files, settings, inputs = fetcher.fetchBinFiles(check)
+                    files, settings, inputs = fetchBinFiles(check)
                     mods.append(cls(
                         package,
                         filename=name,
@@ -97,17 +97,17 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check)
+                        contents=fetchContentFiles(check)
                     ))
                     continue
                 # fetch dlc dirs
-                elif fetcher.isValidDlcDirectory(check):
-                    name = fetcher.formatDlcName(check.name)
-                    logger.bind(name=name, path=check).debug("Detected DLC")
+                elif isValidDlcDirectory(check):
+                    name = formatDlcName(check.name)
+                    logger.bind(name=name, path=check).debug('Detected DLC')
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
-                    files, settings, inputs = fetcher.fetchBinFiles(check)
+                    files, settings, inputs = fetchBinFiles(check)
                     mods.append(cls(
                         package,
                         filename=name,
@@ -119,17 +119,17 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check)
+                        contents=fetchContentFiles(check)
                     ))
                     continue
                 # fetch unspecified mod or doc dirs
-                if fetcher.maybeModOrDlcDirectory(check, path):
-                    name = fetcher.formatModName(check.name, 'mod')
-                    logger.bind(name=name, path=check).debug("Detected MOD")
+                if maybeModOrDlcDirectory(check, path):
+                    name = formatModName(check.name, 'mod')
+                    logger.bind(name=name, path=check).debug('Detected MOD')
                     size = 0
                     for p in check.glob('**/*'):
                         size += p.stat().st_size
-                    files, settings, inputs = fetcher.fetchBinFiles(check)
+                    files, settings, inputs = fetchBinFiles(check)
                     mods.append(cls(
                         package,
                         filename=name,
@@ -141,19 +141,19 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetcher.fetchContentFiles(check)
+                        contents=fetchContentFiles(check)
                     ))
                     continue
-                dirs += sorted([d for d in check.iterdir() if d.is_dir()])
+                dirs += sorted(d for d in check.iterdir() if d.is_dir())
         # fetch loose bin files
-        files, settings, inputs = fetcher.fetchBinFiles(path, onlyUngrouped=True)
+        files, settings, inputs = fetchBinFiles(path, onlyUngrouped=True)
         if searchCommonRoot:
-            commonroot = fetcher.resolveCommonBinRoot(path, files)
+            commonroot = resolveCommonBinRoot(path, files)
         else:
             commonroot = path
         if files:
-            name = fetcher.formatModName(commonroot.name, 'bin')
-            logger.bind(name=name, path=commonroot).debug("Detected BIN")
+            name = formatModName(commonroot.name, 'bin')
+            logger.bind(name=name, path=commonroot).debug('Detected BIN')
             size = 0
             for file in files:
                 size += commonroot.joinpath(file.source).stat().st_size
@@ -171,10 +171,10 @@ class Mod:
             ))
         # fetch patch files
         if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':
-            contents = fetcher.fetchPatchFiles(path)
+            contents = fetchPatchFiles(path)
             if contents:
-                name = fetcher.formatModName(path.name, 'pat')
-                logger.bind(name=name, path=path).debug("Detected PAT")
+                name = formatModName(path.name, 'pat')
+                logger.bind(name=name, path=path).debug('Detected PAT')
                 size = 0
                 for content in contents:
                     size += path.joinpath(content.source).stat().st_size

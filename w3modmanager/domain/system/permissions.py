@@ -8,10 +8,11 @@ import win32api  # noqa
 import win32security  # noqa
 import subprocess
 import shutil
-import sys
+
+from loguru import logger
 
 
-def getWritePermissions(path: Path, children=True):
+def getWritePermissions(path: Path, children: bool = True) -> bool:
     """Check user write permissions to directory"""
     try:
         if children:
@@ -44,11 +45,11 @@ def getWritePermissions(path: Path, children=True):
                 return False
         return True
     except Exception as e:
-        print(e, file=sys.stderr)
+        logger.exception(str(e))
         return False
 
 
-def setWritePermissions(path: Path):
+def setWritePermissions(path: Path) -> bool:
     """Set write permissions to directory for current user"""
     try:
         # get the paths to the required system executables
@@ -59,7 +60,7 @@ def setWritePermissions(path: Path):
         # add modify access permissions for the current user
         # the indirection through powershell allows access through the uac screen
         user = win32api.GetUserName()
-        result = subprocess.run([
+        result = subprocess.run([  # noqa
             f'{str(Path(powershell).resolve(strict=True))}', '-Command',
             f'Start-Process \
                 -FilePath "{str(Path(icacls).resolve(strict=True))}" \
@@ -68,5 +69,5 @@ def setWritePermissions(path: Path):
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return result.returncode == 0
     except Exception as e:
-        print(e, file=sys.stderr)
+        logger.exception(str(e))
         return False

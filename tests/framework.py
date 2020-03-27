@@ -5,7 +5,9 @@ Framework for test cases
 from shutil import rmtree
 from distutils.dir_util import copy_tree
 from pathlib import Path
+from typing import Generator
 import sys
+
 import pytest
 
 
@@ -16,9 +18,9 @@ sys.path.append(str(_root))
 
 
 @pytest.fixture(scope='function')
-def mockdata():
+def mockdata() -> Generator:
     import tempfile
     tempdir = tempfile.mkdtemp()
-    copy_tree(_mockdata, tempdir)
+    copy_tree(str(_mockdata), tempdir)
     yield Path(tempdir)
     rmtree(tempdir)

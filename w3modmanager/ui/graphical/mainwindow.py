@@ -11,13 +11,13 @@ from qtpy.QtCore import QSize, QSettings, Qt
 from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QFileDialog, QInputDialog, QDialogButtonBox, QSizePolicy, \
     QMessageBox, QMenu
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QIcon, QCloseEvent
 
 from asyncqt import asyncSlot  # noqa
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, model: Model):
+    def __init__(self, model: Model) -> None:
         super().__init__()
 
         self.model = model
@@ -43,15 +43,12 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
-    def nxmUrlEvent(self, event):
-        print(event)
-
-    def closeEvent(self, _event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         settings = QSettings()
         settings.setValue('mainWindowGeometry', self.saveGeometry())
         settings.setValue('mainWindowState', self.saveState())
 
-    def setupMenu(self):
+    def setupMenu(self) -> None:
         self.menuBar = QMenuBar(self)
         self.setMenuBar(self.menuBar)
         settings = QSettings()
@@ -114,20 +111,20 @@ class MainWindow(QMainWindow):
         actionAbout.setIcon(QIcon.fromTheme('document-open'))
         menuInfo.addAction(actionAbout)
 
-    def showExportDialog(self):
+    def showExportDialog(self) -> None:
         # TODO: incomplete: implement modlist export
         pass
 
-    def showGetInfoDialog(self):
+    def showGetInfoDialog(self) -> None:
         # TODO: incomplete: implement mod info update
         pass
 
-    def showGetUpdatesDialog(self):
+    def showGetUpdatesDialog(self) -> None:
         # TODO: incomplete: implement mod update download
         pass
 
     @asyncSlot()
-    async def showAddModFromFolderDialog(self):
+    async def showAddModFromFolderDialog(self) -> None:
         dialog: QFileDialog = QFileDialog(self, 'Select Mod to install')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.Directory)
@@ -135,7 +132,7 @@ class MainWindow(QMainWindow):
             await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
     @asyncSlot()
-    async def showAddModFromFileDialog(self):
+    async def showAddModFromFileDialog(self) -> None:
         extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
         dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
         dialog.setOptions(QFileDialog.ReadOnly)
@@ -143,7 +140,7 @@ class MainWindow(QMainWindow):
         if (dialog.exec_()):
             await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
-    def showDownloadModDialog(self):
+    def showDownloadModDialog(self) -> None:
         dialog: QInputDialog = QInputDialog(self)
         dialog.setWindowTitle('Download Mod')
         dialog.setLabelText('''
@@ -168,12 +165,12 @@ class MainWindow(QMainWindow):
             return
         # TODO: incomplete: show file selection etc.
 
-    def showSettingsDialog(self: Any, firstStart=False):
+    def showSettingsDialog(self: Any, firstStart: bool = False) -> None:
         settingswindow = SettingsWindow(self, firstStart)
         settingswindow.setAttribute(Qt.WA_DeleteOnClose)
-        return settingswindow.exec_()
+        settingswindow.exec_()
 
-    def showAboutDialog(self: Any):
+    def showAboutDialog(self: Any) -> None:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('About' if self else getTitleString('About'))
         messagebox.setText(f'''
@@ -198,9 +195,9 @@ class MainWindow(QMainWindow):
         messagebox.setMinimumSize(QSize(500, 500))
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
-        return messagebox.exec_()
+        messagebox.exec_()
 
-    def showInvalidConfigErrorDialog(self: Any):
+    def showInvalidConfigErrorDialog(self: Any) -> None:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid game path' if self else getTitleString('Invalid game path'))
         messagebox.setText(f'''
@@ -222,9 +219,9 @@ class MainWindow(QMainWindow):
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
-        return messagebox.exec_()
+        messagebox.exec_()
 
-    def showInvalidPermissionsDialog(self: Any, path: Path):
+    def showInvalidPermissionsDialog(self: Any, path: Path) -> bool:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -246,7 +243,7 @@ class MainWindow(QMainWindow):
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         return messagebox.exec_() == QMessageBox.Yes
 
-    def showInvalidPermissionsErrorDialog(self: Any):
+    def showInvalidPermissionsErrorDialog(self: Any) -> None:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -263,9 +260,9 @@ class MainWindow(QMainWindow):
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
-        return messagebox.exec_()
+        messagebox.exec_()
 
-    def showOtherInstanceDialog(self: Any):
+    def showOtherInstanceDialog(self: Any) -> bool:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Other instance' if self else getTitleString('Other instance'))
         messagebox.setText(f'''
@@ -288,7 +285,7 @@ class MainWindow(QMainWindow):
         messagebox.setDefaultButton(QMessageBox.Cancel)
         return messagebox.exec_() == QMessageBox.Yes
 
-    def showCritcalErrorDialog(self: Any, error: str):
+    def showCritcalErrorDialog(self: Any, error: str) -> None:
         import traceback
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Critical Error' if self else getTitleString('Critical Error'))

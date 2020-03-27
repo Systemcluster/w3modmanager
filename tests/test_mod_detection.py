@@ -10,7 +10,7 @@ from w3modmanager.core.model import *
 from w3modmanager.domain.mod.mod import *
 
 
-def test_mod_normal(mockdata):
+def test_mod_normal(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/normal')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
@@ -27,7 +27,7 @@ def test_mod_normal(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_direct(mockdata):
+def test_mod_direct(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-direct')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
@@ -44,7 +44,7 @@ def test_mod_direct(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_contains_no_dlc(mockdata):
+def test_mod_contains_no_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-without-dlc')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
@@ -65,7 +65,7 @@ def test_mod_contains_no_dlc(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_dlc(mockdata):
+def test_mod_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-dlc')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 2
@@ -93,7 +93,7 @@ def test_mod_dlc(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_valid(mockdata):
+def test_mod_valid(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/valid')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 4
@@ -149,7 +149,7 @@ def test_mod_valid(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_weird(mockdata):
+def test_mod_weird(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/weird')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 3
@@ -188,7 +188,7 @@ def test_mod_weird(mockdata):
     assert mod.inputs == []
 
 
-def test_patch(mockdata):
+def test_patch(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/patch')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 2
@@ -214,7 +214,7 @@ def test_patch(mockdata):
     assert mod.inputs == []
 
 
-def test_only_dlc(mockdata):
+def test_only_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/only-dlc')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
@@ -230,7 +230,7 @@ def test_only_dlc(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_with_split_bins(mockdata):
+def test_mod_with_split_bins(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-split-bins')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 1
@@ -248,7 +248,7 @@ def test_mod_with_split_bins(mockdata):
     assert mod.inputs == []
 
 
-def test_mod_dlc_same_name(mockdata):
+def test_mod_dlc_same_name(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-dlc-same-name')
     mods = Mod.fromDirectory(source)
     assert len(mods) == 2

@@ -6,19 +6,19 @@ from w3modmanager.core.errors import InvalidGamePath, InvalidConfigPath, Invalid
 from loguru import logger
 
 from pathlib import Path
-from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView
+from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator
 from fasteners import InterProcessLock
 from datetime import datetime
 import asyncio
 
 
 class CallbackList(list):
-    def __init__(self):
+    def __init__(self) -> None:
         self.fireLock = asyncio.Lock()
         super().__init__()
 
     @debounce(25)
-    async def fire(self, *args, **kwargs):
+    async def fire(self, *args: Any, **kwargs: Any) -> None:
         async with self.fireLock:
             for listener in self:
                 listener(*args, **kwargs)
@@ -29,19 +29,23 @@ ModelIndexType = Union[Mod, Tuple[str, str], int]
 
 
 class Model:
-    '''The mod management model'''
+    """The mod management model"""
 
-    def __init__(self, gamePath: Path, configPath: Path, cachePath: Path, ignorelock: bool = False):
-        self._gamePath = verifyGamePath(gamePath)
-        self._configPath = verifyConfigPath(configPath)
-        self._cachePath = verifyCachePath(cachePath)
+    def __init__(self, gamePath: Path, configPath: Path, cachePath: Path, ignorelock: bool = False) -> None:
+        _gamePath = verifyGamePath(gamePath)
+        _configPath = verifyConfigPath(configPath)
+        _cachePath = verifyCachePath(cachePath)
 
-        if not verifyGamePath(gamePath):
+        if not _gamePath:
             raise InvalidGamePath(gamePath)
-        if not verifyConfigPath(configPath):
+        if not _configPath:
             raise InvalidConfigPath(configPath)
-        if not verifyCachePath(cachePath):
+        if not _cachePath:
             raise InvalidCachePath(cachePath)
+
+        self._gamePath: Path = _gamePath
+        self._configPath: Path = _configPath
+        self._cachePath: Path = _cachePath
 
         if not ignorelock:
             self._lock = InterProcessLock(self.lockfile)
@@ -66,7 +70,7 @@ class Model:
         # TODO: incomplete: implement mod installation management
 
 
-    def loadInstalled(self):
+    def loadInstalled(self) -> None:
         # TODO: incomplete: load installed mods
         pass
 
@@ -84,7 +88,7 @@ class Model:
         return self._modList
 
 
-    async def add(self, mod: Mod):
+    async def add(self, mod: Mod) -> None:
         # TODO: incomplete: always override compilation trigger mod
         async with self.updateLock:
             if (mod.filename, mod.target) in self._modList:
@@ -92,56 +96,56 @@ class Model:
             self._modList[(mod.filename, mod.target)] = mod
         self.setLastUpdateTime(datetime.utcnow())
 
-    async def set(self, filename: str, target: str, mod: Mod):
+    async def replace(self, filename: str, target: str, mod: Mod) -> None:
         # TODO: incomplete: handle possible conflict with existing mods
         async with self.updateLock:
             self._modList[(filename, target)] = mod
         self.setLastUpdateTime(datetime.utcnow())
 
-    async def remove(self, mod: ModelIndexType):
+    async def remove(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             del self._modList[(mod.filename, mod.target)]
         self.setLastUpdateTime(datetime.utcnow())
 
-    async def enable(self, mod: ModelIndexType):
+    async def enable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = True
         self.setLastUpdateTime(datetime.utcnow())
 
-    async def disable(self, mod: ModelIndexType):
+    async def disable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = False
         self.setLastUpdateTime(datetime.utcnow())
 
-    async def setFilename(self, mod: ModelIndexType, filename: str):
+    async def setFilename(self, mod: ModelIndexType, filename: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.filename = filename
         self.setLastUpdateTime(datetime.utcnow(), False)
 
-    async def setPackage(self, mod: ModelIndexType, package: str):
+    async def setPackage(self, mod: ModelIndexType, package: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.package = package
         self.setLastUpdateTime(datetime.utcnow(), False)
 
-    async def setCategory(self, mod: ModelIndexType, category: str):
+    async def setCategory(self, mod: ModelIndexType, category: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.category = category
         self.setLastUpdateTime(datetime.utcnow(), False)
 
-    async def setPriority(self, mod: ModelIndexType, priority: int):
+    async def setPriority(self, mod: ModelIndexType, priority: int) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.priority = priority
         self.setLastUpdateTime(datetime.utcnow(), False)
 
 
-    def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks=True):
+    def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks: bool = True) -> None:
         self.lastUpdate = time
         if fireUpdateCallbacks:
             self.updateCallbacks.fire(self)
@@ -162,23 +166,23 @@ class Model:
         raise IndexError(f'invalid index type {type(mod)}')
 
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[str, str]]:
         yield from self._modList
 
     @property
-    def lockfile(self):
+    def lockfile(self) -> Path:
         return self._cachePath.joinpath('w3mm.lock')
 
     @property
-    def gamepath(self):
+    def gamepath(self) -> Path:
         return self._gamePath
 
     @property
-    def configpath(self):
+    def configpath(self) -> Path:
         return self._configPath
 
     @property
-    def cachepath(self):
+    def cachepath(self) -> Path:
         return self._cachePath
 
 

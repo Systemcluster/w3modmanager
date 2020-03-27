@@ -10,7 +10,7 @@ from w3modmanager.util.util import *
 
 
 @pytest.mark.asyncio
-async def test_mod_extract_normal(mockdata):
+async def test_mod_extract_normal(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-normal.zip')
     source = await extractMod(archive)
     mods = Mod.fromDirectory(source)
@@ -22,7 +22,7 @@ async def test_mod_extract_normal(mockdata):
 
 
 @pytest.mark.asyncio
-async def test_mod_extract_long_name(mockdata):
+async def test_mod_extract_long_name(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-with-long-name.zip')
     source = await extractMod(archive)
     mods = Mod.fromDirectory(source)

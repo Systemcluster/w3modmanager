@@ -107,7 +107,7 @@ def main(gamePath: Optional[str] = None,
         MainWindow.showSettingsDialog(None)
         sys.exit()
 
-    def createModel(ignorelock=False):
+    def createModel(ignorelock: bool = False) -> Model:
         nonlocal settings
         return Model(
             Path(str(settings.value('gamePath'))),

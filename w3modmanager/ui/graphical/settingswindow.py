@@ -7,14 +7,15 @@ from pathlib import Path
 
 from qtpy.QtCore import QSettings, Qt, QSize
 from qtpy.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
-    QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog
+    QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog, QWidget
+from qtpy.QtGui import QCloseEvent
 
 from asyncqt import asyncClose  # noqa
 from httpx import AsyncClient  # noqa
 
 
 class SettingsWindow(QDialog):
-    def __init__(self, parent=None, firstStart=False):
+    def __init__(self, parent: Optional[QWidget] = None, firstStart: bool = False) -> None:
         super().__init__(parent, )
 
         if parent:
@@ -181,7 +182,7 @@ class SettingsWindow(QDialog):
         self.updateSaveButton()
 
 
-    def saveEvent(self):
+    def saveEvent(self) -> None:
         settings = QSettings()
         settings.setValue('settingsWindowGeometry', self.saveGeometry())
         settings.setValue('gamePath', self.gamePath.text())
@@ -194,10 +195,10 @@ class SettingsWindow(QDialog):
         settings.setValue('unhideOutput', str(self.unhideOutput.isChecked()))
         self.close()
 
-    def cancelEvent(self):
+    def cancelEvent(self) -> None:
         self.close()
 
-    def selectGameEvent(self):
+    def selectGameEvent(self) -> None:
         dialog: QFileDialog = QFileDialog(self, 'Select witcher3.exe', '', 'The Witcher 3 (witcher3.exe)')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.ExistingFile)
@@ -205,7 +206,7 @@ class SettingsWindow(QDialog):
             if dialog.selectedFiles():
                 self.gamePath.setText(dialog.selectedFiles()[0])
 
-    def selectConfigEvent(self):
+    def selectConfigEvent(self) -> None:
         dialog: QFileDialog = QFileDialog(self, 'Select config folder', '', 'The Witcher 3')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.Directory)
@@ -213,7 +214,7 @@ class SettingsWindow(QDialog):
             if dialog.selectedFiles():
                 self.configPath.setText(dialog.selectedFiles()[0])
 
-    def locateGameEvent(self):
+    def locateGameEvent(self) -> None:
         game = fetcher.findGamePath()
         if game:
             self.gamePath.setText(str(game))
@@ -224,7 +225,7 @@ class SettingsWindow(QDialog):
                 Please make sure the game is installed, or set the path manually.
                 </font>''')
 
-    def locateConfigEvent(self):
+    def locateConfigEvent(self) -> None:
         config = fetcher.findConfigPath()
         if config:
             self.configPath.setText(str(config))
@@ -236,7 +237,7 @@ class SettingsWindow(QDialog):
                 or set the path manually.
                 </font>''')
 
-    def validateGamePath(self, text) -> bool:
+    def validateGamePath(self, text: str) -> bool:
         # validate game installation path
         if not verifyGamePath(Path(text)):
             self.gamePath.setStyleSheet('''
@@ -258,7 +259,7 @@ class SettingsWindow(QDialog):
             self.updateSaveButton()
             return True
 
-    def validateConfigPath(self, text) -> bool:
+    def validateConfigPath(self, text: str) -> bool:
         # validate game config path
         if not verifyConfigPath(Path(text)):
             self.configPath.setStyleSheet('''
@@ -326,15 +327,15 @@ class SettingsWindow(QDialog):
             self.updateSaveButton()
             return True
 
-    def updateSaveButton(self):
+    def updateSaveButton(self) -> None:
         # TODO: release: disable saving invalid settings
         # self.save.setDisabled(not all((
         #     self.validConfigPath,
         #     self.validGamePath,
         #     self.validNexusAPIKey,
-        # )))
+        # )))  # noqa
         self.save.setDisabled(False)
 
     @asyncClose
-    async def closeEvent(self, event):
+    async def closeEvent(self, event: QCloseEvent) -> None:
         await self.session.aclose()

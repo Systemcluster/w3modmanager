@@ -84,7 +84,7 @@ def formatModName(name: str, prefix: str = '') -> str:
     return name
 
 
-def formatDlcName(name: str):
+def formatDlcName(name: str) -> str:
     original = name
     # remove trailing file copy suffix
     name = re.sub(r'(-[ ]*Copy)+$', '', name)
@@ -100,7 +100,7 @@ def formatDlcName(name: str):
 # mod validation
 #
 
-def containsValidMod(path: Path, searchlimit=0) -> Tuple[bool, bool]:
+def containsValidMod(path: Path, searchlimit: int = 0) -> Tuple[bool, bool]:
     # valid if contains a valid mod or dlc dir
     dirs = [path]
     for check in dirs:
@@ -112,7 +112,7 @@ def containsValidMod(path: Path, searchlimit=0) -> Tuple[bool, bool]:
             bins = fetchBinFiles(check, onlyUngrouped=True)
             if len(bins[0]) or len(bins[1]) or len(bins[2]):
                 return True, True
-            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
+            dirs += sorted(d for d in check.iterdir() if d.is_dir())
             if searchlimit and len(dirs) > searchlimit:
                 return False, False
     return False, True
@@ -155,12 +155,12 @@ def maybeModOrDlcDirectory(path: Path, root: Path) -> bool:
 
 def containsContentDirectory(path: Path) -> bool:
     # check if a non-empty content folder is contained
-    return 'content' in [d.name.lower() for d in path.iterdir() if d.is_dir() and d.iterdir()]
+    return 'content' in (d.name.lower() for d in path.iterdir() if d.is_dir() and d.iterdir())
 
 
 def containsScripts(path: Path) -> bool:
     # check if path contains .ws scripts inside content/scripts/
-    for f in path.glob("content/**/*.ws"):
+    for f in path.glob('content/**/*.ws'):
         if f.is_file():
             return True
     return False
@@ -177,7 +177,7 @@ def fetchModDirectories(path: Path) -> List[Path]:
         if isValidModDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidDlcDirectory(check):
-            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
+            dirs += sorted(d for d in check.iterdir() if d.is_dir())
     return bins
 
 
@@ -188,7 +188,7 @@ def fetchDlcDirectories(path: Path) -> List[Path]:
         if isValidDlcDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidModDirectory(check):
-            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
+            dirs += sorted(d for d in check.iterdir() if d.is_dir())
     return bins
 
 
@@ -198,10 +198,10 @@ def fetchUnsureDirectories(path: Path) -> List[Path]:
     for check in dirs:
         if maybeModOrDlcDirectory(check, path):
             bins.append(check.relative_to(path))
-        dirs += sorted([
+        dirs += sorted(
             d for d in check.iterdir() if d.is_dir()
             and not isValidModDirectory(d) and not isValidDlcDirectory(d)
-        ])
+        )
     return bins
 
 
@@ -220,7 +220,7 @@ class BinFile:
         else:
             return '\'%s (%s)\'' % (str(self.source), str(self.target))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, BinFile):
             return self.source == other.source and self.target == other.target
         if isinstance(other, str):
@@ -229,8 +229,9 @@ class BinFile:
             match = re.findall(r'^(.*) \((.*)\)$', other)
             if len(match) != 1 or len(match[0]) != 2:
                 return False
-            return match and self.source == Path(match[0][0]) \
+            return bool(match) and self.source == Path(match[0][0]) \
                 and self.target == Path(match[0][1])
+        return False
 
 
 @dataclass
@@ -240,11 +241,12 @@ class ContentFile:
     def __repr__(self) -> str:
         return '\'%s\'' % str(self.source)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ContentFile):
             return self.source == other.source
         if isinstance(other, str):
             return self.source == Path(other)
+        return False
 
 
 @dataclass(init=False)
@@ -252,7 +254,7 @@ class Settings:
     source: Path
     config: ConfigParser
 
-    def __init__(self, source: Path, content: str):
+    def __init__(self, source: Path, content: str) -> None:
         self.source = source
         self.config = ConfigParser(strict=False)
         self.config.optionxform = str  # type: ignore
@@ -287,10 +289,10 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
     inpu = []
     dirs = [path]
     for check in dirs:
-        for file in sorted([
+        for file in sorted(
             f for f in check.iterdir()
             if f.is_file() and f.suffix.lower() in ('.ini', '.xml', '.txt', '.settings', '.dll', '.asi')
-        ]):
+        ):
             relpath: Path = file.relative_to(path)
 
             # if the binfile is placed under bin, use its path relative to its bin dir
@@ -327,12 +329,12 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                     Path(f'bin/x64/{relpath.name}')
                 ))
                 # add cfgs coming with it
-                bins.extend(sorted([BinFile(
+                bins.extend(sorted(BinFile(
                     cfg.relative_to(path),
                     Path(f'bin/x64/{cfg.name}')
                 ) for cfg in file.parent.iterdir()
                     if re.match(r'.+(\.cfg)$', cfg.name, re.IGNORECASE) and cfg not in bins
-                ]))
+                ))
 
             # detect input.settings
             if re.match(r'.*input[.]?s(ettings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
@@ -350,7 +352,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                     logger.bind(file=file).debug('Could not parse user settings')
                 continue
 
-        dirs += sorted([
+        dirs += sorted(
             d for d in check.iterdir()
             if d.is_dir() and (
                 not onlyUngrouped
@@ -358,7 +360,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 and not isValidDlcDirectory(d)
                 and not maybeModOrDlcDirectory(d, path)
             )
-        ])
+        )
     return (bins, user, inpu)
 
 
@@ -372,13 +374,13 @@ def fetchContentFiles(path: Path) -> List[ContentFile]:
                 for x in check.glob('**/*') if x.is_file()
             ])
         else:
-            dirs += sorted([d for d in check.iterdir() if d.is_dir()])
+            dirs += sorted(d for d in check.iterdir() if d.is_dir())
     return contents
 
 
 def fetchPatchFiles(path: Path) -> List[ContentFile]:
     contents = []
-    for check in sorted([d for d in path.iterdir() if d.is_dir() and d.name == 'content']):
+    for check in sorted(d for d in path.iterdir() if d.is_dir() and d.name == 'content'):
         contents.extend([
             ContentFile(x.relative_to(path))
             for x in sorted(check.glob('**/*')) if x.is_file()
@@ -429,7 +431,7 @@ def findGamePath() -> Union[Path, None]:
         game = Path(str(game[0]))
         if verifyGamePath(game):
             return game
-    except Exception:
+    except Exception:  # noqa
         # probably not found
         pass
 
@@ -459,7 +461,7 @@ def findGamePath() -> Union[Path, None]:
                         return game
         else:
             pass
-    except Exception:
+    except Exception:  # noqa
         # probably not found
         pass
 

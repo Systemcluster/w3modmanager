@@ -11,8 +11,9 @@ import os
 import asyncio
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
-from typing import Union, List
+from typing import Union, List, Callable, Any
 from functools import wraps
+from typing import Union, List, Callable, Any, Awaitable
 
 import cchardet
 from qtpy import API_NAME, QT_VERSION
@@ -95,7 +96,7 @@ def normalizeUrl(url: str) -> str:
     return url
 
 
-def normalizePath(path: Path):
+def normalizePath(path: Path) -> Path:
     normalized = os.fspath(path.resolve())
     if not normalized.startswith('\\\\?\\'):
         normalized = '\\\\?\\' + normalized
@@ -123,8 +124,8 @@ def isArchive(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in getSupportedExtensions()
 
 
-def removeDirectory(path: Path):
-    def getWriteAccess(func, path, exc_info):
+def removeDirectory(path: Path) -> None:
+    def getWriteAccess(func: Callable, path: str, exc_info: Any) -> None:
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
@@ -157,17 +158,17 @@ async def extractMod(archive: Path) -> Path:
     return target
 
 
-def debounce(ms: int):
+def debounce(ms: int) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:
     """Debounce a functions execution by {ms} milliseconds"""
-    def decorator(fun):
+    def decorator(fun: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
         @wraps(fun)
-        def debounced(*args, **kwargs):
-            def deferred():
-                asyncio.get_running_loop().create_task(fun(*args, **kwargs))
+        def debounced(*args: Any, **kwargs: Any) -> None:
+            def deferred() -> None:
+                asyncio.create_task(fun(*args, **kwargs))
             try:
-                debounced.timer.cancel()
+                debounced.timer.cancel()  # type: ignore
             except AttributeError:
                 pass
-            debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)
+            debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)  # type: ignore
         return debounced
     return decorator
