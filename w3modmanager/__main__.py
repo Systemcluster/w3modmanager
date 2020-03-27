@@ -56,8 +56,8 @@ def main(gamePath: Optional[str] = None,
          startupMode: StartupMode = StartupMode.Main) -> NoReturn:
 
     from w3modmanager.util.util import getRuntimePath
-    from w3modmanager.core.model import Model, OtherInstanceError, \
-        InvalidGamePath, InvalidConfigPath
+    from w3modmanager.core.model import Model
+    from w3modmanager.core.errors import OtherInstanceError, InvalidGamePath, InvalidConfigPath
     from w3modmanager.ui.graphical.mainwindow import MainWindow
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions

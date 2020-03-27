@@ -1,5 +1,7 @@
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce
+from w3modmanager.core.errors import InvalidGamePath, InvalidConfigPath, InvalidCachePath, \
+    OtherInstanceError, ModExistsError, ModNotFoundError
 
 from loguru import logger
 
@@ -86,7 +88,7 @@ class Model:
         # TODO: incomplete: always override compilation trigger mod
         async with self.updateLock:
             if (mod.filename, mod.target) in self._modList:
-                raise ModExistsError(mod)
+                raise ModExistsError(mod.filename, mod.target)
             self._modList[(mod.filename, mod.target)] = mod
         self.setLastUpdateTime(datetime.utcnow())
 
@@ -152,7 +154,9 @@ class Model:
         if isinstance(mod, int):
             return list(self._modList.values())[mod]
         if isinstance(mod, tuple) and len(mod) == 2:
-            return self._modList[(mod[0], mod[1])]
+            if mod not in self._modList:
+                raise ModNotFoundError(mod[0], mod[1])
+            return self._modList[mod]
         if isinstance(mod, Mod) and mod in self.values():
             return mod
         raise IndexError(f'invalid index type {type(mod)}')
@@ -222,45 +226,3 @@ def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
         # check for errors here since this method is used with user input
         logger.bind(path=path).debug('Illegal path')
         return None
-
-
-
-class ModelError(IOError):
-    def __init__(self, path: Path, message: str):
-        super().__init__(f'{message}: \'{str(path.resolve())}\'')
-        self.path = path
-
-
-class OtherInstanceError(ModelError):
-    def __init__(self, path: Path):
-        super().__init__(path, 'Could not lock')
-
-
-class InvalidGamePath(ModelError):
-    def __init__(self, path: Path):
-        super().__init__(path, 'Invalid game path')
-
-
-class InvalidConfigPath(ModelError):
-    def __init__(self, path: Path):
-        super().__init__(path, 'Invalid config path')
-
-
-class InvalidCachePath(ModelError):
-    def __init__(self, path: Path):
-        super().__init__(path, 'Invalid cache path')
-
-
-
-class ModError(ValueError):
-    pass
-
-
-class ModExistsError(ModError):
-    def __init__(self, mod: Mod):
-        super().__init__('Mod already exists: %s' % mod.filename)
-
-
-class ModNotFoundError(ModError):
-    def __init__(self, filename: str):
-        super().__init__('Mod not found: %s' % filename)

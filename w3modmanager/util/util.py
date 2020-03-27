@@ -1,4 +1,5 @@
 import w3modmanager
+from w3modmanager.core.errors import InvalidPathError
 
 import codecs
 import re
@@ -15,20 +16,6 @@ from functools import wraps
 
 import cchardet
 from qtpy import API_NAME, QT_VERSION
-
-
-class InvalidPathError(IOError):
-    def __init__(self, path: Path, message: str = ''):
-        super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
-        self.path = path
-        self.message = message
-
-
-class UnexpectedInputError(IOError):
-    def __init__(self, path: Path, message: str = ''):
-        super().__init__(f'{f"{message}: " if message else ""}{str(path.resolve())}')
-        self.path = path
-        self.message = message
 
 
 def getQtVersionString() -> str:

@@ -17,7 +17,8 @@ from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPain
 
 from asyncqt import asyncSlot  # noqa
 
-from w3modmanager.core.model import Model, ModExistsError, ModNotFoundError
+from w3modmanager.core.model import Model
+from w3modmanager.core.errors import ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
