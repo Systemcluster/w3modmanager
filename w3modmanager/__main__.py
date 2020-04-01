@@ -3,11 +3,13 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 """
 
 
+import traceback
 import sys
 import os
 import asyncio
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, NoReturn
+from typing import Optional, NoReturn, Any
 from argparse import ArgumentParser
 from enum import Enum
 
@@ -18,16 +20,21 @@ import w3modmanager
 
 
 # check running python version
+
 if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
     sys.exit('error: python >= %s.%s is required for this program.'
              % w3modmanager.MIN_PYTHON_VERSION)
 
+
 # setup Qt environment
+
 if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
     del os.environ['QT_DEVICE_PIXEL_RATIO']
 os.environ['QT_API'] = 'pyside2'
 
+
 # setup logger if tty is attached
+
 logger.remove(0)
 if sys.stdout.isatty():
     logger.add(
@@ -44,6 +51,46 @@ if sys.stdout.isatty():
 <e>{extra}</>'
     )
 
+
+# setup print override
+
+def debug_print(arg: Any) -> None:
+    import builtins
+    from inspect import currentframe, getframeinfo
+    frame = currentframe()
+    if frame and frame.f_back:
+        frameinfo = getframeinfo(frame.f_back)
+        builtins.print(frameinfo.filename + ':' + str(frameinfo.lineno), arg)
+    else:
+        builtins.print(arg)
+
+
+print = debug_print  # noqa
+
+
+# setup exception hook
+
+sys._excepthook = sys.excepthook  # type: ignore
+
+
+def exception_hook(exctype, value, tb) -> None:  # noqa
+    time = datetime.now().strftime(r'%Y-%m-%d-%H%M%S%z')
+    with open(f'crash-{time}.txt', 'w', encoding='utf8') as file:
+        file.write(f'{w3modmanager.NAME} crashed.\n\n')
+        file.write(f'App version: {w3modmanager.VERSION} ({w3modmanager.VERSION_HASH})\n')
+        file.write(f'Date: {time}\n')
+        file.write(f'Exception Type: {exctype}\n')
+        file.write(f'Exception Value: {value}\n\n')
+        file.write(f'Traceback:\n')
+        file.writelines(traceback.format_tb(tb))
+    sys._excepthook(exctype, value, traceback)  # type: ignore
+    sys.exit(value if value else 1)
+
+
+sys.excepthook = exception_hook
+
+
+# start main program
 
 class StartupMode(Enum):
     Main = 0
@@ -156,7 +203,7 @@ def main(gamePath: Optional[str] = None,
 
     except Exception as e:
         MainWindow.showCritcalErrorDialog(None, str(e)).exec_()
-        sys.exit(f'error: {str(e)}')
+        raise e
 
     sys.exit()
 
