@@ -243,7 +243,7 @@ class SettingsWindow(QDialog):
             self.gamePath.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
-                    padding: 1px;
+                    padding: 1px 0px;
                 }
                 ''')
             self.gamePathInfo.setText('<font color="#888">Please enter a valid game path.</font>')
@@ -265,7 +265,7 @@ class SettingsWindow(QDialog):
             self.configPath.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
-                    padding: 1px;
+                    padding: 1px 0px;
                 }
                 ''')
             self.configPathInfo.setText('''<font color="#888">
@@ -307,7 +307,7 @@ class SettingsWindow(QDialog):
             self.nexusAPIKey.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
-                    padding: 1px;
+                    padding: 1px 0px;
                 }
                 ''')
             self.nexusAPIKeyInfo.setText('''
