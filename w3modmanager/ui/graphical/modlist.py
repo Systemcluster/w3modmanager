@@ -233,18 +233,29 @@ class ModList(QTableView):
             settings.setValue('modlistSortOrder', int(order))
         super().sortByColumn(col, order)
 
+    def selectRowChecked(self, row: int) -> None:
+        nums: int = self.filtermodel.rowCount()
+        if row < nums and row >= 0:
+            self.selectRow(row)
+        elif nums > 0:
+            self.selectRow(nums - 1)
+
     async def deleteMods(self) -> None:
+        if not self.selectionModel().hasSelection():
+            return
         self.setDisabled(True)
         mods: List[Mod] = [
             self.modmodel[self.filtermodel.mapToSource(index).row()]
             for index in self.selectionModel().selectedRows()
         ]
+        inds = self.selectedIndexes()
         self.selectionModel().clear()
         for mod in mods:
             try:
                 await self.modmodel.remove(mod)
             except ModNotFoundError:
                 logger.bind(name=mod.filename).warning('Mod not found')
+        asyncio.get_running_loop().call_later(100 / 1000.0, partial(self.selectRowChecked, inds[0].row()))
         self.setDisabled(False)
         self.setFocus()
 
