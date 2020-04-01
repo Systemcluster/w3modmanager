@@ -1,6 +1,6 @@
 from w3modmanager.util.util import getTitleString, debounce
 from w3modmanager.domain.mod import fetcher
-from w3modmanager.domain.web.nexus import getUserInformation
+from w3modmanager.domain.web.nexus import RequestError, getUserInformation
 from w3modmanager.core.model import *
 
 from pathlib import Path
@@ -8,10 +8,6 @@ from pathlib import Path
 from qtpy.QtCore import QSettings, Qt, QSize
 from qtpy.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog, QWidget
-from qtpy.QtGui import QCloseEvent
-
-from asyncqt import asyncClose  # noqa
-from httpx import AsyncClient  # noqa
 
 
 class SettingsWindow(QDialog):
@@ -26,8 +22,6 @@ class SettingsWindow(QDialog):
 
         settings = QSettings()
         mainLayout = QVBoxLayout(self)
-
-        self.session = AsyncClient()
 
         # First Start info
 
@@ -302,7 +296,22 @@ class SettingsWindow(QDialog):
             self.updateSaveButton()
             return True
         self.nexusAPIKeyInfo.setText('🌐')
-        apiUser = await getUserInformation(self.session, text)
+        try:
+            apiUser = await getUserInformation(text)
+        except RequestError as e:
+            self.nexusAPIKey.setStyleSheet('''
+                *{
+                    border: 1px solid #B22222;
+                    padding: 1px 0px;
+                }
+                ''')
+            error = f'Connection error ({e.response.status_code})' if e.response else 'Connection error'
+            self.nexusAPIKeyInfo.setText(f'''
+                <font color="#888">Could not validate API Key: {error}.</font>
+                ''')
+            self.validNexusAPIKey = False
+            self.updateSaveButton()
+            return False
         if not apiUser:
             self.nexusAPIKey.setStyleSheet('''
                 *{
@@ -335,7 +344,3 @@ class SettingsWindow(QDialog):
         #     self.validNexusAPIKey,
         # )))  # noqa
         self.save.setDisabled(False)
-
-    @asyncClose
-    async def closeEvent(self, event: QCloseEvent) -> None:
-        await self.session.aclose()

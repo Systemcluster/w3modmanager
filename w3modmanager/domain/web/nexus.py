@@ -1,19 +1,40 @@
-from typing import Any
-
-from httpx import AsyncClient  # noqa
+from __future__ import annotations
 
 
-baseUrl = f'https://api.nexusmods.com/v1'
-userUrl = f'{baseUrl}/users'
-gameUrl = f'{baseUrl}/games/witcher3'
+from typing import Any, Optional
 
-timeout = 1
+from httpx import AsyncClient, HTTPError  # noqa
+from asyncqt import asyncClose  # noqa
+from loguru import logger
 
 
-async def getUserInformation(session: AsyncClient, apikey: str) -> Any:
+__baseUrl = 'https://api.nexusmods.com'
+__userUrl = '/v1/users'
+__gameUrl = '/v1/games/witcher3'
+__modsUrl = '/v1/mods'
+
+__session: Optional[AsyncClient] = None
+
+
+class RequestError(HTTPError):
+    pass
+
+
+def getSession() -> AsyncClient:
+    global __session
+    if not __session:
+        __session = AsyncClient(base_url=__baseUrl)
+    return __session
+
+
+async def getUserInformation(apikey: str) -> Any:
     if not apikey:
         return None
-    user = await session.get(f'{userUrl}/validate.json', headers={'apikey': apikey}, timeout=timeout)
+    try:
+        user = await getSession().get(f'{__userUrl}/validate.json', headers={'apikey': apikey}, timeout=5.0)
+    except HTTPError as e:
+        logger.exception(f'{str(e)}')
+        raise RequestError(request=e.request, response=e.response)
     if user.status_code != 200:
         return None
     return user.json()
