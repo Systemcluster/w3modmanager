@@ -246,6 +246,7 @@ class ModList(QTableView):
             except ModNotFoundError:
                 logger.bind(name=mod.filename).warning('Mod not found')
         self.setDisabled(False)
+        self.setFocus()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.matches(QKeySequence.Paste):
@@ -295,6 +296,7 @@ class ModList(QTableView):
             else:
                 log.error(message)
         self.setDisabled(False)
+        self.setFocus()
         self.installLock.release()
 
     async def installFromURL(
@@ -415,6 +417,7 @@ class ModList(QTableView):
         urls = event.mimeData().urls()
         if not urls:
             self.setDisabled(False)
+            self.setFocus()
             event.ignore()
             return
         for url in urls:
@@ -432,6 +435,7 @@ class ModList(QTableView):
             except Exception as e:
                 logger.debug(str(e))
         self.setDisabled(False)
+        self.setFocus()
         event.ignore()
 
     def dragMoveEvent(self, event: QDragMoveEvent) -> None:
