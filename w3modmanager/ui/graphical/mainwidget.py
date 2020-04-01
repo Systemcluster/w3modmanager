@@ -9,7 +9,7 @@ from loguru import logger
 from qtpy.QtCore import QSettings, Qt
 from qtpy.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
     QLabel, QStackedWidget, QLineEdit
-from qtpy.QtGui import QFont, QPixmap, QKeyEvent, QKeySequence
+from qtpy.QtGui import QKeyEvent, QKeySequence, QIcon
 
 
 class MainWidget(QWidget):
@@ -59,8 +59,8 @@ class MainWidget(QWidget):
         welcomewidget.dropEvent = self.modlist.dropEvent
         welcomewidget.setAcceptDrops(True)
 
-        iconpixmap = QPixmap(str(getRuntimePath('resources/icons/open-folder.ico')))
-        iconpixmap = iconpixmap.scaledToHeight(32)
+        icon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
+        iconpixmap = icon.pixmap(32, 32)
         icon = QLabel()
         icon.setPixmap(iconpixmap)
         icon.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
@@ -80,12 +80,8 @@ class MainWidget(QWidget):
         # output log
 
         self.output = QTextEdit(self)
-        self.outputfont = QFont('monospace')
-        self.outputfont.setStyleHint(QFont.Monospace)
-        self.output.setFont(self.outputfont)
         self.output.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.output.setReadOnly(True)
-        self.output.setTextCursor
         self.output.setContextMenuPolicy(Qt.NoContextMenu)
         self.output.setPlaceholderText('Program output...')
         self.splitter.addWidget(self.output)

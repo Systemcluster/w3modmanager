@@ -111,7 +111,7 @@ def main(gamePath: Optional[str] = None,
 
     from qtpy.QtCore import Qt, QSettings
     from qtpy.QtWidgets import QApplication, QMessageBox
-    from qtpy.QtGui import QIcon, QPalette
+    from qtpy.QtGui import QIcon, QPalette, QFont
 
     from asyncqt import QEventLoop  # noqa
 
@@ -123,6 +123,9 @@ def main(gamePath: Optional[str] = None,
     QApplication.setApplicationDisplayName(None)
     QApplication.setAttribute(Qt.AA_NativeWindows)
     QApplication.setAttribute(Qt.AA_DisableWindowContextHelpButton)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.RoundPreferFloor)
 
     app = QApplication(sys.argv)
     app.setStyleSheet('''
@@ -136,6 +139,13 @@ def main(gamePath: Optional[str] = None,
     palette.setColor(QPalette.Link, Qt.red)
     palette.setColor(QPalette.LinkVisited, Qt.red)
     app.setPalette(palette)
+
+    font = QFont('Segoe UI')
+    font.setStyleHint(QFont.System)
+    font.setWeight(QFont.Normal)
+    font.setStyleStrategy(QFont.StyleStrategy(QFont.PreferDevice | QFont.ForceIntegerMetrics))
+    font.setPointSize(9)
+    app.setFont(font)
 
     icon = QIcon()
     icon.addFile(str(getRuntimePath('resources/icons/w3b.ico')))
