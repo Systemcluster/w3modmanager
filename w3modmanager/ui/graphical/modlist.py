@@ -181,7 +181,12 @@ class ModList(QTableView):
     @debounce(200)
     async def headerChangedEvent(self) -> None:
         settings = QSettings()
-        settings.setValue('modlistHorizontalHeaderState', self.horizontalHeader().saveState())
+        state = self.horizontalHeader().saveState()
+        # call later to work around pyqt5 StopIteration exception
+        asyncio.get_running_loop().call_later(
+            25 / 1000.0,
+            lambda: settings.setValue('modlistHorizontalHeaderState', state)
+        )
 
     def modelUpdateEvent(self, model: Model) -> None:
         if not self.modCountLastUpdate:
@@ -193,14 +198,13 @@ class ModList(QTableView):
         self.hoverIndexRow = self.indexAt(event.pos()).row()
         return super().mouseMoveEvent(event)
 
-    @asyncSlot()
-    async def doubleClickEvent(self, index: QModelIndex) -> None:
+    def doubleClickEvent(self, index: QModelIndex) -> None:
         if self.filtermodel.mapToSource(index).column() == 0:
             mod = self.modmodel[self.filtermodel.mapToSource(index).row()]
             if mod.enabled:
-                await self.modmodel.disable(mod)
+                asyncio.create_task(self.modmodel.disable(mod))
             else:
-                await self.modmodel.enable(mod)
+                asyncio.create_task(self.modmodel.enable(mod))
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)

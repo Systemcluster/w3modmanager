@@ -9,11 +9,11 @@ import tempfile
 import ctypes
 import os
 import asyncio
+import subprocess
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
-from typing import Union, List, Callable, Any
-from functools import wraps
 from typing import Union, List, Callable, Any, Awaitable
+from functools import wraps, partial
 
 import cchardet
 from qtpy import API_NAME, QT_VERSION
@@ -132,21 +132,21 @@ def removeDirectory(path: Path) -> None:
     shutil.rmtree(path, onerror=getWriteAccess)
 
 
-async def extractArchive(archive: Path, target: Path) -> Path:
+def extractArchive(archive: Path, target: Path) -> None:
     if target.exists():
         removeDirectory(target)
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))
-    process = await asyncio.create_subprocess_shell(
-        exe + ' x "' + str(archive) + '" -o"' + str(target) + '"',
-        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+    # TODO: incomplete: check if target works if spaces are in path
+    result: subprocess.CompletedProcess = subprocess.run(  # noqa
+        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
-    stdout, stderr = await process.communicate()
-    if process.returncode != 0:
+    if result.returncode != 0:
         raise InvalidPathError(
             archive,
-            stdout.decode().strip() if stderr else 'Could not extract archive')
-    return target
+            result.stderr if result.stderr else 'Could not extract archive'
+        )
 
 
 async def extractMod(archive: Path) -> Path:
@@ -154,7 +154,10 @@ async def extractMod(archive: Path) -> Path:
         raise InvalidPathError(archive, 'Invalid archive')
     target = Path(tempfile.gettempdir()).joinpath('w3modmanager/cache').joinpath(f'.{archive.stem}')
     target = normalizePath(target)
-    await extractArchive(archive, target)
+    await asyncio.get_running_loop().run_in_executor(
+        None,
+        partial(extractArchive, archive, target)
+    )
     return target
 
 

@@ -55,7 +55,7 @@ class SettingsWindow(QDialog):
         self.gamePath.setPlaceholderText('Path to witcher3.exe...')
         if settings.value('gamePath'):
             self.gamePath.setText(str(settings.value('gamePath')))
-        self.gamePath.textChanged.connect(self.validateGamePath)
+        self.gamePath.textChanged.connect(lambda: self.validateGamePath(self.gamePath.text()))
         gamePathLayout.addWidget(self.gamePath)
         self.locateGame = QPushButton('Detect', self)
         self.locateGame.clicked.connect(self.locateGameEvent)
@@ -85,7 +85,7 @@ class SettingsWindow(QDialog):
         self.configPath.setPlaceholderText('Path to config folder...')
         if settings.value('configPath'):
             self.configPath.setText(str(settings.value('configPath')))
-        self.configPath.textChanged.connect(self.validateConfigPath)
+        self.configPath.textChanged.connect(lambda: self.validateConfigPath(self.configPath.text()))
         configPathLayout.addWidget(self.configPath)
         self.locateConfig = QPushButton('Detect', self)
         self.locateConfig.clicked.connect(self.locateConfigEvent)
@@ -114,7 +114,7 @@ class SettingsWindow(QDialog):
         self.nexusAPIKey.setPlaceholderText('Personal API Key...')
         if settings.value('nexusAPIKey'):
             self.nexusAPIKey.setText(str(settings.value('nexusAPIKey')))
-        self.nexusAPIKey.textChanged.connect(self.validateApiKey)
+        self.nexusAPIKey.textChanged.connect(lambda: self.validateApiKey(self.nexusAPIKey.text()))
         gbNexusModsAPILayout.addWidget(self.nexusAPIKey)
 
         self.nexusAPIKeyInfo = QLabel('🌐', self)

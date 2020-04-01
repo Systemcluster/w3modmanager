@@ -53,9 +53,9 @@ class ModListModel(QAbstractTableModel):
         self.update(self.modmodel)
 
     def clearCache(self) -> None:
-        self.data.cache_clear()
         self.rowCount.cache_clear()
         self.columnCount.cache_clear()
+        self.data.cache_clear()
         self.flags.cache_clear()
         self.headerData.cache_clear()
 
