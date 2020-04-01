@@ -123,24 +123,32 @@ class MainWindow(QMainWindow):
         # TODO: incomplete: implement mod update download
         pass
 
-    @asyncSlot()
-    async def showAddModFromFolderDialog(self) -> None:
+    def showAddModFromFolderDialog(self) -> QFileDialog:
         dialog: QFileDialog = QFileDialog(self, 'Select Mod to install')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.Directory)
-        if (dialog.exec_()):
-            await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
-    @asyncSlot()
-    async def showAddModFromFileDialog(self) -> None:
+        dialog.setModal(True)
+        dialog.open()
+        dialog.accepted.connect(lambda: asyncio.create_task(
+            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+        ))
+        return dialog
+
+    def showAddModFromFileDialog(self) -> QFileDialog:
         extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
         dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
         dialog.setOptions(QFileDialog.ReadOnly)
         dialog.setFileMode(QFileDialog.ExistingFiles)
-        if (dialog.exec_()):
-            await self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
 
-    def showDownloadModDialog(self) -> None:
+        dialog.setModal(True)
+        dialog.open()
+        dialog.accepted.connect(lambda: asyncio.create_task(
+            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+        ))
+        return dialog
+
+    def showDownloadModDialog(self) -> QInputDialog:
         dialog: QInputDialog = QInputDialog(self)
         dialog.setWindowTitle('Download Mod')
         dialog.setLabelText('''
@@ -160,17 +168,20 @@ class MainWindow(QMainWindow):
         ok.setDisabled(True)
         dialog.textValueChanged.connect(lambda x: ok.setDisabled(not isValidNexusModsUrl(x)))
 
-        result = dialog.exec_()
-        if not result:
-            return
+        dialog.setModal(True)
+        dialog.open()
         # TODO: incomplete: show file selection etc.
+        return dialog
 
-    def showSettingsDialog(self: Any, firstStart: bool = False) -> None:
+    def showSettingsDialog(self: Any, firstStart: bool = False) -> SettingsWindow:
         settingswindow = SettingsWindow(self, firstStart)
         settingswindow.setAttribute(Qt.WA_DeleteOnClose)
-        settingswindow.exec_()
 
-    def showAboutDialog(self: Any) -> None:
+        settingswindow.setModal(True)
+        settingswindow.open()
+        return settingswindow
+
+    def showAboutDialog(self: Any) -> QMessageBox:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('About' if self else getTitleString('About'))
         messagebox.setText(f'''
@@ -195,9 +206,12 @@ class MainWindow(QMainWindow):
         messagebox.setMinimumSize(QSize(500, 500))
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
-        messagebox.exec_()
 
-    def showInvalidConfigErrorDialog(self: Any) -> None:
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox
+
+    def showInvalidConfigErrorDialog(self: Any) -> QMessageBox:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid game path' if self else getTitleString('Invalid game path'))
         messagebox.setText(f'''
@@ -219,9 +233,12 @@ class MainWindow(QMainWindow):
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
-        messagebox.exec_()
 
-    def showInvalidPermissionsDialog(self: Any, path: Path) -> bool:
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox
+
+    def showInvalidPermissionsDialog(self: Any, path: Path) -> QMessageBox:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -241,9 +258,12 @@ class MainWindow(QMainWindow):
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-        return messagebox.exec_() == QMessageBox.Yes
 
-    def showInvalidPermissionsErrorDialog(self: Any) -> None:
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox
+
+    def showInvalidPermissionsErrorDialog(self: Any) -> QMessageBox:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid permissions' if self else getTitleString('Invalid permissions'))
         messagebox.setText(f'''
@@ -260,9 +280,12 @@ class MainWindow(QMainWindow):
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
-        messagebox.exec_()
 
-    def showOtherInstanceDialog(self: Any) -> bool:
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox
+
+    def showOtherInstanceDialog(self: Any) -> QMessageBox:
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Other instance' if self else getTitleString('Other instance'))
         messagebox.setText(f'''
@@ -283,9 +306,12 @@ class MainWindow(QMainWindow):
         )
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         messagebox.setDefaultButton(QMessageBox.Cancel)
-        return messagebox.exec_() == QMessageBox.Yes
 
-    def showCritcalErrorDialog(self: Any, error: str) -> None:
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox
+
+    def showCritcalErrorDialog(self: Any, error: str) -> QMessageBox:
         import traceback
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Critical Error' if self else getTitleString('Critical Error'))
@@ -307,4 +333,7 @@ class MainWindow(QMainWindow):
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
-        messagebox.exec_()
+
+        messagebox.setModal(True)
+        messagebox.open()
+        return messagebox

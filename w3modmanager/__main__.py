@@ -63,7 +63,7 @@ def main(gamePath: Optional[str] = None,
         getWritePermissions, setWritePermissions
 
     from qtpy.QtCore import Qt, QSettings
-    from qtpy.QtWidgets import QApplication
+    from qtpy.QtWidgets import QApplication, QMessageBox
     from qtpy.QtGui import QIcon, QPalette
 
     from asyncqt import QEventLoop  # noqa
@@ -101,10 +101,10 @@ def main(gamePath: Optional[str] = None,
     if configPath:
         settings.setValue('configPath', configPath)
     if startupMode == StartupMode.About:
-        MainWindow.showAboutDialog(None)
+        MainWindow.showAboutDialog(None).exec_()
         sys.exit()
     if startupMode == StartupMode.Settings:
-        MainWindow.showSettingsDialog(None)
+        MainWindow.showSettingsDialog(None).exec_()
         sys.exit()
 
     def createModel(ignorelock: bool = False) -> Model:
@@ -120,20 +120,20 @@ def main(gamePath: Optional[str] = None,
             model = createModel()
         # if another instance is already open, inform and ask to open anyway
         except OtherInstanceError as e:
-            if MainWindow.showOtherInstanceDialog(None):
+            if MainWindow.showOtherInstanceDialog(None).exec_() == QMessageBox.Yes:
                 model = createModel(True)
             else:
                 raise e
         # if game path or config path is invalid or not set,
         # show a special settings dialog and retry
         except (InvalidGamePath, InvalidConfigPath):
-            MainWindow.showSettingsDialog(None, True)
+            MainWindow.showSettingsDialog(None, True).exec_()
             model = createModel()
 
         # check for write access to the game and config directories
         for path in (model.gamepath, model.configpath, model.cachepath,):
             if not getWritePermissions(path):
-                if not MainWindow.showInvalidPermissionsDialog(None, path) \
+                if MainWindow.showInvalidPermissionsDialog(None, path).exec_() != QMessageBox.Yes \
                 or not setWritePermissions(path):
                     raise PermissionError(f'Not enough permissions for {path}')
 
@@ -147,15 +147,15 @@ def main(gamePath: Optional[str] = None,
         sys.exit(f'error: {str(e)}')
 
     except (InvalidGamePath, InvalidConfigPath) as e:
-        MainWindow.showInvalidConfigErrorDialog(None)
+        MainWindow.showInvalidConfigErrorDialog(None).exec_()
         sys.exit(f'error: {str(e)}')
 
     except PermissionError as e:
-        MainWindow.showInvalidPermissionsErrorDialog(None)
+        MainWindow.showInvalidPermissionsErrorDialog(None).exec_()
         sys.exit(f'error: {str(e)}')
 
     except Exception as e:
-        MainWindow.showCritcalErrorDialog(None, str(e))
+        MainWindow.showCritcalErrorDialog(None, str(e)).exec_()
         sys.exit(f'error: {str(e)}')
 
     sys.exit()
