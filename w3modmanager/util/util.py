@@ -17,6 +17,7 @@ from functools import wraps, partial
 
 import cchardet
 from qtpy import API_NAME, QT_VERSION
+from loguru import logger
 
 
 def getQtVersionString() -> str:
@@ -161,17 +162,32 @@ async def extractMod(archive: Path) -> Path:
     return target
 
 
-def debounce(ms: int) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:
+def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:
     """Debounce a functions execution by {ms} milliseconds"""
     def decorator(fun: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
         @wraps(fun)
-        def debounced(*args: Any, **kwargs: Any) -> None:
+        def debounced(*args: Any, **kwargs: Any) -> Awaitable:
             def deferred() -> None:
-                asyncio.create_task(fun(*args, **kwargs))
+                async def internal() -> None:
+                    try:
+                        await fun(*args, **kwargs)
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        logger.exception(str(e))
+                task = asyncio.create_task(internal())
+                if cancel_running:
+                    try:
+                        if not debounced.task.done():  # type: ignore
+                            debounced.task.cancel()  # type: ignore
+                    except AttributeError:
+                        pass
+                    debounced.task = task  # type: ignore
             try:
                 debounced.timer.cancel()  # type: ignore
             except AttributeError:
                 pass
             debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)  # type: ignore
+            return debounced.timer  # type: ignore
         return debounced
     return decorator

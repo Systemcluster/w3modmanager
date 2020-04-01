@@ -279,7 +279,7 @@ class SettingsWindow(QDialog):
             self.updateSaveButton()
             return True
 
-    @debounce(250)
+    @debounce(200, cancel_running=True)
     async def validateApiKey(self, text: str) -> bool:
         # validate neus mods api key
         self.nexusGetInfo.setDisabled(True)
