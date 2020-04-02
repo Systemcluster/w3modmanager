@@ -28,7 +28,7 @@ class ModListModel(QAbstractTableModel):
             ('Settings', 'settings'),
             ('Inputs', 'inputs'),
             ('Size', 'size'),
-            ('Date Installed', 'date'),
+            ('Date Installed', 'installdate'),
             ('Version', 'version'),
             ('Source', 'source')
         ]
@@ -162,7 +162,7 @@ class ModListModel(QAbstractTableModel):
                 return QColor(240, 240, 240)
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
                 return QColor(240, 240, 240)
-            if mod.date > self._lastUpdate:
+            if mod.installdate > self._lastUpdate:
                 return QColor(238, 242, 255)
             return None
 
@@ -193,7 +193,7 @@ class ModListModel(QAbstractTableModel):
             if col in ('size',):
                 # Right|VCenter
                 return 0x0082
-            if col in ('priority', 'date', 'binFiles', 'menuFiles', 'settings',
+            if col in ('priority', 'installdate', 'binFiles', 'menuFiles', 'settings',
                        'inputs', 'contentFiles', 'scriptFiles',):
                 # HCenter|VCenter
                 return 0x0084
@@ -229,7 +229,7 @@ class ModListModel(QAbstractTableModel):
                 if val < 0:
                     return 'none'
                 return val
-            if col in ('date',):
+            if col in ('installdate',):
                 return mod[col].strftime('%Y-%m-%d %H:%M:%S')
             if col in ('size',):
                 val = mod[col]

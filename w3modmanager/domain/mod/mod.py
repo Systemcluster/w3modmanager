@@ -21,12 +21,18 @@ class Mod:
     enabled: bool = True
     datatype: str = 'mod'
     target: str = 'mods'
-    date: datetime = field(default_factory=lambda: datetime.utcnow())
+    installdate: datetime = field(default_factory=lambda: datetime.utcnow())
     source: Path = Path()
     size: int = 0
+    md5hash: str = ''
+
     version: str = ''
     category: str = ''
-    md5hash: str = ''
+    summary: str = ''
+    modid: int = -1
+    fileid: int = -1
+    uploaddate: datetime = field(default_factory=lambda: datetime.fromtimestamp(0))
+    uploadname: str = ''
 
     files: List[BinFile] = field(default_factory=list)
     contents: List[ContentFile] = field(default_factory=list)

@@ -5,6 +5,7 @@ from datetime import datetime
 import asyncio
 
 from loguru import logger
+import dateparser
 
 from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
@@ -23,6 +24,8 @@ from w3modmanager.core.errors import ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.domain.web.nexus import HTTPError, NoAPIKeyError, \
+    getModInformation, getCategoryName
 from w3modmanager.ui.graphical.modlistmodel import ModListModel
 
 
@@ -348,14 +351,24 @@ class ModList(QTableView):
         archive = path.is_file()
         source = None
         md5hash = ''
+        details = None
+        detailsrequest = None
+
         if not installtime:
             installtime = datetime.utcnow()
         try:
             if archive:
-                logger.bind(path=str(path), dots=True).debug('Unpacking archive')
+                # unpack archive, set source and request details
                 md5hash = getMD5Hash(path)
                 source = path
-                path = await extractMod(path)
+                settings = QSettings()
+                if settings.value('nexusGetInfo', 'False') == 'True':
+                    logger.bind(path=str(path), dots=True).debug('Requesting details for archive')
+                    detailsrequest = asyncio.create_task(getModInformation(md5hash))
+                logger.bind(path=str(path), dots=True).debug('Unpacking archive')
+                path = await extractMod(source)
+
+            # validate and read mod
             valid, exhausted = containsValidMod(path, searchlimit=8)
             if not valid:
                 if not exhausted and self.showContinueSearchDialog(searchlimit=8):
@@ -366,10 +379,49 @@ class ModList(QTableView):
                 else:
                     raise InvalidPathError(path, 'Invalid mod')
             mods = Mod.fromDirectory(path, searchCommonRoot=not archive)
+
+            # wait for details response if requested
+            if detailsrequest:
+                try:
+                    details = await detailsrequest
+                except HTTPError:
+                    pass
+                except NoAPIKeyError:
+                    pass
+
+            # update mod details and add mods to the model
             for mod in mods:
                 mod.md5hash = md5hash
                 if source:
+                    # set source if it differs from the scan directory, e.g. an archive
                     mod.source = source
+                if details:
+                    # set additional details if requested and available
+                    try:
+                        package = str(details[0]['mod']['name'])
+                        summary = str(details[0]['mod']['summary'])
+                        modid = int(details[0]['mod']['mod_id'])
+                        category = int(details[0]['mod']['category_id'])
+                        version = str(details[0]['file_details']['version'])
+                        fileid = int(details[0]['file_details']['file_id'])
+                        uploadname = str(details[0]['file_details']['name'])
+                        uploadtime = str(details[0]['file_details']['uploaded_time'])
+                        mod.package = package
+                        mod.summary = summary
+                        mod.modid = modid
+                        mod.category = getCategoryName(category)
+                        mod.version = version
+                        mod.fileid = fileid
+                        mod.uploadname = uploadname
+                        uploaddate = dateparser.parse(uploadtime)
+                        if uploaddate:
+                            mod.uploaddate = uploaddate
+                        else:
+                            logger.bind(name=mod.filename).debug(
+                                f'Could not parse date {uploadtime} in mod information response')
+                    except KeyError as e:
+                        logger.bind(name=mod.filename).exception(
+                            f'Could not find key "{str(e)}" in mod information response')
                 try:
                     # TODO: incomplete: check if mod is installed, ask if replace
                     await self.modmodel.add(mod)
@@ -377,6 +429,7 @@ class ModList(QTableView):
                 except ModExistsError:
                     logger.bind(path=mod.source, name=mod.filename).error(f'Mod exists')
                     errors += 1
+
         except InvalidPathError as e:
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
