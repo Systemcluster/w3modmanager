@@ -139,9 +139,13 @@ def extractArchive(archive: Path, target: Path) -> None:
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))
     # TODO: incomplete: check if target works if spaces are in path
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    CREATE_NO_WINDOW = 0x08000000
     result: subprocess.CompletedProcess = subprocess.run(  # noqa
         [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        creationflags=CREATE_NO_WINDOW, startupinfo=si
     )
     if result.returncode != 0:
         raise InvalidPathError(

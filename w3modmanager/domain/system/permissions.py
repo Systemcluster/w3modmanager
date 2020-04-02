@@ -60,13 +60,18 @@ def setWritePermissions(path: Path) -> bool:
         # add modify access permissions for the current user
         # the indirection through powershell allows access through the uac screen
         user = win32api.GetUserName()
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        CREATE_NO_WINDOW = 0x08000000
         result = subprocess.run([  # noqa
             f'{str(Path(powershell).resolve(strict=True))}', '-Command',
             f'Start-Process \
                 -FilePath "{str(Path(icacls).resolve(strict=True))}" \
                 -ArgumentList \'"{str(path.resolve(strict=True))}" "/grant" "{user}:(OI)(CI)M" "/T"\' \
                 -Verb RunAs -WindowStyle Hidden'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=CREATE_NO_WINDOW, startupinfo=si)
         return result.returncode == 0
     except Exception as e:
         logger.exception(str(e))
