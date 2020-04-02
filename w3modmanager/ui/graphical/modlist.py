@@ -102,6 +102,7 @@ class ModList(QTableView):
         self.setSortingEnabled(True)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAcceptDrops(True)
+        self.setEditTriggers(QTableView.EditKeyPressed | QTableView.DoubleClicked)
 
         self.setStyleSheet('''
             QTableView {
