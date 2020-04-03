@@ -197,6 +197,13 @@ def main(gamePath: Optional[str] = None,
         window = MainWindow(model)
         app.setActiveWindow(window)
 
+        def show_exception_hook(exctype, value, tb) -> None:  # noqa
+            nonlocal window
+            MainWindow.showCritcalErrorDialog(window, value, ''.join(
+                traceback.format_exception(exctype, value, tb))).exec_()
+            exception_hook(exctype, value, tb)
+        sys.excepthook = show_exception_hook
+
         with eventloop:
             sys.exit(eventloop.run_forever())
 

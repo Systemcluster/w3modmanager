@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
         messagebox.open()
         return messagebox
 
-    def showCritcalErrorDialog(self: Any, error: str) -> QMessageBox:
+    def showCritcalErrorDialog(self: Any, error: str = '', details: str = '') -> QMessageBox:
         import traceback
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Critical Error' if self else getTitleString('Critical Error'))
@@ -329,7 +329,7 @@ class MainWindow(QMainWindow):
             </small></p>
             ''')
         if error:
-            messagebox.setDetailedText(traceback.format_exc())
+            messagebox.setDetailedText(details if details else traceback.format_exc())
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
