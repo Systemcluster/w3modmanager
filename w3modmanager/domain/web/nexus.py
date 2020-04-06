@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import w3modmanager
+from w3modmanager.util.util import isValidNexusModsUrl, normalizeUrl
 
-from typing import Any, Optional
+from typing import Optional
+from urllib.parse import urlsplit
 import platform
+import re
 
-from httpx import AsyncClient, HTTPError, Response
+from httpx import AsyncClient, HTTPError, Response, Request
 from qtpy.QtCore import QSettings
 from asyncqt import asyncClose  # noqa
 from loguru import logger
@@ -19,11 +22,47 @@ __session: Optional[AsyncClient] = None
 
 
 class RequestError(HTTPError):
-    pass
+    def __init__(self, kind: str, request: Request = None, response: Response = None) -> None:
+        super().__init__(request=request, response=response)
+        self.kind = kind
+
+    def __str__(self) -> str:
+        return f'{self.kind}'
 
 
-class NoAPIKeyError(Exception):
-    pass
+class ResponseError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class UnauthorizedError(ResponseError):
+    def __init__(self, message: str = 'Unauthorized') -> None:
+        super().__init__(message)
+
+
+class NoAPIKeyError(UnauthorizedError):
+    def __init__(self, message: str = 'No Nexus Mods API Key configured') -> None:
+        super().__init__(message)
+
+
+class NoPremiumMembershipException(UnauthorizedError):
+    def __init__(self, message: str = 'Nexus Mods premium membership required') -> None:
+        super().__init__(message)
+
+
+class RequestLimitReachedError(ResponseError):
+    def __init__(self, message: str = 'Request limit reached') -> None:
+        super().__init__(message)
+
+
+class NotFoundError(ResponseError):
+    def __init__(self, message: str = 'Not found') -> None:
+        super().__init__(message)
+
+
+class ResponseContentError(ResponseError):
+    def __init__(self, message: str = 'Wrong response content') -> None:
+        super().__init__(message)
 
 
 def getSession() -> AsyncClient:
@@ -38,29 +77,48 @@ def getSession() -> AsyncClient:
     return __session
 
 
-async def getUserInformation(apikey: str) -> Any:
+def getModId(url: str) -> int:
+    if not isValidNexusModsUrl(url):
+        return 0
+    url = normalizeUrl(url)
+    try:
+        parse = urlsplit(url, 'https')
+    except ValueError:
+        return 0
+    match = re.match(r'^/witcher3/mods/([0-9]+)', parse.path)
+    if not match or not match.group(1) or not match.group(1).isdigit():
+        return 0
+    return int(match.group(1))
+
+
+async def getUserInformation(apikey: str) -> dict:
     if not apikey:
-        return None
+        raise NoAPIKeyError()
     try:
         user: Response = await getSession().get(
             f'{__userUrl}/validate.json', headers={'apikey': apikey.encode('ascii', 'backslashreplace')},
             timeout=5.0
         )
     except HTTPError as e:
-        logger.warning(f'Could not get user information: {type(e).__name__}')
-        raise RequestError(request=e.request, response=e.response)
+        raise RequestError(request=e.request, response=e.response, kind=type(e).__name__)
     if user.status_code == 429:
-        logger.warning(f'Could not get user information: Request limit reached')
+        raise RequestLimitReachedError()
+    if user.status_code == 404:
+        raise NotFoundError()
+    if user.status_code == 401:
+        raise UnauthorizedError()
     if user.status_code != 200:
-        return None
-    return user.json()
+        raise ResponseError(f'Unexpected response: Status {user.status_code}')
+    json = user.json()
+    if not isinstance(json, dict):
+        raise ResponseContentError(f'Unexpected response: expected dict, got {type(json).__name__}')
+    return json
 
 
-async def getModInformation(md5hash: str) -> Any:
+async def getModInformation(md5hash: str) -> list:
     settings = QSettings()
     apikey = settings.value('nexusAPIKey', '')
     if not apikey:
-        logger.warning(f'Could not get mod information: No API Key')
         raise NoAPIKeyError()
     try:
         info: Response = await getSession().get(
@@ -69,15 +127,78 @@ async def getModInformation(md5hash: str) -> Any:
             timeout=5.0
         )
     except HTTPError as e:
-        logger.warning(f'Could not get mod information: {type(e).__name__}')
-        raise RequestError(request=e.request, response=e.response)
+        raise RequestError(request=e.request, response=e.response, kind=type(e).__name__)
     if info.status_code == 429:
-        logger.warning(f'Could not get mod information: Request limit reached')
+        raise RequestLimitReachedError()
     if info.status_code == 404:
-        logger.warning(f'Could not get mod information: No file with hash {md5hash} found')
+        raise NotFoundError(f'No file with hash {md5hash} found')
+    if info.status_code == 401:
+        raise UnauthorizedError()
     if info.status_code != 200:
-        return None
-    return info.json()
+        raise ResponseError(f'Unexpected response: Status {info.status_code}')
+    json = info.json()
+    if not isinstance(json, list):
+        raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
+    return json
+
+
+async def getModFiles(modid: int) -> dict:
+    settings = QSettings()
+    apikey = settings.value('nexusAPIKey', '')
+    if not apikey:
+        raise NoAPIKeyError()
+    try:
+        files: Response = await getSession().get(
+            f'{__modsUrl}/{modid}/files.json',
+            headers={'apikey': apikey.encode('ascii', 'backslashreplace')},
+            timeout=5.0
+        )
+    except HTTPError as e:
+        raise RequestError(request=e.request, response=e.response, kind=type(e).__name__)
+    if files.status_code == 429:
+        raise RequestLimitReachedError()
+    if files.status_code == 404:
+        raise NotFoundError(f'No mod with id {modid} found')
+    if files.status_code == 403:
+        raise NoPremiumMembershipException()
+    if files.status_code == 401:
+        raise UnauthorizedError()
+    if files.status_code != 200:
+        raise ResponseError(f'Unexpected response: Status {files.status_code}')
+    json = files.json()
+    if not isinstance(json, dict):
+        raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
+    return json
+
+
+async def getModFileUrls(modid: int, fileid: int) -> list:
+    settings = QSettings()
+    apikey = settings.value('nexusAPIKey', '')
+    if not apikey:
+        raise NoAPIKeyError()
+    try:
+        files: Response = await getSession().get(
+            f'{__modsUrl}/{modid}/files/{fileid}/download_link.json',
+            headers={'apikey': apikey.encode('ascii', 'backslashreplace')},
+            timeout=5.0
+        )
+    except HTTPError as e:
+        raise RequestError(request=e.request, response=e.response, kind=type(e).__name__)
+    if files.status_code == 429:
+        raise RequestLimitReachedError()
+    if files.status_code == 404:
+        raise NotFoundError(f'No mod with id {modid} found')
+    if files.status_code == 403:
+        raise NoPremiumMembershipException()
+    if files.status_code == 401:
+        raise UnauthorizedError()
+    if files.status_code != 200:
+        raise ResponseError(f'Unexpected response: Status {files.status_code}')
+    json = files.json()
+    if not isinstance(json, list):
+        raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
+    return json
+
 
 
 def getCategoryName(categoryid: int) -> str:

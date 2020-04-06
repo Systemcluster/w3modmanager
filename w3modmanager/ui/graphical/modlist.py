@@ -24,8 +24,7 @@ from w3modmanager.core.errors import ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.web.nexus import HTTPError, NoAPIKeyError, \
-    getModInformation, getCategoryName
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, getCategoryName, getModInformation
 from w3modmanager.ui.graphical.modlistmodel import ModListModel
 
 
@@ -163,7 +162,6 @@ class ModList(QTableView):
                 logger.exception(f'could not restore sort order: {e}')
         self.horizontalHeader().sortIndicatorChanged.connect(self.sortByColumn)
 
-        QApplication.clipboard().dataChanged.connect(self.copyBufferChanged)
         self.doubleClicked.connect(self.doubleClickEvent)
         model.updateCallbacks.append(self.modelUpdateEvent)
 
@@ -269,11 +267,6 @@ class ModList(QTableView):
         elif event.matches(QKeySequence.Delete):
             asyncio.create_task(self.deleteMods())
         super().keyPressEvent(event)
-
-    @asyncSlot()
-    async def copyBufferChanged(self) -> None:
-        if QSettings().value('nexusCheckClipboard', 'False') == 'True':
-            await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines(), local=False)
 
     @asyncSlot()
     async def pasteEvent(self) -> None:
@@ -385,10 +378,8 @@ class ModList(QTableView):
             if detailsrequest:
                 try:
                     details = await detailsrequest
-                except HTTPError:
-                    pass
-                except NoAPIKeyError:
-                    pass
+                except (RequestError, ResponseError) as e:
+                    logger.warning(f'Could not get information for {source.name if source else path.name}: {e}')
 
             # update mod details and add mods to the model
             for mod in mods:

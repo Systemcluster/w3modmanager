@@ -4,13 +4,13 @@ from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.ui.graphical.mainwidget import MainWidget
 from w3modmanager.ui.graphical.settingswindow import SettingsWindow
+from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 
 from typing import Any
 
 from qtpy.QtCore import QSize, QSettings, Qt
 from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
-    QFileDialog, QInputDialog, QDialogButtonBox, QSizePolicy, \
-    QMessageBox, QMenu
+    QFileDialog, QMessageBox, QMenu, QApplication
 from qtpy.QtGui import QIcon, QCloseEvent
 
 from asyncqt import asyncSlot  # noqa
@@ -37,11 +37,23 @@ class MainWindow(QMainWindow):
 
         # TODO: enhancement: import settings from the witcher 3 mod manager
 
+        QApplication.clipboard().dataChanged.connect(self.copyBufferChangedEvent)
+
         self.mainwidget = MainWidget(self, model)
         self.setCentralWidget(self.mainwidget)
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def copyBufferChangedEvent(self) -> None:
+        if QSettings().value('nexusCheckClipboard', 'False') == 'True':
+            clipboard = QApplication.clipboard().text().splitlines()
+            if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
+                # TODO: enhancement: only allow one download window at once
+                self.show()
+                self.setWindowState(Qt.WindowState.WindowActive)
+                self.activateWindow()
+                self.showDownloadModDialog()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         settings = QSettings()
@@ -148,29 +160,18 @@ class MainWindow(QMainWindow):
         ))
         return dialog
 
-    def showDownloadModDialog(self) -> QInputDialog:
-        dialog: QInputDialog = QInputDialog(self)
-        dialog.setWindowTitle('Download Mod')
-        dialog.setLabelText('''
-            <p>Enter a Nexus Mods mod page URL:</p><p>
-            <font color="#888">https://www.nexusmods.com/witcher3/mods/...</font>
-            </p>
-            ''')
-        dialog.setInputMode(QInputDialog.TextInput)
-        dialog.setOption(QInputDialog.NoButtons, True)
-        dialog.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-
-        buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        dialog.layout().addWidget(buttonbox)
-        buttonbox.accepted.connect(dialog.accept)
-        buttonbox.rejected.connect(dialog.reject)
-        ok = buttonbox.button(QDialogButtonBox.Ok)
-        ok.setDisabled(True)
-        dialog.textValueChanged.connect(lambda x: ok.setDisabled(not isValidNexusModsUrl(x)))
-
+    def showDownloadModDialog(self) -> DownloadWindow:
+        clipboard = QApplication.clipboard().text().splitlines()
+        if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
+            url = clipboard[0]
+        else:
+            url = ''
+        dialog = DownloadWindow(self, url)
         dialog.setModal(True)
         dialog.open()
-        # TODO: incomplete: show file selection etc.
+        dialog.accepted.connect(lambda urls: asyncio.create_task(
+            self.mainwidget.modlist.checkInstallFromURLs(urls, local=False)
+        ))
         return dialog
 
     def showSettingsDialog(self: Any, firstStart: bool = False) -> SettingsWindow:

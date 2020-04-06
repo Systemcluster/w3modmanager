@@ -1,6 +1,6 @@
 from w3modmanager.util.util import getTitleString, debounce
 from w3modmanager.domain.mod import fetcher
-from w3modmanager.domain.web.nexus import RequestError, getUserInformation
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, UnauthorizedError, getUserInformation
 from w3modmanager.core.model import *
 
 from pathlib import Path
@@ -286,8 +286,8 @@ class SettingsWindow(QDialog):
         self.nexusGetInfo.setDisabled(True)
         self.nexusCheckUpdates.setDisabled(True)
         self.nexusCheckClipboard.setDisabled(True)
+        self.nexusAPIKey.setStyleSheet('')
         if not text:
-            self.nexusAPIKey.setStyleSheet('')
             self.nexusAPIKeyInfo.setText('''
                 <font color="#888">The API Key is used to check for mod updates, \
                 to get mod details and to download mods. \
@@ -299,21 +299,7 @@ class SettingsWindow(QDialog):
         self.nexusAPIKeyInfo.setText('🌐')
         try:
             apiUser = await getUserInformation(text)
-        except RequestError as e:
-            self.nexusAPIKey.setStyleSheet('''
-                *{
-                    border: 1px solid #B22222;
-                    padding: 1px 0px;
-                }
-                ''')
-            error = f'Connection error ({e.response.status_code})' if e.response else 'Connection error'
-            self.nexusAPIKeyInfo.setText(f'''
-                <font color="#888">Could not validate API Key: {error}.</font>
-                ''')
-            self.validNexusAPIKey = False
-            self.updateSaveButton()
-            return False
-        if not apiUser:
+        except UnauthorizedError:
             self.nexusAPIKey.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
@@ -327,15 +313,26 @@ class SettingsWindow(QDialog):
             self.validNexusAPIKey = False
             self.updateSaveButton()
             return False
-        else:
-            self.nexusAPIKey.setStyleSheet('')
-            self.nexusAPIKeyInfo.setText(f'<font color="#888">Valid API Key for {apiUser["name"]}</font>')
-            self.validNexusAPIKey = True
-            self.nexusGetInfo.setDisabled(False)
-            self.nexusCheckUpdates.setDisabled(False)
-            self.nexusCheckClipboard.setDisabled(False)
+        except (RequestError, ResponseError) as e:
+            self.nexusAPIKey.setStyleSheet('''
+                *{
+                    border: 1px solid #B22222;
+                    padding: 1px 0px;
+                }
+                ''')
+            self.nexusAPIKeyInfo.setText(f'''
+                <font color="#888">Could not validate API Key: {e}.</font>
+                ''')
+            self.validNexusAPIKey = False
             self.updateSaveButton()
-            return True
+            return False
+        self.nexusAPIKeyInfo.setText(f'<font color="#888">Valid API Key for {apiUser["name"]}!</font>')
+        self.validNexusAPIKey = True
+        self.nexusGetInfo.setDisabled(False)
+        self.nexusCheckUpdates.setDisabled(False)
+        self.nexusCheckClipboard.setDisabled(False)
+        self.updateSaveButton()
+        return True
 
     def updateSaveButton(self) -> None:
         # TODO: release: disable saving invalid settings
