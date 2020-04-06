@@ -1,14 +1,15 @@
 from w3modmanager.core.model import Model
 from w3modmanager.ui.graphical.modlist import ModList
-from w3modmanager.util.util import getRuntimePath
+from w3modmanager.util.util import getRuntimePath, isValidNexusModsUrl, isValidModDownloadUrl, isValidFileUrl
 
 import html
 from typing import Any
+import asyncio
 
 from loguru import logger
 from qtpy.QtCore import QSettings, Qt
 from qtpy.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
-    QLabel, QStackedWidget, QLineEdit
+    QLabel, QStackedWidget, QLineEdit, QApplication
 from qtpy.QtGui import QKeyEvent, QKeySequence, QIcon
 
 
@@ -102,12 +103,23 @@ class MainWidget(QWidget):
         model.updateCallbacks.append(self.modelUpdateEvent)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.matches(QKeySequence.Find):
-            self.searchbar.setFocus()
         if event.key() == Qt.Key_Escape:
             self.modlist.setFocus()
             self.searchbar.setText('')
+        elif event.matches(QKeySequence.Find):
+            self.searchbar.setFocus()
+        elif event.matches(QKeySequence.Paste):
+            self.pasteEvent()
         super().keyPressEvent(event)
+
+    def pasteEvent(self) -> None:
+        clipboard = QApplication.clipboard().text().splitlines()
+        if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
+            self.parentWidget().showDownloadModDialog()
+        else:
+            urls = [url for url in QApplication.clipboard().text().splitlines() if len(str(url.strip()))]
+            if all(isValidModDownloadUrl(url) or isValidFileUrl(url) for url in urls):
+                asyncio.create_task(self.modlist.checkInstallFromURLs(urls))
 
     def modelUpdateEvent(self, model: Model) -> None:
         if len(model) > 0:

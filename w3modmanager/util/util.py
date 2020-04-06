@@ -115,9 +115,22 @@ def isValidNexusModsUrl(url: str) -> bool:
         and bool(re.match(r'^/witcher3/mods/[0-9]+', parse.path))
 
 
+def isValidModDownloadUrl(url: str) -> bool:
+    url = normalizeUrl(url)
+    try:
+        parse = urlsplit(url, 'https')
+    except ValueError:
+        return False
+    return parse.scheme in ['http', 'https', ''] \
+        and Path(parse.path).suffix.lower() in getSupportedExtensions()
+
+
 def isValidFileUrl(url: str) -> bool:
     url = normalizeUrl(url)
-    parse = urlparse(url)
+    try:
+        parse = urlparse(url)
+    except ValueError:
+        return False
     return parse.scheme in ['file']
 
 

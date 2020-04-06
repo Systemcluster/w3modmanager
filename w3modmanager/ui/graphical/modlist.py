@@ -1,5 +1,5 @@
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from typing import Union, List, Tuple, Optional
 from datetime import datetime
 import asyncio
@@ -17,14 +17,12 @@ from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
 from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
 
-from asyncqt import asyncSlot  # noqa
-
 from w3modmanager.core.model import Model
 from w3modmanager.core.errors import ModExistsError, ModNotFoundError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.web.nexus import RequestError, ResponseError, getCategoryName, getModInformation
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, getCategoryName, getModInformation, downloadFile
 from w3modmanager.ui.graphical.modlistmodel import ModListModel
 
 
@@ -262,15 +260,9 @@ class ModList(QTableView):
         self.setFocus()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.matches(QKeySequence.Paste):
-            asyncio.create_task(self.pasteEvent())
-        elif event.matches(QKeySequence.Delete):
+        if event.matches(QKeySequence.Delete):
             asyncio.create_task(self.deleteMods())
         super().keyPressEvent(event)
-
-    @asyncSlot()
-    async def pasteEvent(self) -> None:
-        await self.checkInstallFromURLs(QApplication.clipboard().text().splitlines())
 
     def setFilter(self, search: str) -> None:
         self.filtermodel.setFilterFixedString(search)
@@ -280,6 +272,8 @@ class ModList(QTableView):
         installed = 0
         errors = 0
         installtime = datetime.utcnow()
+        # remove duplicate paths
+        paths = list(set(paths))
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
         try:
             results = await asyncio.gather(
@@ -316,10 +310,10 @@ class ModList(QTableView):
             installtime = datetime.utcnow()
         if isinstance(path, QUrl):
             path = path.toString()
-        if web and isValidNexusModsUrl(path):
+        if web and isValidModDownloadUrl(path):
             self.setDisabled(True)
             logger.bind(dots=True, path=path).info(f'Installing mods from')
-            i, e = await self.installFromNexusmods(path, installtime)
+            i, e = await self.installFromFileDownload(path, installtime)
             installed += i
             errors += e
         elif local and isValidFileUrl(path):
@@ -329,13 +323,37 @@ class ModList(QTableView):
             i, e = await self.installFromFile(path, installtime)
             installed += i
             errors += e
+        else:
+            logger.bind(path=path).error('Could not install mods from')
         return installed, errors
 
-    async def installFromNexusmods(self, url: str, installtime: Optional[datetime] = None) -> Tuple[int, int]:
-        # TODO: incomplete: ask if install and which files
+    async def installFromFileDownload(self, url: str, installtime: Optional[datetime] = None) -> Tuple[int, int]:
+        installed = 0
+        errors = 0
         if not installtime:
             installtime = datetime.utcnow()
-        return 0, 0
+        try:
+            target = Path(urlparse(url).path)
+            target = Path(tempfile.gettempdir()).joinpath(
+                'w3modmanager/download').joinpath(f'{unquote(target.name)}')
+        except ValueError:
+            logger.bind(name=url).exception('Wrong request URL')
+            return 0, 1
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            logger.bind(name=url).info('Starting to download file')
+            await downloadFile(url, target)
+            installed, errors = await self.installFromFile(target, installtime)
+        except (RequestError, ResponseError) as e:
+            logger.bind(name=url).exception(f'Failed to download file: {e}')
+            return 0, 1
+        except Exception as e:
+            logger.exception(str(e))
+            return 0, 1
+        finally:
+            if target.is_file():
+                target.unlink()
+        return installed, errors
 
     async def installFromFile(self, path: Path, installtime: Optional[datetime] = None) -> Tuple[int, int]:
         # TODO: incomplete: never install mods from inside the installation directory
@@ -436,6 +454,8 @@ class ModList(QTableView):
             logger.exception(str(e))
             errors += 1
         finally:
+            if detailsrequest and not detailsrequest.done():
+                detailsrequest.cancel()
             if archive and not path == originalpath:
                 try:
                     util.removeDirectory(path)

@@ -7,8 +7,11 @@ from typing import Optional
 from urllib.parse import urlsplit
 import platform
 import re
+from pathlib import Path
+import asyncio
+from functools import partial
 
-from httpx import AsyncClient, HTTPError, Response, Request
+from httpx import AsyncClient, HTTPError, Response, Request, stream
 from qtpy.QtCore import QSettings
 from asyncqt import asyncClose  # noqa
 from loguru import logger
@@ -199,6 +202,41 @@ async def getModFileUrls(modid: int, fileid: int) -> list:
         raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
     return json
 
+
+async def downloadFile(url: str, target: Path) -> None:
+    settings = QSettings()
+    apikey = settings.value('nexusAPIKey', '')
+    if not apikey:
+        raise NoAPIKeyError()
+    await asyncio.get_running_loop().run_in_executor(
+        None,
+        partial(downloadFileSync, url, target, apikey)
+    )
+
+
+def downloadFileSync(url: str, target: Path, apikey: str) -> None:
+    try:
+        with target.open('wb') as file:
+            with stream(
+                'GET',
+                url,
+                headers={'apikey': apikey.encode('ascii', 'backslashreplace')},
+                timeout=250.0
+            ) as download:
+                if download.status_code == 429:
+                    raise RequestLimitReachedError()
+                if download.status_code == 404:
+                    raise NotFoundError(f'No file with URL {url} found')
+                if download.status_code == 403:
+                    raise NoPremiumMembershipException()
+                if download.status_code == 401:
+                    raise UnauthorizedError()
+                if download.status_code != 200:
+                    raise ResponseError(f'Unexpected response: Status {download.status_code}')
+                for data in download.iter_bytes():
+                    file.write(data)
+    except HTTPError as e:
+        raise RequestError(request=e.request, response=e.response, kind=type(e).__name__)
 
 
 def getCategoryName(categoryid: int) -> str:
