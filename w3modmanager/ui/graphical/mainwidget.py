@@ -167,9 +167,10 @@ class MainWidget(QWidget):
             if level in ['debug', 'trace']:
                 message = f'<font color="#aaa">{message}</font>'
                 path = f'<font color="#aaa">{path}</font>' if path else ''
+                d = f'<font color="#aaa">{d}</font>' if d else ''
 
             message = f'<font color="#aaa">{record["time"].strftime("%Y-%m-%d %H:%M:%S")}</font> {message}'
-            self.output.append(f'{n}{message.strip()} {name}{path}{d}')
+            self.output.append(f'{n}{message.strip()}{" " if name or path else ""}{name}{path}{d}')
         else:
             self.output.append(f'')
 
