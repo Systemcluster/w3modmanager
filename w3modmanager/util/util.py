@@ -169,6 +169,7 @@ async def extractMod(archive: Path) -> Path:
 def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:
     """Debounce a functions execution by {ms} milliseconds"""
     def decorator(fun: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
+
         @wraps(fun)
         def debounced(*args: Any, **kwargs: Any) -> Awaitable:
             def deferred() -> None:
@@ -193,5 +194,15 @@ def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., A
                 pass
             debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)  # type: ignore
             return debounced.timer  # type: ignore
+
+        def cancel() -> bool:
+            try:
+                debounced.timer.cancel()  # type: ignore
+                debounced.task.cancel()  # type: ignore
+                return True
+            except AttributeError:
+                return False
+
+        debounced.cancel = cancel  # type: ignore
         return debounced
     return decorator

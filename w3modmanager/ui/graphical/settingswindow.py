@@ -175,6 +175,7 @@ class SettingsWindow(QDialog):
         self.validateApiKey(self.nexusAPIKey.text())
         self.updateSaveButton()
 
+        self.finished.connect(lambda: self.validateApiKey.cancel())  # type: ignore
 
     def saveEvent(self) -> None:
         settings = QSettings()
