@@ -89,9 +89,12 @@ class Mod:
                     name = formatModName(check.name, 'mod')
                     logger.bind(name=name, path=check).debug('Detected MOD')
                     size = 0
-                    for p in check.glob('**/*'):
-                        size += p.stat().st_size
                     files, settings, inputs = fetchBinFiles(check)
+                    contents = fetchContentFiles(check)
+                    for _file in files:
+                        size += check.joinpath(_file.source).stat().st_size
+                    for _content in contents:
+                        size += check.joinpath(_content.source).stat().st_size
                     mods.append(cls(
                         package,
                         filename=name,
@@ -103,7 +106,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetchContentFiles(check)
+                        contents=contents
                     ))
                     continue
                 # fetch dlc dirs
@@ -111,9 +114,12 @@ class Mod:
                     name = formatDlcName(check.name)
                     logger.bind(name=name, path=check).debug('Detected DLC')
                     size = 0
-                    for p in check.glob('**/*'):
-                        size += p.stat().st_size
                     files, settings, inputs = fetchBinFiles(check)
+                    contents = fetchContentFiles(check)
+                    for _file in files:
+                        size += check.joinpath(_file.source).stat().st_size
+                    for _content in contents:
+                        size += check.joinpath(_content.source).stat().st_size
                     mods.append(cls(
                         package,
                         filename=name,
@@ -125,7 +131,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetchContentFiles(check)
+                        contents=contents
                     ))
                     continue
                 # fetch unspecified mod or doc dirs
@@ -133,9 +139,12 @@ class Mod:
                     name = formatModName(check.name, 'mod')
                     logger.bind(name=name, path=check).debug('Detected MOD')
                     size = 0
-                    for p in check.glob('**/*'):
-                        size += p.stat().st_size
                     files, settings, inputs = fetchBinFiles(check)
+                    contents = fetchContentFiles(check)
+                    for _file in files:
+                        size += check.joinpath(_file.source).stat().st_size
+                    for _content in contents:
+                        size += check.joinpath(_content.source).stat().st_size
                     mods.append(cls(
                         package,
                         filename=name,
@@ -147,7 +156,7 @@ class Mod:
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=fetchContentFiles(check)
+                        contents=contents
                     ))
                     continue
                 dirs += sorted(d for d in check.iterdir() if d.is_dir())
