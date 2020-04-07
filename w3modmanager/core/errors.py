@@ -26,7 +26,9 @@ class UnexpectedInputError(IOError):
 
 
 class ModelError(IOError):
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, message: str = '') -> None:
+        if message:
+            self.message = message
         super().__init__(f'{self.message}: \'{str(path.resolve())}\'')
         self.path = path
     message = 'Model Error'
@@ -46,6 +48,14 @@ class InvalidConfigPath(ModelError):
 
 class InvalidCachePath(ModelError):
     message = 'Invalid cache path'
+
+
+class InvalidModsPath(ModelError):
+    message = 'Invalid mods path'
+
+
+class InvalidSourcePath(ModelError):
+    message = 'Invalid source path'
 
 
 #

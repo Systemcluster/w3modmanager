@@ -1,7 +1,7 @@
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce
 from w3modmanager.core.errors import InvalidGamePath, InvalidConfigPath, InvalidCachePath, \
-    OtherInstanceError, ModExistsError, ModNotFoundError
+    InvalidModsPath, InvalidSourcePath, OtherInstanceError, ModExistsError, ModNotFoundError
 
 from loguru import logger
 
@@ -43,9 +43,16 @@ class Model:
         if not _cachePath:
             raise InvalidCachePath(cachePath)
 
+        modsPath = _gamePath.joinpath('Mods')
+        _modsPath = verifyModsPath(modsPath)
+
+        if not _modsPath:
+            raise InvalidModsPath(modsPath)
+
         self._gamePath: Path = _gamePath
         self._configPath: Path = _configPath
         self._cachePath: Path = _cachePath
+        self._modsPath: Path = _modsPath
 
         if not ignorelock:
             self._lock = InterProcessLock(self.lockfile)
@@ -62,6 +69,7 @@ class Model:
         logger.debug(f'Game path: {self._gamePath}')
         logger.debug(f'Config path: {self._configPath}')
         logger.debug(f'Cache path: {self._cachePath}')
+        logger.debug(f'Mods path: {self._modsPath}')
 
         self._modList: Dict[Tuple[str, str], Mod] = {}
 
@@ -90,6 +98,8 @@ class Model:
 
     async def add(self, mod: Mod) -> None:
         # TODO: incomplete: always override compilation trigger mod
+        if self.modspath in [mod.source, *mod.source.parents]:
+            raise InvalidSourcePath(mod.source, 'Invalid mod source: Mods cannot be installed from the mods directory')
         async with self.updateLock:
             if (mod.filename, mod.target) in self._modList:
                 raise ModExistsError(mod.filename, mod.target)
@@ -185,6 +195,10 @@ class Model:
     def cachepath(self) -> Path:
         return self._cachePath
 
+    @property
+    def modspath(self) -> Path:
+        return self._modsPath
+
 
 def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
     if not path:
@@ -220,6 +234,19 @@ def verifyConfigPath(path: Optional[Path]) -> Optional[Path]:
 
 
 def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
+    try:
+        if not path or path.exists() and not path.is_dir():
+            return None
+        if not path.exists():
+            path.mkdir(parents=True)
+        return path.resolve()
+    except OSError:
+        # check for errors here since this method is used with user input
+        logger.bind(path=path).debug('Illegal path')
+        return None
+
+
+def verifyModsPath(path: Optional[Path]) -> Optional[Path]:
     try:
         if not path or path.exists() and not path.is_dir():
             return None

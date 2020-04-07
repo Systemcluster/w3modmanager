@@ -18,7 +18,7 @@ from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPain
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
 
 from w3modmanager.core.model import Model
-from w3modmanager.core.errors import ModExistsError, ModNotFoundError
+from w3modmanager.core.errors import ModExistsError, ModNotFoundError, ModelError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
@@ -356,7 +356,6 @@ class ModList(QTableView):
         return installed, errors
 
     async def installFromFile(self, path: Path, installtime: Optional[datetime] = None) -> Tuple[int, int]:
-        # TODO: incomplete: never install mods from inside the installation directory
         originalpath = path
         installed = 0
         errors = 0
@@ -402,9 +401,6 @@ class ModList(QTableView):
             # update mod details and add mods to the model
             for mod in mods:
                 mod.md5hash = md5hash
-                if source:
-                    # set source if it differs from the scan directory, e.g. an archive
-                    mod.source = source
                 if details:
                     # set additional details if requested and available
                     try:
@@ -437,9 +433,15 @@ class ModList(QTableView):
                     await self.modmodel.add(mod)
                     installed += 1
                 except ModExistsError:
-                    logger.bind(path=mod.source, name=mod.filename).error(f'Mod exists')
+                    logger.bind(path=source if source else mod.source, name=mod.filename).error(f'Mod exists')
                     errors += 1
+                if source:
+                    # set source if it differs from the scan directory, e.g. an archive
+                    mod.source = source
 
+        except ModelError as e:
+            logger.bind(path=e.path).error(e.message)
+            errors += 1
         except InvalidPathError as e:
             # TODO: enhancement: better install error message
             logger.bind(path=e.path).error(e.message)
