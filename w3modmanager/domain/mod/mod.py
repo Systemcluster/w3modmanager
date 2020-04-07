@@ -4,7 +4,7 @@ from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Type
 from pathlib import Path
 
@@ -21,7 +21,7 @@ class Mod:
     enabled: bool = True
     datatype: str = 'mod'
     target: str = 'mods'
-    installdate: datetime = field(default_factory=lambda: datetime.utcnow())
+    installdate: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
     source: Path = Path()
     size: int = 0
     md5hash: str = ''
@@ -31,7 +31,7 @@ class Mod:
     summary: str = ''
     modid: int = -1
     fileid: int = -1
-    uploaddate: datetime = field(default_factory=lambda: datetime.fromtimestamp(0))
+    uploaddate: datetime = field(default_factory=lambda: datetime.fromtimestamp(0, tz=timezone.utc))
     uploadname: str = ''
 
     files: List[BinFile] = field(default_factory=list)

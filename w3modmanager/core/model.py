@@ -8,7 +8,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator
 from fasteners import InterProcessLock
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 
@@ -60,7 +60,7 @@ class Model:
                 raise OtherInstanceError(self.lockfile)
 
         self.updateCallbacks = CallbackList()
-        self.lastUpdate = datetime.utcnow()
+        self.lastUpdate = datetime.now(tz=timezone.utc)
         self.updateLock = asyncio.Lock()
 
         # TODO: enhancement: watch mod directory for changes
@@ -104,55 +104,57 @@ class Model:
             if (mod.filename, mod.target) in self._modList:
                 raise ModExistsError(mod.filename, mod.target)
             self._modList[(mod.filename, mod.target)] = mod
-        self.setLastUpdateTime(datetime.utcnow())
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def replace(self, filename: str, target: str, mod: Mod) -> None:
         # TODO: incomplete: handle possible conflict with existing mods
         async with self.updateLock:
             self._modList[(filename, target)] = mod
-        self.setLastUpdateTime(datetime.utcnow())
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def remove(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
+            target = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+            removeDirectory(target)
             del self._modList[(mod.filename, mod.target)]
-        self.setLastUpdateTime(datetime.utcnow())
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def enable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = True
-        self.setLastUpdateTime(datetime.utcnow())
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def disable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = False
-        self.setLastUpdateTime(datetime.utcnow())
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def setFilename(self, mod: ModelIndexType, filename: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.filename = filename
-        self.setLastUpdateTime(datetime.utcnow(), False)
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPackage(self, mod: ModelIndexType, package: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.package = package
-        self.setLastUpdateTime(datetime.utcnow(), False)
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setCategory(self, mod: ModelIndexType, category: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.category = category
-        self.setLastUpdateTime(datetime.utcnow(), False)
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPriority(self, mod: ModelIndexType, priority: int) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.priority = priority
-        self.setLastUpdateTime(datetime.utcnow(), False)
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
 
     def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks: bool = True) -> None:

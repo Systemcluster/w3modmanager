@@ -230,7 +230,7 @@ class ModListModel(QAbstractTableModel):
                     return 'none'
                 return val
             if col in ('installdate',):
-                return mod[col].strftime('%Y-%m-%d %H:%M:%S')
+                return mod[col].astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S')
             if col in ('size',):
                 val = mod[col]
                 frm = 'b'

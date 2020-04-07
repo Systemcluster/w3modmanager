@@ -192,7 +192,7 @@ class DownloadWindow(QDialog):
                 name = str(file['name'])
                 version = str(file['version'])
                 _uploadtime = dateparser.parse(file['uploaded_time'])
-                uploadtime = _uploadtime.strftime('%Y-%m-%d %H:%M:%S') if _uploadtime else '?'
+                uploadtime = _uploadtime.astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S') if _uploadtime else '?'
                 description = html.unescape(str(file['description']))
                 nameItem = QTableWidgetItem(name)
                 nameItem.setToolTip(name)

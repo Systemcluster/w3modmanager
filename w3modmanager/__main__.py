@@ -74,7 +74,7 @@ sys._excepthook = sys.excepthook  # type: ignore
 
 
 def exception_hook(exctype, value, tb) -> None:  # noqa
-    time = datetime.now().strftime(r'%Y-%m-%d-%H%M%S%z')
+    time = datetime.now(tz=None).strftime('%Y-%m-%d-%H%M%S%z')
     with open(f'crash-{time}.txt', 'w', encoding='utf8') as file:
         file.write(f'{w3modmanager.NAME} crashed.\n\n')
         file.write(f'App version: {w3modmanager.VERSION} ({w3modmanager.VERSION_HASH})\n')

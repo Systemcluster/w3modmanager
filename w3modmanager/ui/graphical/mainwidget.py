@@ -181,7 +181,8 @@ class MainWidget(QWidget):
                 path = f'<font color="#aaa">{path}</font>' if path else ''
                 d = f'<font color="#aaa">{d}</font>' if d else ''
 
-            message = f'<font color="#aaa">{record["time"].strftime("%Y-%m-%d %H:%M:%S")}</font> {message}'
+            time = record['time'].astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S')
+            message = f'<font color="#aaa">{time}</font> {message}'
             self.output.append(f'{n}{message.strip()}{" " if name or path else ""}{name}{path}{d}')
         else:
             self.output.append(f'')

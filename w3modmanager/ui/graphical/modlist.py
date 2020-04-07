@@ -1,7 +1,7 @@
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 from typing import Union, List, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 from loguru import logger
@@ -271,7 +271,7 @@ class ModList(QTableView):
         await self.installLock.acquire()
         installed = 0
         errors = 0
-        installtime = datetime.utcnow()
+        installtime = datetime.now(tz=timezone.utc)
         # remove duplicate paths
         paths = list(set(paths))
         logger.bind(newline=True, output=False).debug('Starting install from URLs')
@@ -307,7 +307,7 @@ class ModList(QTableView):
         installed = 0
         errors = 0
         if not installtime:
-            installtime = datetime.utcnow()
+            installtime = datetime.now(tz=timezone.utc)
         if isinstance(path, QUrl):
             path = path.toString()
         if web and isValidModDownloadUrl(path):
@@ -331,7 +331,7 @@ class ModList(QTableView):
         installed = 0
         errors = 0
         if not installtime:
-            installtime = datetime.utcnow()
+            installtime = datetime.now(tz=timezone.utc)
         try:
             target = Path(urlparse(url).path)
             target = Path(tempfile.gettempdir()).joinpath(
@@ -366,7 +366,7 @@ class ModList(QTableView):
         detailsrequest = None
 
         if not installtime:
-            installtime = datetime.utcnow()
+            installtime = datetime.now(tz=timezone.utc)
         try:
             if archive:
                 # unpack archive, set source and request details
@@ -421,7 +421,7 @@ class ModList(QTableView):
                         mod.uploadname = uploadname
                         uploaddate = dateparser.parse(uploadtime)
                         if uploaddate:
-                            mod.uploaddate = uploaddate
+                            mod.uploaddate = uploaddate.astimezone(tz=timezone.utc)
                         else:
                             logger.bind(name=mod.filename).debug(
                                 f'Could not parse date {uploadtime} in mod information response')
