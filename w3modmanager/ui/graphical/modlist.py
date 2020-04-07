@@ -445,10 +445,10 @@ class ModList(QTableView):
             logger.bind(path=e.path).error(e.message)
             errors += 1
         except FileNotFoundError as e:
-            logger.bind(path=e.filename).error(e.strerror)
+            logger.bind(path=e.filename).error(e.strerror if e.strerror else str(e))
             errors += 1
         except OSError as e:
-            logger.bind(path=e.filename).error(e.strerror)
+            logger.bind(path=e.filename).error(e.strerror if e.strerror else str(e))
             errors += 1
         except Exception as e:
             logger.exception(str(e))

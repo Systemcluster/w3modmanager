@@ -148,12 +148,12 @@ class MainWidget(QWidget):
         extra = record['extra']
         level = record['level'].name.lower()
 
-        name = str(extra['name']) if 'name' in extra else ''
-        path = str(extra['path']) if 'path' in extra else ''
-        dots = bool(extra['dots']) if 'dots' in extra else False
-        newline = bool(extra['newline']) if 'newline' in extra else False
-        output = bool(extra['output']) if 'output' in extra else bool(len(message))
-        modlist = bool(extra['modlist']) if 'modlist' in extra else False
+        name = str(extra['name']) if 'name' in extra and extra['name'] is not None else ''
+        path = str(extra['path']) if 'path' in extra and extra['path'] is not None else ''
+        dots = bool(extra['dots']) if 'dots' in extra and extra['dots'] is not None else False
+        newline = bool(extra['newline']) if 'newline' in extra and extra['newline'] is not None else False
+        output = bool(extra['output']) if 'output' in extra and extra['output'] is not None else bool(message)
+        modlist = bool(extra['modlist']) if 'modlist' in extra and extra['modlist'] is not None else False
 
         if level in ['debug'] and settings.value('debugOutput', 'False') != 'True':
             if newline:
