@@ -7,14 +7,14 @@ import asyncio
 from loguru import logger
 import dateparser
 
-from qtpy.QtCore import Qt, QSettings, QUrl, QPoint, \
+from Qt.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
     QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
     QObject, QEvent, QTimer, QSize
-from qtpy.QtWidgets import QApplication, QStyledItemDelegate, \
+from Qt.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
-from qtpy.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
+from Qt.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
 
 from w3modmanager.core.model import Model

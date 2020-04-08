@@ -16,12 +16,12 @@ from typing import Union, List, Callable, Any, Awaitable
 from functools import wraps, partial
 
 import cchardet
-from qtpy import API_NAME, QT_VERSION
+from Qt import __binding__, __binding_version__
 from loguru import logger
 
 
 def getQtVersionString() -> str:
-    return API_NAME + ' ' + QT_VERSION
+    return __binding__ + ' ' + __binding_version__
 
 
 def getVersionString() -> str:

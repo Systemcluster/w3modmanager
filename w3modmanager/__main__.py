@@ -109,9 +109,9 @@ def main(gamePath: Optional[str] = None,
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions
 
-    from qtpy.QtCore import Qt, QSettings
-    from qtpy.QtWidgets import QApplication, QMessageBox
-    from qtpy.QtGui import QIcon, QPalette, QFont
+    from Qt.QtCore import Qt, QSettings
+    from Qt.QtWidgets import QApplication, QMessageBox
+    from Qt.QtGui import QIcon, QPalette, QFont
 
     from asyncqt import QEventLoop  # noqa
 

@@ -8,10 +8,10 @@ from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 
 from typing import Any
 
-from qtpy.QtCore import QSize, QSettings, Qt
-from qtpy.QtWidgets import QMainWindow, QMenuBar, QAction, \
+from Qt.QtCore import QSize, QSettings, Qt
+from Qt.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QFileDialog, QMessageBox, QMenu, QApplication
-from qtpy.QtGui import QIcon, QCloseEvent
+from Qt.QtGui import QIcon, QCloseEvent
 
 from asyncqt import asyncSlot  # noqa
 

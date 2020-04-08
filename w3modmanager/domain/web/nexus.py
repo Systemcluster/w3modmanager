@@ -12,7 +12,7 @@ import asyncio
 from functools import partial
 
 from httpx import AsyncClient, HTTPError, Response, Request, stream
-from qtpy.QtCore import QSettings
+from Qt.QtCore import QSettings
 from asyncqt import asyncClose  # noqa
 from loguru import logger
 

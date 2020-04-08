@@ -7,10 +7,10 @@ import html
 
 import dateparser  # noqa
 
-from qtpy.QtCore import Qt, QSize, Signal
-from qtpy.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
+from Qt.QtCore import Qt, QSize, Signal
+from Qt.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
     QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
-from qtpy.QtGui import QMouseEvent
+from Qt.QtGui import QMouseEvent
 
 
 

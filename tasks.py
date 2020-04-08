@@ -33,7 +33,7 @@ def start(ctx, mock=False, clean=False):
             date = date[:10].replace('-', '.')
             w3modmanager.VERSION = date
     if mock:
-        from qtpy.QtCore import QSettings
+        from Qt.QtCore import QSettings
         print('setting up testdata...')
         copy_tree(str(_mockdata), str(_testdata))
         QSettings.setDefaultFormat(QSettings.IniFormat)
