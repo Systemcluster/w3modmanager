@@ -171,7 +171,7 @@ class Model:
             return list(self._modList.values())[mod]
         if isinstance(mod, tuple) and len(mod) == 2:
             if mod not in self._modList:
-                raise ModNotFoundError(mod[0], mod[1])
+                raise ModNotFoundError(tuple(mod)[0], tuple(mod)[1])
             return self._modList[mod]
         if isinstance(mod, Mod) and mod in self.values():
             return mod
