@@ -166,7 +166,7 @@ class DownloadWindow(QDialog):
         self.urlInfo.setText('🌐')
         try:
             filesResponse = await getModFiles(modId)
-        except (RequestError, ResponseError) as e:
+        except (RequestError, ResponseError, Exception) as e:
             self.url.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
@@ -244,7 +244,7 @@ class DownloadWindow(QDialog):
                 *[getModFileUrls(self.modId, file) for file in files],
                 loop=asyncio.get_running_loop()
             )
-        except (RequestError, ResponseError) as e:
+        except (RequestError, ResponseError, Exception) as e:
             self.url.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;

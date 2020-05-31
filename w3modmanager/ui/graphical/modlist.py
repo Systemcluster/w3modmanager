@@ -344,7 +344,7 @@ class ModList(QTableView):
             logger.bind(name=url).info('Starting to download file')
             await downloadFile(url, target)
             installed, errors = await self.installFromFile(target, installtime)
-        except (RequestError, ResponseError) as e:
+        except (RequestError, ResponseError, Exception) as e:
             logger.bind(name=url).exception(f'Failed to download file: {e}')
             return 0, 1
         except Exception as e:

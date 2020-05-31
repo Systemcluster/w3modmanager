@@ -313,7 +313,7 @@ class SettingsWindow(QDialog):
             self.validNexusAPIKey = False
             self.updateSaveButton()
             return False
-        except (RequestError, ResponseError) as e:
+        except (RequestError, ResponseError, Exception) as e:
             self.nexusAPIKey.setStyleSheet('''
                 *{
                     border: 1px solid #B22222;
