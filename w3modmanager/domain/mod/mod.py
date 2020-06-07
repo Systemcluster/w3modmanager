@@ -9,10 +9,11 @@ from typing import List, Type
 from pathlib import Path
 
 from loguru import logger
+from dataclasses_json import DataClassJsonMixin, config as JsonConfig
 
 
 @dataclass
-class Mod:
+class Mod(DataClassJsonMixin):
 
     package: str = ''
     filename: str = ''
@@ -22,7 +23,7 @@ class Mod:
     datatype: str = 'mod'
     target: str = 'mods'
     installdate: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    source: Path = Path()
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path), default_factory=Path)
     size: int = 0
     md5hash: str = ''
 
@@ -38,6 +39,8 @@ class Mod:
     contents: List[ContentFile] = field(default_factory=list)
     settings: List[UserSettings] = field(default_factory=list)
     inputs: List[InputSettings] = field(default_factory=list)
+
+    dataversion: int = 1
 
 
     def __getitem__(self, attr: str) -> Any:

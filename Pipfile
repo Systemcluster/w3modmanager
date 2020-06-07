@@ -33,6 +33,7 @@ cchardet = "==2.1.5"
 httpx = ">=0.12"
 asyncqt = ">=0.8"
 dateparser = ">=0.7"
+dataclasses-json = ">=0.5"
 
 [requires]
 python_version = "3.8"

@@ -1,7 +1,7 @@
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.util.util import debounce
-from w3modmanager.core.errors import InvalidGamePath, InvalidConfigPath, InvalidCachePath, \
-    InvalidModsPath, InvalidSourcePath, OtherInstanceError, ModExistsError, ModNotFoundError
+from w3modmanager.util.util import debounce, removeDirectory
+from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
+    InvalidModsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, OtherInstanceError
 
 from loguru import logger
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator
 from fasteners import InterProcessLock
 from datetime import datetime, timezone
+from shutil import copyfile
 import asyncio
 
 
@@ -103,8 +104,42 @@ class Model:
         async with self.updateLock:
             if (mod.filename, mod.target) in self._modList:
                 raise ModExistsError(mod.filename, mod.target)
+            target: Path = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+            if target.exists():
+                # TODO: incomplete: make sure the mod is tracked by the model
+                raise ModExistsError(mod.filename, mod.target)
+            try:
+                target.mkdir(parents=True)
+                # copy mod files
+                for _file in mod.files:
+                    sourceFile = mod.source.joinpath(_file.source)
+                    targetFile = target.joinpath(_file.source)
+                    targetFile.parent.mkdir(parents=True, exist_ok=True)
+                    copyfile(sourceFile, targetFile)
+                for _content in mod.contents:
+                    sourceFile = mod.source.joinpath(_content.source)
+                    targetFile = target.joinpath(_content.source)
+                    targetFile.parent.mkdir(parents=True, exist_ok=True)
+                    copyfile(sourceFile, targetFile)
+                # serialize and store mod structure
+                with target.joinpath('.w3mm').open('w') as modInfoFile:
+                    modSerialized = mod.to_json()
+                    modInfoFile.write(modSerialized)
+            except Exception as e:
+                removeDirectory(target)
+                raise e
             self._modList[(mod.filename, mod.target)] = mod
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+
+    async def update(self, mod: Mod) -> None:
+        target: Path = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+        # serialize and store mod structure
+        try:
+            with target.joinpath('.w3mm').open('w') as modInfoFile:
+                modSerialized = mod.to_json()
+                modInfoFile.write(modSerialized)
+        except Exception as e:
+            raise e
 
     async def replace(self, filename: str, target: str, mod: Mod) -> None:
         # TODO: incomplete: handle possible conflict with existing mods

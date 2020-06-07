@@ -248,6 +248,7 @@ class ModList(QTableView):
             self.modmodel[self.filtermodel.mapToSource(index).row()]
             for index in self.selectionModel().selectedRows()
         ]
+        # TODO: incomplete: ask if selected mods should really be removed
         inds = self.selectedIndexes()
         self.selectionModel().clear()
         for mod in mods:
@@ -391,53 +392,64 @@ class ModList(QTableView):
                     raise InvalidPathError(path, 'Invalid mod')
             mods = Mod.fromDirectory(path, searchCommonRoot=not archive)
 
-            # wait for details response if requested
-            if detailsrequest:
-                try:
-                    details = await detailsrequest
-                except (RequestError, ResponseError) as e:
-                    logger.warning(f'Could not get information for {source.name if source else path.name}: {e}')
-
+            installedMods = []
             # update mod details and add mods to the model
             for mod in mods:
                 mod.md5hash = md5hash
-                if details:
-                    # set additional details if requested and available
-                    try:
-                        package = str(details[0]['mod']['name'])
-                        summary = str(details[0]['mod']['summary'])
-                        modid = int(details[0]['mod']['mod_id'])
-                        category = int(details[0]['mod']['category_id'])
-                        version = str(details[0]['file_details']['version'])
-                        fileid = int(details[0]['file_details']['file_id'])
-                        uploadname = str(details[0]['file_details']['name'])
-                        uploadtime = str(details[0]['file_details']['uploaded_time'])
-                        mod.package = package
-                        mod.summary = summary
-                        mod.modid = modid
-                        mod.category = getCategoryName(category)
-                        mod.version = version
-                        mod.fileid = fileid
-                        mod.uploadname = uploadname
-                        uploaddate = dateparser.parse(uploadtime)
-                        if uploaddate:
-                            mod.uploaddate = uploaddate.astimezone(tz=timezone.utc)
-                        else:
-                            logger.bind(name=mod.filename).debug(
-                                f'Could not parse date {uploadtime} in mod information response')
-                    except KeyError as e:
-                        logger.bind(name=mod.filename).exception(
-                            f'Could not find key "{str(e)}" in mod information response')
                 try:
                     # TODO: incomplete: check if mod is installed, ask if replace
                     await self.modmodel.add(mod)
+                    installedMods.append(mod)
                     installed += 1
                 except ModExistsError:
                     logger.bind(path=source if source else mod.source, name=mod.filename).error(f'Mod exists')
                     errors += 1
-                if source:
-                    # set source if it differs from the scan directory, e.g. an archive
-                    mod.source = source
+                    continue
+
+            # wait for details response if requested
+            if detailsrequest and not detailsrequest.done():
+                try:
+                    details = await detailsrequest
+                except (RequestError, ResponseError, Exception) as e:
+                    logger.warning(f'Could not get information for {source.name if source else path.name}: {e}')
+
+            # update mod with additional information
+            if source or details:
+                for mod in installedMods:
+                    if source:
+                        # set source if it differs from the scan directory, e.g. an archive
+                        mod.source = source
+                    if details:
+                        # set additional details if requested and available
+                        try:
+                            package = str(details[0]['mod']['name'])
+                            summary = str(details[0]['mod']['summary'])
+                            modid = int(details[0]['mod']['mod_id'])
+                            category = int(details[0]['mod']['category_id'])
+                            version = str(details[0]['file_details']['version'])
+                            fileid = int(details[0]['file_details']['file_id'])
+                            uploadname = str(details[0]['file_details']['name'])
+                            uploadtime = str(details[0]['file_details']['uploaded_time'])
+                            mod.package = package
+                            mod.summary = summary
+                            mod.modid = modid
+                            mod.category = getCategoryName(category)
+                            mod.version = version
+                            mod.fileid = fileid
+                            mod.uploadname = uploadname
+                            uploaddate = dateparser.parse(uploadtime)
+                            if uploaddate:
+                                mod.uploaddate = uploaddate.astimezone(tz=timezone.utc)
+                            else:
+                                logger.bind(name=mod.filename).debug(
+                                    f'Could not parse date {uploadtime} in mod information response')
+                        except KeyError as e:
+                            logger.bind(name=mod.filename).exception(
+                                f'Could not find key "{str(e)}" in mod information response')
+                    try:
+                        await self.modmodel.update(mod)
+                    except Exception:
+                        logger.bind(name=mod.filename).warning('Could not update mod details')
 
         except ModelError as e:
             logger.bind(path=e.path).error(e.message)

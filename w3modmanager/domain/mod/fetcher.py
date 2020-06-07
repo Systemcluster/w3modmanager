@@ -1,13 +1,14 @@
 from w3modmanager.util import util
 
-from loguru import logger
-
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Tuple, Union
 from configparser import ConfigParser
 import itertools
 import re
+
+from loguru import logger
+from dataclasses_json import DataClassJsonMixin, config as JsonConfig
 
 
 #
@@ -211,8 +212,8 @@ def fetchUnsureDirectories(path: Path) -> List[Path]:
 
 @dataclass
 class BinFile:
-    source: Path
-    target: Path
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path), default_factory=Path)
+    target: Path = field(metadata=JsonConfig(encoder=str, decoder=Path), default_factory=Path)
 
     def __repr__(self) -> str:
         if self.source == self.target:
@@ -235,8 +236,8 @@ class BinFile:
 
 
 @dataclass
-class ContentFile:
-    source: Path
+class ContentFile(DataClassJsonMixin):
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
 
     def __repr__(self) -> str:
         return '\'%s\'' % str(self.source)
@@ -250,8 +251,8 @@ class ContentFile:
 
 
 @dataclass(init=False)
-class Settings:
-    source: Path
+class Settings(DataClassJsonMixin):
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
     config: ConfigParser
 
     def __init__(self, source: Path, content: str) -> None:
