@@ -54,6 +54,10 @@ class InvalidModsPath(ModelError):
     message = 'Invalid mods path'
 
 
+class InvalidDlcsPath(ModelError):
+    message = 'Invalid dlcs path'
+
+
 class InvalidSourcePath(ModelError):
     message = 'Invalid source path'
 

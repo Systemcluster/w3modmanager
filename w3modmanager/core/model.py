@@ -1,7 +1,7 @@
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
-    InvalidModsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, OtherInstanceError
+    InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, OtherInstanceError
 
 from loguru import logger
 
@@ -46,14 +46,19 @@ class Model:
 
         modsPath = _gamePath.joinpath('Mods')
         _modsPath = verifyModsPath(modsPath)
+        dlcsPath = _gamePath.joinpath('DLC')
+        _dlcsPath = verifyDlcsPath(dlcsPath)
 
         if not _modsPath:
             raise InvalidModsPath(modsPath)
+        if not _dlcsPath:
+            raise InvalidDlcsPath(dlcsPath)
 
         self._gamePath: Path = _gamePath
         self._configPath: Path = _configPath
         self._cachePath: Path = _cachePath
         self._modsPath: Path = _modsPath
+        self._dlcsPath: Path = _dlcsPath
 
         if not ignorelock:
             self._lock = InterProcessLock(self.lockfile)
@@ -236,6 +241,10 @@ class Model:
     def modspath(self) -> Path:
         return self._modsPath
 
+    @property
+    def dlcspath(self) -> Path:
+        return self._dlcsPath
+
 
 def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
     if not path:
@@ -284,6 +293,19 @@ def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
 
 
 def verifyModsPath(path: Optional[Path]) -> Optional[Path]:
+    try:
+        if not path or path.exists() and not path.is_dir():
+            return None
+        if not path.exists():
+            path.mkdir(parents=True)
+        return path.resolve()
+    except OSError:
+        # check for errors here since this method is used with user input
+        logger.bind(path=path).debug('Illegal path')
+        return None
+
+
+def verifyDlcsPath(path: Optional[Path]) -> Optional[Path]:
     try:
         if not path or path.exists() and not path.is_dir():
             return None
