@@ -34,16 +34,52 @@ class Model:
     """The mod management model"""
 
     def __init__(self, gamePath: Path, configPath: Path, cachePath: Path, ignorelock: bool = False) -> None:
+        self._gamePath: Path = Path()
+        self._configPath: Path = Path()
+        self._cachePath: Path = Path()
+        self._modsPath: Path = Path()
+        self._dlcsPath: Path = Path()
+
+        self._modList: Dict[Tuple[str, str], Mod] = {}
+
+        _cachePath = verifyCachePath(cachePath)
+        if not _cachePath:
+            raise InvalidCachePath(cachePath)
+        self._cachePath = _cachePath
+
+        self.updateCallbacks = CallbackList()
+        self.lastUpdate = datetime.now(tz=timezone.utc)
+        self.updateLock = asyncio.Lock()
+
+        if not ignorelock:
+            self._lock = InterProcessLock(self.lockfile)
+            if not self._lock.acquire(False):
+                raise OtherInstanceError(self.lockfile)
+
+        self.setPaths(gamePath, configPath)
+
+        # TODO: enhancement: watch mod directory for changes
+
+        logger.debug('Initialized model')
+        logger.debug(f'Game path: {self._gamePath}')
+        logger.debug(f'Config path: {self._configPath}')
+        logger.debug(f'Cache path: {self._cachePath}')
+        logger.debug(f'Mods path: {self._modsPath}')
+
+        # TODO: incomplete: implement mod installation management
+
+
+    def setPaths(self, gamePath: Path, configPath: Path) -> None:
         _gamePath = verifyGamePath(gamePath)
         _configPath = verifyConfigPath(configPath)
-        _cachePath = verifyCachePath(cachePath)
+
+        if self._gamePath == _gamePath and self._configPath == _configPath:
+            return
 
         if not _gamePath:
             raise InvalidGamePath(gamePath)
         if not _configPath:
             raise InvalidConfigPath(configPath)
-        if not _cachePath:
-            raise InvalidCachePath(cachePath)
 
         modsPath = _gamePath.joinpath('Mods')
         _modsPath = verifyModsPath(modsPath)
@@ -55,34 +91,15 @@ class Model:
         if not _dlcsPath:
             raise InvalidDlcsPath(dlcsPath)
 
-        self._gamePath: Path = _gamePath
-        self._configPath: Path = _configPath
-        self._cachePath: Path = _cachePath
-        self._modsPath: Path = _modsPath
-        self._dlcsPath: Path = _dlcsPath
+        self._gamePath = _gamePath
+        self._configPath = _configPath
+        self._modsPath = _modsPath
+        self._dlcsPath = _dlcsPath
 
-        if not ignorelock:
-            self._lock = InterProcessLock(self.lockfile)
-            if not self._lock.acquire(False):
-                raise OtherInstanceError(self.lockfile)
-
-        self.updateCallbacks = CallbackList()
-        self.lastUpdate = datetime.now(tz=timezone.utc)
-        self.updateLock = asyncio.Lock()
-
-        # TODO: enhancement: watch mod directory for changes
-
-        logger.debug('Initialized model')
-        logger.debug(f'Game path: {self._gamePath}')
-        logger.debug(f'Config path: {self._configPath}')
-        logger.debug(f'Cache path: {self._cachePath}')
-        logger.debug(f'Mods path: {self._modsPath}')
-
-        self._modList: Dict[Tuple[str, str], Mod] = {}
-
+        self._modList = {}
         self.loadInstalled()
 
-        # TODO: incomplete: implement mod installation management
+        self.updateCallbacks.fire(self)
 
 
     def loadInstalled(self) -> None:

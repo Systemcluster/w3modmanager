@@ -175,11 +175,17 @@ class MainWindow(QMainWindow):
         return dialog
 
     def showSettingsDialog(self: Any, firstStart: bool = False) -> SettingsWindow:
+        settings = QSettings()
+
         settingswindow = SettingsWindow(self, firstStart)
         settingswindow.setAttribute(Qt.WA_DeleteOnClose)
 
         settingswindow.setModal(True)
         settingswindow.open()
+        settingswindow.finished.connect(lambda: self.model.setPaths(
+            Path(str(settings.value('gamePath'))),
+            Path(str(settings.value('configPath'))))
+        )
         return settingswindow
 
     def showAboutDialog(self: Any) -> QMessageBox:
