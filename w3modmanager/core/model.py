@@ -1,7 +1,8 @@
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
-    InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, OtherInstanceError
+    InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
+    OtherInstanceError, InvalidPathError
 
 from loguru import logger
 
@@ -85,8 +86,40 @@ class Model:
 
 
     def loadInstalled(self) -> None:
-        # TODO: incomplete: load installed mods
-        pass
+        for path in self.modspath.iterdir():
+            if path.joinpath('.w3mm').is_file():
+                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                self._modList[(mod.filename, mod.target)] = mod
+            else:
+                try:
+                    for mod in Mod.fromDirectory(path, recursive=False):
+                        mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                        mod.target = 'mods'
+                        mod.datatype = 'mod'
+                        mod.enabled = not path.name.startswith('~')
+                        self._modList[(mod.filename, mod.target)] = mod
+                        with path.joinpath('.w3mm').open('w') as modInfoFile:
+                            modSerialized = mod.to_json()
+                            modInfoFile.write(modSerialized)
+                except InvalidPathError:
+                    logger.bind(path=path).debug('Invalid MOD')
+        for path in self.dlcspath.iterdir():
+            if path.joinpath('.w3mm').is_file():
+                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                self._modList[(mod.filename, mod.target)] = mod
+            else:
+                try:
+                    for mod in Mod.fromDirectory(path, recursive=False):
+                        mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                        mod.target = 'dlc'
+                        mod.datatype = 'dlc'
+                        mod.enabled = not path.name.startswith('~')
+                        self._modList[(mod.filename, mod.target)] = mod
+                        with path.joinpath('.w3mm').open('w') as modInfoFile:
+                            modSerialized = mod.to_json()
+                            modInfoFile.write(modSerialized)
+                except InvalidPathError:
+                    logger.bind(path=path).debug('Invalid DLC')
 
 
     def get(self, mod: ModelIndexType) -> Mod:
@@ -134,6 +167,7 @@ class Model:
                 removeDirectory(target)
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
+            mod.installed = True
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def update(self, mod: Mod) -> None:
