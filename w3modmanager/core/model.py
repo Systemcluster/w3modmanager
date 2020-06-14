@@ -115,9 +115,7 @@ class Model:
                         mod.datatype = 'mod'
                         mod.enabled = not path.name.startswith('~')
                         self._modList[(mod.filename, mod.target)] = mod
-                        with path.joinpath('.w3mm').open('w') as modInfoFile:
-                            modSerialized = mod.to_json()
-                            modInfoFile.write(modSerialized)
+                        asyncio.create_task(self.update(mod))
                 except InvalidPathError:
                     logger.bind(path=path).debug('Invalid MOD')
         for path in self.dlcspath.iterdir():
@@ -132,9 +130,7 @@ class Model:
                         mod.datatype = 'dlc'
                         mod.enabled = not path.name.startswith('~')
                         self._modList[(mod.filename, mod.target)] = mod
-                        with path.joinpath('.w3mm').open('w') as modInfoFile:
-                            modSerialized = mod.to_json()
-                            modInfoFile.write(modSerialized)
+                        asyncio.create_task(self.update(mod))
                 except InvalidPathError:
                     logger.bind(path=path).debug('Invalid DLC')
 
@@ -176,10 +172,7 @@ class Model:
                     targetFile = target.joinpath(_content.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
                     copyfile(sourceFile, targetFile)
-                # serialize and store mod structure
-                with target.joinpath('.w3mm').open('w') as modInfoFile:
-                    modSerialized = mod.to_json()
-                    modInfoFile.write(modSerialized)
+                await self.update(mod)
             except Exception as e:
                 removeDirectory(target)
                 raise e
@@ -191,7 +184,7 @@ class Model:
         target: Path = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
         # serialize and store mod structure
         try:
-            with target.joinpath('.w3mm').open('w') as modInfoFile:
+            with target.joinpath('.w3mm').open('w', encoding='utf-8') as modInfoFile:
                 modSerialized = mod.to_json()
                 modInfoFile.write(modSerialized)
         except Exception as e:
