@@ -208,36 +208,42 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = True
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def disable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.enabled = False
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def setFilename(self, mod: ModelIndexType, filename: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.filename = filename
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPackage(self, mod: ModelIndexType, package: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.package = package
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setCategory(self, mod: ModelIndexType, category: str) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.category = category
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPriority(self, mod: ModelIndexType, priority: int) -> None:
         async with self.updateLock:
             mod = self[mod]
             mod.priority = priority
+            await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
 
