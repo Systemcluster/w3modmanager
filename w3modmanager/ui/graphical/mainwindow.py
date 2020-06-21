@@ -101,9 +101,13 @@ class MainWindow(QMainWindow):
         menuMods.aboutToShow.connect(lambda: [
             actionDownloadMod.setDisabled(not str(settings.value('nexusAPIKey'))),
             actionGetInfo.setDisabled(
-                not str(settings.value('nexusAPIKey')) or not len(self.model)),
+                not str(settings.value('nexusAPIKey')) or \
+                not len(self.model) or \
+                not self.mainwidget.modlist.selectionModel().hasSelection()),
             actionGetUpdates.setDisabled(
-                not str(settings.value('nexusAPIKey')) or not len(self.model)),
+                not str(settings.value('nexusAPIKey')) or \
+                not len(self.model) or \
+                not self.mainwidget.modlist.selectionModel().hasSelection()),
             actionExport.setDisabled(not len(self.model))
         ])
 
@@ -128,8 +132,15 @@ class MainWindow(QMainWindow):
         pass
 
     def showGetInfoDialog(self) -> None:
-        # TODO: incomplete: implement mod info update
-        pass
+        if QMessageBox.question(
+                self,
+                'Update Mod details' if self else getTitleString('Update Mod details'),
+                f'''
+                    <p>Update details of the selected mod(s) with information from Nexus Mods?</p>
+                    <p>This will replace existing details.</p>
+                ''',
+                QMessageBox.Yes | QMessageBox.Cancel) == QMessageBox.Yes:
+            asyncio.create_task(self.mainwidget.modlist.updateSelectedModsDetails())
 
     def showGetUpdatesDialog(self) -> None:
         # TODO: incomplete: implement mod update download

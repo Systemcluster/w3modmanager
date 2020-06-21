@@ -240,14 +240,17 @@ class ModList(QTableView):
         elif nums > 0:
             self.selectRow(nums - 1)
 
-    async def deleteMods(self) -> None:
-        if not self.selectionModel().hasSelection():
-            return
-        self.setDisabled(True)
-        mods: List[Mod] = [
+    def getSelectedMods(self) -> List[Mod]:
+        return [
             self.modmodel[self.filtermodel.mapToSource(index).row()]
             for index in self.selectionModel().selectedRows()
         ]
+
+    async def deleteSelectedMods(self) -> None:
+        if not self.selectionModel().hasSelection():
+            return
+        self.setDisabled(True)
+        mods = self.getSelectedMods()
         # TODO: incomplete: ask if selected mods should really be removed
         inds = self.selectedIndexes()
         self.selectionModel().clear()
@@ -260,9 +263,73 @@ class ModList(QTableView):
         self.setDisabled(False)
         self.setFocus()
 
+    async def updateModDetails(self, mod: Mod) -> bool:
+        logger.bind(name=mod.filename, dots=True).debug('Requesting details for mod')
+        if not mod.md5hash:
+            logger.bind(name=mod.filename).warning('Could not get details for mod not installed from archive')
+            return False
+        try:
+            details = await getModInformation(mod.md5hash)
+        except Exception as e:
+            logger.bind(name=mod.filename).warning(f'{e}')
+        try:
+            package = str(details[0]['mod']['name'])
+            summary = str(details[0]['mod']['summary'])
+            modid = int(details[0]['mod']['mod_id'])
+            category = int(details[0]['mod']['category_id'])
+            version = str(details[0]['file_details']['version'])
+            fileid = int(details[0]['file_details']['file_id'])
+            uploadname = str(details[0]['file_details']['name'])
+            uploadtime = str(details[0]['file_details']['uploaded_time'])
+            mod.package = package
+            mod.summary = summary
+            mod.modid = modid
+            mod.category = getCategoryName(category)
+            mod.version = version
+            mod.fileid = fileid
+            mod.uploadname = uploadname
+            uploaddate = dateparser.parse(uploadtime)
+            if uploaddate:
+                mod.uploaddate = uploaddate.astimezone(tz=timezone.utc)
+            else:
+                logger.bind(name=mod.filename).debug(
+                    f'Could not parse date {uploadtime} in mod information response')
+        except KeyError as e:
+            logger.bind(name=mod.filename).exception(
+                f'Could not find key "{str(e)}" in mod information response')
+            return False
+        try:
+            await self.modmodel.update(mod)
+        except Exception as e:
+            logger.bind(name=mod.filename).exception(f'Could not update mod: {e}')
+            return False
+        return True
+
+    async def updateSelectedModsDetails(self) -> None:
+        if not self.selectionModel().hasSelection():
+            return
+        self.setDisabled(True)
+        updatetime = datetime.now(tz=timezone.utc)
+        mods = self.getSelectedMods()
+        logger.bind(newline=True, output=False).debug(f'Requesting details for {len(mods)} mods')
+        results = await asyncio.gather(
+            *[self.updateModDetails(mod) for mod in mods],
+            loop=asyncio.get_running_loop(), return_exceptions=True
+        )
+        successes = sum(results)
+        errors = len(results) - successes
+        message = 'Updated details for {0} mods{1}'.format(successes, f' ({errors} errors)' if errors else '')
+        if errors:
+            logger.warning(message)
+        else:
+            logger.success(message)
+        self.modmodel.setLastUpdateTime(updatetime)
+        self.setDisabled(False)
+        self.setFocus()
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.matches(QKeySequence.Delete):
-            asyncio.create_task(self.deleteMods())
+            asyncio.create_task(self.deleteSelectedMods())
         super().keyPressEvent(event)
 
     def setFilter(self, search: str) -> None:
