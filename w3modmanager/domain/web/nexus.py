@@ -99,7 +99,8 @@ async def getUserInformation(apikey: str) -> dict:
         raise NoAPIKeyError()
     try:
         user: Response = await getSession().get(
-            f'{__userUrl}/validate.json', headers={'apikey': apikey.strip().encode('ascii', 'backslashreplace')},
+            f'{__userUrl}/validate.json', headers={
+                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
             timeout=5.0
         )
     except HTTPError as e:
@@ -120,13 +121,14 @@ async def getUserInformation(apikey: str) -> dict:
 
 async def getModInformation(md5hash: str) -> list:
     settings = QSettings()
-    apikey = settings.value('nexusAPIKey', '')
+    apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
         raise NoAPIKeyError()
     try:
         info: Response = await getSession().get(
             f'{__modsUrl}/md5_search/{md5hash}.json',
-            headers={'apikey': apikey.strip().encode('ascii', 'backslashreplace')},
+            headers={
+                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
             timeout=5.0
         )
     except HTTPError as e:
@@ -147,13 +149,14 @@ async def getModInformation(md5hash: str) -> list:
 
 async def getModFiles(modid: int) -> dict:
     settings = QSettings()
-    apikey = settings.value('nexusAPIKey', '')
+    apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
         raise NoAPIKeyError()
     try:
         files: Response = await getSession().get(
             f'{__modsUrl}/{modid}/files.json',
-            headers={'apikey': apikey.strip().encode('ascii', 'backslashreplace')},
+            headers={
+                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
             timeout=5.0
         )
     except HTTPError as e:
@@ -176,13 +179,14 @@ async def getModFiles(modid: int) -> dict:
 
 async def getModFileUrls(modid: int, fileid: int) -> list:
     settings = QSettings()
-    apikey = settings.value('nexusAPIKey', '')
+    apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
         raise NoAPIKeyError()
     try:
         files: Response = await getSession().get(
             f'{__modsUrl}/{modid}/files/{fileid}/download_link.json',
-            headers={'apikey': apikey.strip().encode('ascii', 'backslashreplace')},
+            headers={
+                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
             timeout=5.0
         )
     except HTTPError as e:
@@ -220,7 +224,8 @@ def downloadFileSync(url: str, target: Path, apikey: str) -> None:
             with stream(
                 'GET',
                 url,
-                headers={'apikey': apikey.strip().encode('ascii', 'backslashreplace')},
+                headers={
+                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
                 timeout=250.0
             ) as download:
                 if download.status_code == 429:
