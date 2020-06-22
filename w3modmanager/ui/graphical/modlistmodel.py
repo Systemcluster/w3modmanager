@@ -164,6 +164,8 @@ class ModListModel(QAbstractTableModel):
                 return QColor(240, 240, 240)
             if mod.installdate > self._lastUpdate:
                 return QColor(238, 242, 255)
+            if not mod.installed:
+                return QColor(250, 240, 240)
             return None
 
         if role == Qt.ForegroundRole:
