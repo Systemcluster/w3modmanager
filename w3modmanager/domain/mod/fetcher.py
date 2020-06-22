@@ -257,22 +257,24 @@ class Settings(DataClassJsonMixin):
 
     def __init__(self, source: Path, content: str) -> None:
         self.source = source
-        self.content = content
-
-    def __repr__(self) -> str:
-        config = ConfigParser(strict=False)
-        config.optionxform = str  # type: ignore
         # remove any instructions or comments included at the top of the file
-        cleanContent = self.content.splitlines()
+        cleanContent = content.splitlines()
         start = 0
         for line in cleanContent:
             if line.strip().startswith('['):
                 break
             start += 1
-        config.read_string('\n'.join(cleanContent[start:]))
+        self.content = '\n'.join(cleanContent[start:])
+
+        config = ConfigParser(strict=False)
+        config.optionxform = str  # type: ignore
+        config.read_string(self.content)
+        self.config = config
+
+    def __repr__(self) -> str:
         return '\'%s\': %s' % (
             str(self.source),
-            str({section: dict(config[section]) for section in config.sections()}))
+            str({section: dict(self.config[section]) for section in self.config.sections()}))
 
 
 class UserSettings(Settings):
