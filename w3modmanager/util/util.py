@@ -157,7 +157,7 @@ def extractArchive(archive: Path, target: Path) -> None:
     CREATE_NO_WINDOW = 0x08000000
     result: subprocess.CompletedProcess = subprocess.run(  # noqa
         [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         creationflags=CREATE_NO_WINDOW, startupinfo=si
     )
     if result.returncode != 0:

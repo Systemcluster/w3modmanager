@@ -68,9 +68,8 @@ def setWritePermissions(path: Path) -> bool:
             f'Start-Process \
                 -FilePath "{str(Path(icacls).resolve(strict=True))}" \
                 -ArgumentList \'"{str(path.resolve(strict=True))}" "/grant" "{user}:(OI)(CI)M" "/T"\' \
-                -Verb RunAs -WindowStyle Hidden'
-            ],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                -Verb RunAs -WindowStyle Hidden'],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             creationflags=CREATE_NO_WINDOW, startupinfo=si)
         return result.returncode == 0
     except Exception as e:
