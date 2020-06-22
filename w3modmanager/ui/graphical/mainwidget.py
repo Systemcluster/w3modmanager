@@ -7,10 +7,10 @@ from typing import Any
 import asyncio
 
 from loguru import logger
-from Qt.QtCore import QSettings, Qt
-from Qt.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
+from PySide2.QtCore import QSettings, Qt
+from PySide2.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
     QLabel, QStackedWidget, QLineEdit, QApplication
-from Qt.QtGui import QKeyEvent, QKeySequence, QIcon
+from PySide2.QtGui import QKeyEvent, QKeySequence, QIcon
 
 
 class MainWidget(QWidget):
@@ -54,10 +54,10 @@ class MainWidget(QWidget):
         welcomelayout.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         welcomewidget = QWidget()
         welcomewidget.setLayout(welcomelayout)
-        welcomewidget.dragEnterEvent = self.modlist.dragEnterEvent
-        welcomewidget.dragMoveEvent = self.modlist.dragMoveEvent
-        welcomewidget.dragLeaveEvent = self.modlist.dragLeaveEvent
-        welcomewidget.dropEvent = self.modlist.dropEvent
+        welcomewidget.dragEnterEvent = self.modlist.dragEnterEvent  # type: ignore
+        welcomewidget.dragMoveEvent = self.modlist.dragMoveEvent  # type: ignore
+        welcomewidget.dragLeaveEvent = self.modlist.dragLeaveEvent  # type: ignore
+        welcomewidget.dropEvent = self.modlist.dropEvent  # type: ignore
         welcomewidget.setAcceptDrops(True)
 
         icon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
@@ -81,7 +81,7 @@ class MainWidget(QWidget):
         # output log
 
         self.output = QTextEdit(self)
-        self.output.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        self.output.setTextInteractionFlags(Qt.NoTextInteraction)
         self.output.setReadOnly(True)
         self.output.setContextMenuPolicy(Qt.NoContextMenu)
         self.output.setPlaceholderText('Program output...')

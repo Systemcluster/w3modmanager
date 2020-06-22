@@ -8,10 +8,10 @@ from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 
 from typing import Any
 
-from Qt.QtCore import QSize, QSettings, Qt
-from Qt.QtWidgets import QMainWindow, QMenuBar, QAction, \
+from PySide2.QtCore import QSize, QSettings, Qt
+from PySide2.QtWidgets import QMainWindow, QMenuBar, QAction, \
     QFileDialog, QMessageBox, QMenu, QApplication
-from Qt.QtGui import QIcon, QCloseEvent
+from PySide2.QtGui import QIcon, QCloseEvent
 
 from asyncqt import asyncSlot  # noqa
 
@@ -28,9 +28,9 @@ class MainWindow(QMainWindow):
 
         settings = QSettings()
         if settings.value('mainWindowGeometry'):
-            self.restoreGeometry(settings.value('mainWindowGeometry'))
+            self.restoreGeometry(settings.value('mainWindowGeometry'))  # type: ignore
         if settings.value('mainWindowState'):
-            self.restoreState(settings.value('mainWindowState'))
+            self.restoreState(settings.value('mainWindowState'))  # type: ignore
 
         # TODO: enhancement: add an url handler for 'nxm://' urls
         # see https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa767914(v=vs.85)  # noqa
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
             if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
                 # TODO: enhancement: only allow one download window at once
                 self.show()
-                self.setWindowState(Qt.WindowState.WindowActive)
+                self.setWindowState(Qt.WindowActive)
                 self.activateWindow()
                 self.showDownloadModDialog()
 
@@ -61,13 +61,12 @@ class MainWindow(QMainWindow):
         settings.setValue('mainWindowState', self.saveState())
 
     def setupMenu(self) -> None:
-        self.menuBar = QMenuBar(self)
-        self.setMenuBar(self.menuBar)
+        self.setMenuBar(QMenuBar(self))
         settings = QSettings()
 
         # mods menu
 
-        menuMods: QMenu = self.menuBar.addMenu('&Mods')
+        menuMods: QMenu = self.menuBar().addMenu('&Mods')
 
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
@@ -113,7 +112,7 @@ class MainWindow(QMainWindow):
 
         # settings menu
 
-        menuSettings: QMenu = self.menuBar.addMenu('&Tools')
+        menuSettings: QMenu = self.menuBar().addMenu('&Tools')
         actionSettings = QAction('&Settings', self)
         actionSettings.triggered.connect(self.showSettingsDialog)
         actionSettings.setIcon(gearIcon)
@@ -121,7 +120,7 @@ class MainWindow(QMainWindow):
 
         # info menu
 
-        menuInfo: QMenu = self.menuBar.addMenu('&Info')
+        menuInfo: QMenu = self.menuBar().addMenu('&Info')
         actionAbout = QAction('&About', self)
         actionAbout.triggered.connect(self.showAboutDialog)
         actionAbout.setIcon(QIcon.fromTheme('document-open'))
@@ -180,7 +179,7 @@ class MainWindow(QMainWindow):
         dialog = DownloadWindow(self, url)
         dialog.setModal(True)
         dialog.open()
-        dialog.accepted.connect(lambda urls: asyncio.create_task(
+        dialog.signals.download.connect(lambda urls: asyncio.create_task(
             self.mainwidget.modlist.checkInstallFromURLs(urls, local=False)
         ))
         return dialog

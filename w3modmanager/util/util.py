@@ -16,12 +16,12 @@ from typing import Union, List, Callable, Any, Awaitable
 from functools import wraps, partial
 
 import cchardet
-from Qt import __binding__, __binding_version__
+from PySide2 import __version__ as PySide2Version
 from loguru import logger
 
 
 def getQtVersionString() -> str:
-    return __binding__ + ' ' + __binding_version__
+    return 'PySide2 ' + PySide2Version
 
 
 def getVersionString() -> str:

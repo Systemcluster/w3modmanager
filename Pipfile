@@ -24,7 +24,6 @@ invoke = ">=1.4"
 [packages]
 fasteners = ">=0.15"
 PySide2 = "==5.14.2.2"
-Qt-py = ">=1.2"
 loguru = ">=0.4"
 vdf = ">=3.2"
 appdirs = ">=1.4"

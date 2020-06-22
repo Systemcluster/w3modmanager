@@ -1,20 +1,20 @@
 from pathlib import Path
 from urllib.parse import urlparse, unquote
-from typing import Union, List, Tuple, Optional
+from typing import Union, List, Tuple, Optional, cast
 from datetime import datetime, timezone
 import asyncio
 
 from loguru import logger
 import dateparser
 
-from Qt.QtCore import Qt, QSettings, QUrl, QPoint, \
+from PySide2.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
     QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
-    QObject, QEvent, QTimer, QSize
-from Qt.QtWidgets import QApplication, QStyledItemDelegate, \
+    QObject, QEvent, QTimer, QSize, QRegularExpression
+from PySide2.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton
-from Qt.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
+from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
 
 from w3modmanager.core.model import Model
@@ -64,7 +64,7 @@ class ModListSelectionModel(QItemSelectionModel):
     def __init__(self, parent: QWidget, model: QAbstractItemModel) -> None:
         super().__init__(model, parent)
 
-    def setCurrentIndex(self, index: QModelIndex, command: QItemSelectionModel) -> None:
+    def setCurrentIndex(self, index: QModelIndex, command: QItemSelectionModel.SelectionFlags) -> None:
         if not index.isValid():
             return
         # always focus column 3
@@ -119,7 +119,7 @@ class ModList(QTableView):
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
 
-        self.setVerticalHeader(None)
+        self.verticalHeader().hide()
         self.verticalHeader().setVisible(False)
         self.verticalHeader().setDefaultSectionSize(25)
         self.setCornerButtonEnabled(False)
@@ -138,7 +138,7 @@ class ModList(QTableView):
 
         settings = QSettings()
         if settings.value('modlistHorizontalHeaderState'):
-            self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))
+            self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
 
         self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
         self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
@@ -152,8 +152,8 @@ class ModList(QTableView):
            settings.value('modlistSortOrder') is not None:
             try:
                 self.sortByColumn(
-                    settings.value('modlistSortColumn', 1, int),
-                    Qt.SortOrder(settings.value('modlistSortOrder', 1, int)),
+                    cast(int, settings.value('modlistSortColumn', 1, int)),
+                    Qt.DescendingOrder if cast(int, settings.value('modlistSortOrder', 1, int)) else Qt.AscendingOrder,
                     False
                 )
             except Exception as e:
@@ -226,11 +226,11 @@ class ModList(QTableView):
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         return super().eventFilter(obj, event)
 
-    def sortByColumn(self, col: int, order: Qt.SortOrder, save: bool = True) -> None:
+    def sortByColumn(self, col: int, order: Qt.SortOrder, save: bool = True) -> None:  # type: ignore
         if save and col is not None and order is not None:
             settings = QSettings()
             settings.setValue('modlistSortColumn', col)
-            settings.setValue('modlistSortOrder', int(order))
+            settings.setValue('modlistSortOrder', 0 if order == Qt.AscendingOrder else 1)
         super().sortByColumn(col, order)
 
     def selectRowChecked(self, row: int) -> None:
@@ -386,9 +386,9 @@ class ModList(QTableView):
             errors += e
         elif local and isValidFileUrl(path):
             self.setDisabled(True)
-            path = Path(QUrl(path).toLocalFile())
-            logger.bind(dots=True, path=path).info(f'Installing mods from')
-            i, e = await self.installFromFile(path, installtime)
+            path = QUrl(path)
+            logger.bind(dots=True, path=Path(path.toLocalFile())).info(f'Installing mods from')
+            i, e = await self.installFromFile(Path(path.toLocalFile()), installtime)
             installed += i
             errors += e
         else:

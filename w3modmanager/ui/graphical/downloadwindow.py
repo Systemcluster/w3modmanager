@@ -7,16 +7,17 @@ import html
 
 import dateparser  # noqa
 
-from Qt.QtCore import Qt, QSize, Signal
-from Qt.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
+from PySide2.QtCore import Qt, QSize, Signal, QObject
+from PySide2.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
     QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
-from Qt.QtGui import QMouseEvent
+from PySide2.QtGui import QMouseEvent
 
+
+class DownloadWindowEvents(QObject):
+    download = Signal(list)
 
 
 class DownloadWindow(QDialog):
-    accepted = Signal(list)
-
     def __init__(self, parent: Optional[QWidget] = None, url: str = '') -> None:
         super().__init__(parent, )
 
@@ -27,6 +28,8 @@ class DownloadWindow(QDialog):
             self.setAttribute(Qt.WA_DeleteOnClose)
 
         mainLayout = QVBoxLayout(self)
+
+        self.signals = DownloadWindowEvents(self)
 
         # URL input
 
@@ -64,7 +67,7 @@ class DownloadWindow(QDialog):
         self.files.setWordWrap(False)
         self.files.setSortingEnabled(True)
         self.files.setFocusPolicy(Qt.StrongFocus)
-        self.files.setVerticalHeader(None)
+        self.files.verticalHeader().hide()
         self.files.setSortingEnabled(True)
         self.files.sortByColumn(2, Qt.DescendingOrder)
         self.files.verticalHeader().setVisible(False)
@@ -97,7 +100,7 @@ class DownloadWindow(QDialog):
         def mouseMoveEvent(event: QMouseEvent) -> None:
             self.files.hoverIndexRow = self.files.indexAt(event.pos()).row()
             _mouseMoveEvent(event)
-        self.files.mouseMoveEvent = mouseMoveEvent
+        self.files.mouseMoveEvent = mouseMoveEvent  # type: ignore
         self.files.setItemDelegate(ModListItemDelegate(self.files))
         self.files.setMouseTracking(True)
 
@@ -256,7 +259,7 @@ class DownloadWindow(QDialog):
                 ''')
             return
         try:
-            self.accepted.emit([url[0]['URI'] for url in urls])
+            self.signals.download.emit([url[0]['URI'] for url in urls])
         except KeyError as e:
             logger.exception(
                 f'Could not find key "{str(e)}" in file download response')

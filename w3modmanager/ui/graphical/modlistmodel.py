@@ -5,9 +5,9 @@ from functools import lru_cache
 from typing import Optional, Dict, Any
 import asyncio
 
-from Qt.QtCore import Qt, QAbstractTableModel, QModelIndex
-from Qt.QtGui import QFontDatabase, QColor, QIcon
-from Qt.QtWidgets import QWidget
+from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex
+from PySide2.QtGui import QFontDatabase, QColor, QIcon
+from PySide2.QtWidgets import QWidget
 
 
 class ModListModel(QAbstractTableModel):
@@ -100,7 +100,7 @@ class ModListModel(QAbstractTableModel):
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
 
-    def setData(self, index: QModelIndex, value: Any, _role: int) -> bool:
+    def setData(self, index: QModelIndex, value: Any, _role: int = 0) -> bool:
         if not index.isValid():
             return False
         col = self.getColumnKey(index.column())
@@ -125,7 +125,7 @@ class ModListModel(QAbstractTableModel):
         return self._header[section][0] if len(self._header) > section else '?'
 
     @lru_cache(maxsize=None)
-    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.NoItemFlags
         col = self.getColumnKey(index.column())

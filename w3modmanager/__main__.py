@@ -109,9 +109,9 @@ def main(gamePath: Optional[str] = None,
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions
 
-    from Qt.QtCore import Qt, QSettings
-    from Qt.QtWidgets import QApplication, QMessageBox
-    from Qt.QtGui import QIcon, QPalette, QFont
+    from PySide2.QtCore import Qt, QSettings
+    from PySide2.QtWidgets import QApplication, QMessageBox
+    from PySide2.QtGui import QIcon, QPalette, QFont
 
     from asyncqt import QEventLoop  # noqa
 
@@ -120,7 +120,7 @@ def main(gamePath: Optional[str] = None,
     QApplication.setOrganizationDomain(w3modmanager.ORG_URL)
     QApplication.setApplicationName(w3modmanager.TITLE)
     QApplication.setApplicationVersion(w3modmanager.VERSION)
-    QApplication.setApplicationDisplayName(None)
+    QApplication.setApplicationDisplayName('')
     QApplication.setAttribute(Qt.AA_NativeWindows)
     QApplication.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -135,7 +135,7 @@ def main(gamePath: Optional[str] = None,
     eventloop = QEventLoop(app)
     asyncio.set_event_loop(eventloop)
 
-    palette = QPalette(app.palette())
+    palette = QPalette(QApplication.palette())
     palette.setColor(QPalette.Link, Qt.red)
     palette.setColor(QPalette.LinkVisited, Qt.red)
     app.setPalette(palette)
@@ -143,7 +143,7 @@ def main(gamePath: Optional[str] = None,
     font = QFont('Segoe UI')
     font.setStyleHint(QFont.System)
     font.setWeight(QFont.Normal)
-    font.setStyleStrategy(QFont.StyleStrategy(QFont.PreferDevice | QFont.ForceIntegerMetrics))
+    font.setStyleStrategy(QFont.PreferDevice)
     font.setPointSize(9)
     app.setFont(font)
 
