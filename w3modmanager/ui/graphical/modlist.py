@@ -78,9 +78,19 @@ class ModListFilterModel(QSortFilterProxyModel):
         self.setSourceModel(source)
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
         self.setSortCaseSensitivity(Qt.CaseInsensitive)
-        self.setFilterKeyColumn(3)
         self.setSortRole(Qt.UserRole)
         # TODO: enhancement: filter for multiple columns
+
+    def filterAcceptsRow(self, row: int, parent: QModelIndex) -> bool:
+        filterRegExp = self.filterRegularExpression()
+        if not filterRegExp.pattern() or not filterRegExp.isValid():
+            return True
+        sourceModel = self.sourceModel()
+        return filterRegExp.match(
+            sourceModel.data(sourceModel.index(row, 3, parent))
+        ).hasMatch() or filterRegExp.match(
+            sourceModel.data(sourceModel.index(row, 2, parent))
+        ).hasMatch()
 
 
 class ModList(QTableView):
@@ -333,7 +343,9 @@ class ModList(QTableView):
         super().keyPressEvent(event)
 
     def setFilter(self, search: str) -> None:
-        self.filtermodel.setFilterFixedString(search)
+        self.filtermodel.setFilterRegularExpression(
+            QRegularExpression(search, QRegularExpression.CaseInsensitiveOption)
+        )
 
     async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local: bool = True, web: bool = True) -> None:
         await self.installLock.acquire()
