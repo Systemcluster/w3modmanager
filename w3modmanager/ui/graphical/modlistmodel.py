@@ -48,6 +48,7 @@ class ModListModel(QAbstractTableModel):
         self._datatypes['udf'] = 'Undefined / Mod?'
 
         self._lastUpdate = model.lastUpdate
+        self._lastInitialization = model.lastInitialization
         self.modmodel = model
         model.updateCallbacks.append(self.update)
         self.update(self.modmodel)
@@ -63,6 +64,7 @@ class ModListModel(QAbstractTableModel):
         self.layoutAboutToBeChanged.emit()
         self.clearCache()
         self._lastUpdate = model.lastUpdate
+        self._lastInitialization = model.lastInitialization
         self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
 
@@ -163,7 +165,9 @@ class ModListModel(QAbstractTableModel):
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
                 return QColor(240, 240, 240)
             if mod.installdate > self._lastUpdate:
-                return QColor(238, 242, 255)
+                return QColor(242, 255, 242)
+            if mod.installdate > self._lastInitialization:
+                return QColor(242, 246, 255)
             if not mod.installed:
                 return QColor(250, 240, 240)
             return None

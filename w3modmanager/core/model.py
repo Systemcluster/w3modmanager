@@ -48,7 +48,6 @@ class Model:
         self._cachePath = _cachePath
 
         self.updateCallbacks = CallbackList()
-        self.lastUpdate = datetime.now(tz=timezone.utc)
         self.updateLock = asyncio.Lock()
 
         if not ignorelock:
@@ -95,6 +94,9 @@ class Model:
         self._configPath = _configPath
         self._modsPath = _modsPath
         self._dlcsPath = _dlcsPath
+
+        self.lastUpdate = datetime.now(tz=timezone.utc)
+        self.lastInitialization = datetime.now(tz=timezone.utc)
 
         self._modList = {}
         self.loadInstalled()
