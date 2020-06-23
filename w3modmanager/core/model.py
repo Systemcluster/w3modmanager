@@ -255,6 +255,14 @@ class Model:
             self.updateCallbacks.fire(self)
 
 
+    def getModPath(self, mod: ModelIndexType) -> Path:
+        mod = self[mod]
+        if mod.enabled:
+            return self.modspath.joinpath(mod.filename)
+        else:
+            return self.modspath.joinpath(f'~{mod.filename}')
+
+
     def __len__(self) -> int:
         return len(self._modList)
 

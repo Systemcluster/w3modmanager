@@ -146,6 +146,10 @@ def removeDirectory(path: Path) -> None:
     shutil.rmtree(path, onerror=getWriteAccess)
 
 
+def openDirectory(path: Path) -> None:
+    os.startfile(str(path.absolute()), 'explore')  # noqa
+
+
 def extractArchive(archive: Path, target: Path) -> None:
     if target.exists():
         removeDirectory(target)

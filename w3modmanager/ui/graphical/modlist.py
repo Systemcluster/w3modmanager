@@ -13,9 +13,9 @@ from PySide2.QtCore import Qt, QSettings, QUrl, QPoint, \
     QObject, QEvent, QTimer, QSize, QRegularExpression
 from PySide2.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
-    QTableView, QMessageBox, QPushButton
+    QTableView, QMessageBox, QPushButton, QMenu
 from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
-    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent
+    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon
 
 from w3modmanager.core.model import Model
 from w3modmanager.core.errors import ModExistsError, ModNotFoundError, ModelError
@@ -128,6 +128,7 @@ class ModList(QTableView):
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
 
         self.verticalHeader().hide()
         self.verticalHeader().setVisible(False)
@@ -242,6 +243,20 @@ class ModList(QTableView):
             settings.setValue('modlistSortColumn', col)
             settings.setValue('modlistSortOrder', 0 if order == Qt.AscendingOrder else 1)
         super().sortByColumn(col, order)
+
+    def showContextMenu(self, pos: QPoint) -> None:
+        mods = self.getSelectedMods()
+        if not mods:
+            return
+        menu = QMenu(self)
+        actionOpen = menu.addAction(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))), 'Open Directory')
+        actionOpen.triggered.connect(lambda: [
+            util.openDirectory(self.modmodel.getModPath(mod))  # type: ignore
+            if self.modmodel.getModPath(mod).is_dir()
+            else logger.bind(path=self.modmodel.getModPath(mod)).warning('Not a valid directory')
+            for mod in mods
+        ])
+        menu.popup(self.viewport().mapToGlobal(pos))
 
     def selectRowChecked(self, row: int) -> None:
         nums: int = self.filtermodel.rowCount()
