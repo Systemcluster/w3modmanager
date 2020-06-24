@@ -256,6 +256,18 @@ class ModList(QTableView):
             else logger.bind(path=self.modmodel.getModPath(mod)).warning('Not a valid directory')
             for mod in mods
         ])
+        menu.addSeparator()
+        actionEnable = menu.addAction('Enable')
+        actionEnable.triggered.connect(lambda: [
+            asyncio.create_task(self.enableSelectedMods(True))
+        ])
+        actionEnable.setEnabled(not all(mod.enabled for mod in mods))
+        actionDisable = menu.addAction('Disable')
+        actionDisable.triggered.connect(lambda: [
+            asyncio.create_task(self.enableSelectedMods(False))
+        ])
+        actionDisable.setEnabled(not all(not mod.enabled for mod in mods))
+
         menu.popup(self.viewport().mapToGlobal(pos))
 
     def selectRowChecked(self, row: int) -> None:
@@ -270,6 +282,19 @@ class ModList(QTableView):
             self.modmodel[self.filtermodel.mapToSource(index).row()]
             for index in self.selectionModel().selectedRows()
         ]
+
+    async def enableSelectedMods(self, enable: bool = True) -> None:
+        if not self.selectionModel().hasSelection():
+            return
+        mods = self.getSelectedMods()
+        self.setDisabled(True)
+        for mod in mods:
+            if enable:
+                await self.modmodel.enable(mod)
+            else:
+                await self.modmodel.disable(mod)
+        self.setDisabled(False)
+        self.setFocus()
 
     async def deleteSelectedMods(self) -> None:
         if not self.selectionModel().hasSelection():
