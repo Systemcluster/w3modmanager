@@ -70,6 +70,7 @@ class MainWindow(QMainWindow):
 
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
+        dirsIcon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
 
         actionAddModFromFile = QAction('&Add Mods', self)
         actionAddModFromFile.triggered.connect(self.showAddModFromFileDialog)
@@ -117,6 +118,12 @@ class MainWindow(QMainWindow):
         actionSettings.triggered.connect(self.showSettingsDialog)
         actionSettings.setIcon(gearIcon)
         menuSettings.addAction(actionSettings)
+
+        menuSettings.addSeparator()
+        actionOpenGameDirectory = menuSettings.addAction(dirsIcon, 'Open &Game directory')
+        actionOpenGameDirectory.triggered.connect(lambda: util.openDirectory(self.model.gamepath))
+        actionOpenConfigDirectory = menuSettings.addAction(dirsIcon, 'Open &Config directory')
+        actionOpenConfigDirectory.triggered.connect(lambda: util.openDirectory(self.model.configpath))
 
         # info menu
 
