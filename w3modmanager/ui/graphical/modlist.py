@@ -250,8 +250,6 @@ class ModList(QTableView):
         actionOpen = menu.addAction(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))), 'Open Directory')
         actionOpen.triggered.connect(lambda: [
             util.openDirectory(self.modmodel.getModPath(mod))  # type: ignore
-            if self.modmodel.getModPath(mod).is_dir()
-            else logger.bind(path=self.modmodel.getModPath(mod)).warning('Not a valid directory')
             for mod in mods
         ])
         menu.addSeparator()

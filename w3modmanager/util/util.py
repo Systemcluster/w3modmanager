@@ -143,11 +143,17 @@ def removeDirectory(path: Path) -> None:
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
-    shutil.rmtree(path, onerror=getWriteAccess)
+    if path.is_dir():
+        shutil.rmtree(path, onerror=getWriteAccess)
+    else:
+        logger.bind(path=path).warning('Not a valid directory, could not delete')
 
 
 def openDirectory(path: Path) -> None:
-    os.startfile(str(path.absolute()), 'explore')  # noqa
+    if path.is_dir():
+        os.startfile(str(path.absolute()), 'explore')  # noqa
+    else:
+        logger.bind(path=path).warning('Not a valid directory, could not open')
 
 
 def extractArchive(archive: Path, target: Path) -> None:
