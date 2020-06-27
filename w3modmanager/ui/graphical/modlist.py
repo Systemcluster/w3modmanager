@@ -40,17 +40,18 @@ class ModListItemDelegate(QStyledItemDelegate):
         # hover whole row
         if index.row() == option.styleObject.hoverIndexRow:
             itemOption.state |= QStyle.State_MouseOver
+
+        super().paint(painter, itemOption, index)
+
         # draw lines around numeric columns
         if index.column() in (5, 11):
             oldpen = painter.pen()
             painter.setPen(self.linepen)
             painter.drawLine(
-                itemOption.rect.topRight() + QPoint(2, 0),
-                itemOption.rect.bottomRight() + QPoint(2, 0)
+                itemOption.rect.topRight() + QPoint(0, 0),
+                itemOption.rect.bottomRight() + QPoint(0, 0)
             )
             painter.setPen(oldpen)
-
-        super().paint(painter, itemOption, index)
 
     def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex) -> None:
         itemOption = QStyleOptionViewItem(option)
@@ -110,18 +111,14 @@ class ModList(QTableView):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAcceptDrops(True)
         self.setEditTriggers(QTableView.EditKeyPressed | QTableView.DoubleClicked)
+        self.setShowGrid(False)
 
         self.setStyleSheet('''
             QTableView {
                 gridline-color: rgba(255,255,255,1);
             }
-            QTableView::item {
-                padding: 5px;
-                margin: 1px 0;
-            }
             QTableView::item:!selected:hover {
                 background-color: rgb(217, 235, 249);
-                padding: 0;
             }
             ''')
 
