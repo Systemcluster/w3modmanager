@@ -322,6 +322,7 @@ class ModList(QTableView):
             details = await getModInformation(mod.md5hash)
         except Exception as e:
             logger.bind(name=mod.filename).warning(f'{e}')
+            return False
         try:
             package = str(details[0]['mod']['name'])
             summary = str(details[0]['mod']['summary'])
@@ -483,7 +484,7 @@ class ModList(QTableView):
         source = None
         md5hash = ''
         details = None
-        detailsrequest = None
+        detailsrequest: Optional[asyncio.Task] = None
 
         if not installtime:
             installtime = datetime.now(tz=timezone.utc)
@@ -526,7 +527,7 @@ class ModList(QTableView):
                     continue
 
             # wait for details response if requested
-            if detailsrequest and not detailsrequest.done():
+            if detailsrequest:
                 try:
                     details = await detailsrequest
                 except (RequestError, ResponseError, Exception) as e:
