@@ -257,10 +257,11 @@ class Model:
 
     def getModPath(self, mod: ModelIndexType) -> Path:
         mod = self[mod]
-        if mod.enabled:
-            return self.modspath.joinpath(mod.filename)
+        basepath = self.gamepath.joinpath(mod.target).resolve()
+        if not mod.enabled and mod.target == 'mods':
+            return basepath.joinpath(f'~{mod.filename}')
         else:
-            return self.modspath.joinpath(f'~{mod.filename}')
+            return basepath.joinpath(mod.filename)
 
 
     def __len__(self) -> int:
