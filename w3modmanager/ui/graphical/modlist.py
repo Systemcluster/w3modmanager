@@ -15,7 +15,8 @@ from PySide2.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton, QMenu
 from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
-    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon
+    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon, \
+    QDesktopServices
 
 from w3modmanager.core.model import Model
 from w3modmanager.core.errors import ModExistsError, ModNotFoundError, ModelError
@@ -264,6 +265,14 @@ class ModList(QTableView):
             asyncio.create_task(self.enableSelectedMods(False))
         ])
         actionDisable.setEnabled(not all(not mod.enabled for mod in mods))
+        menu.addSeparator()
+        actionOpenNexus = menu.addAction(
+            QIcon(str(getRuntimePath('resources/icons/browse.ico'))), 'Open Nexus Mods page')
+        actionOpenNexus.triggered.connect(lambda: [
+            QDesktopServices.openUrl(QUrl(f'https://www.nexusmods.com/witcher3/mods/{modid}'))
+            for modid in {mod.modid for mod in mods if mod.modid > 0}
+        ])
+        actionOpenNexus.setEnabled(not all(mod.modid <= 0 for mod in mods))
 
         menu.popup(self.viewport().mapToGlobal(pos))
 
