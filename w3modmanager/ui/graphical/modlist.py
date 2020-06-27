@@ -247,25 +247,30 @@ class ModList(QTableView):
         if not mods:
             return
         menu = QMenu(self)
-        actionOpen = menu.addAction(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))), 'Open Directory')
+        actionOpen = menu.addAction(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))), '&Open Directory')
         actionOpen.triggered.connect(lambda: [
             util.openDirectory(self.modmodel.getModPath(mod))  # type: ignore
             for mod in mods
         ])
         menu.addSeparator()
-        actionEnable = menu.addAction('Enable')
+        actionEnable = menu.addAction('&Enable')
         actionEnable.triggered.connect(lambda: [
             asyncio.create_task(self.enableSelectedMods(True))
         ])
         actionEnable.setEnabled(not all(mod.enabled for mod in mods))
-        actionDisable = menu.addAction('Disable')
+        actionDisable = menu.addAction('&Disable')
         actionDisable.triggered.connect(lambda: [
             asyncio.create_task(self.enableSelectedMods(False))
         ])
         actionDisable.setEnabled(not all(not mod.enabled for mod in mods))
         menu.addSeparator()
+        actionUninstall = menu.addAction('&Uninstall')
+        actionUninstall.triggered.connect(lambda: [
+            asyncio.create_task(self.deleteSelectedMods())
+        ])
+        menu.addSeparator()
         actionOpenNexus = menu.addAction(
-            QIcon(str(getRuntimePath('resources/icons/browse.ico'))), 'Open Nexus Mods page')
+            QIcon(str(getRuntimePath('resources/icons/browse.ico'))), 'Open &Nexus Mods page')
         actionOpenNexus.triggered.connect(lambda: [
             QDesktopServices.openUrl(QUrl(f'https://www.nexusmods.com/witcher3/mods/{modid}'))
             for modid in {mod.modid for mod in mods if mod.modid > 0}

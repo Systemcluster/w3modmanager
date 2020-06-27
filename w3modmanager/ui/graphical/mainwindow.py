@@ -84,11 +84,11 @@ class MainWindow(QMainWindow):
         menuMods.addAction(actionDownloadMod)
 
         menuMods.addSeparator()
-        actionGetInfo = QAction('Update mod de&tails', self)
+        actionGetInfo = QAction('Update Mod de&tails', self)
         actionGetInfo.triggered.connect(self.showGetInfoDialog)
         actionGetInfo.setIcon(downIcon)
         menuMods.addAction(actionGetInfo)
-        actionGetUpdates = QAction('Check for mod &updates', self)
+        actionGetUpdates = QAction('Check for Mod &updates', self)
         actionGetUpdates.triggered.connect(self.showGetUpdatesDialog)
         actionGetUpdates.setIcon(downIcon)
         menuMods.addAction(actionGetUpdates)
