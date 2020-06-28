@@ -174,12 +174,12 @@ class Model:
                     targetFile = target.joinpath(_content.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
                     copyfile(sourceFile, targetFile)
+                mod.installed = True
                 await self.update(mod)
             except Exception as e:
                 removeDirectory(target)
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
-            mod.installed = True
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def update(self, mod: Mod) -> None:
