@@ -1,17 +1,18 @@
-from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.domain.mod.mod import Settings
 from w3modmanager.util.util import detectEncoding
 
+from typing import Sequence
 from pathlib import Path
 from configparser import ConfigParser
 
 
-def addSettings(mod: Mod, path: Path) -> int:
+def addSettings(settingslist: Sequence[Settings], path: Path) -> int:
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
     config.read(path, encoding=encoding)
     modified = 0
-    for settings in mod.settings:
+    for settings in settingslist:
         for section in settings.config.sections():
             if not config.has_section(section):
                 config.add_section(section)
@@ -23,13 +24,13 @@ def addSettings(mod: Mod, path: Path) -> int:
     return modified
 
 
-def removeSettings(mod: Mod, path: Path) -> int:
+def removeSettings(settingslist: Sequence[Settings], path: Path) -> int:
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
     config.read(path, encoding=encoding)
     modified = 0
-    for settings in mod.settings:
+    for settings in settingslist:
         for section in settings.config.sections():
             if not config.has_section(section):
                 continue
