@@ -12,6 +12,7 @@ from fasteners import InterProcessLock
 from datetime import datetime, timezone
 from shutil import copyfile
 import asyncio
+import re
 
 
 class CallbackList(list):
@@ -108,6 +109,8 @@ class Model:
         for path in self.modspath.iterdir():
             if path.joinpath('.w3mm').is_file():
                 mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                mod.enabled = not path.name.startswith('~')
+                mod.filename = re.sub(r'^(~)', r'', path.name)
                 self._modList[(mod.filename, mod.target)] = mod
             else:
                 try:
@@ -123,6 +126,10 @@ class Model:
         for path in self.dlcspath.iterdir():
             if path.joinpath('.w3mm').is_file():
                 mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                mod.enabled = not all(file.name.endswith('.disabled')
+                                      for file in path.glob('**/*') if file.is_file()
+                                      and not file.name == '.w3mm')
+                mod.filename = path.name
                 self._modList[(mod.filename, mod.target)] = mod
             else:
                 try:
@@ -130,7 +137,9 @@ class Model:
                         mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
                         mod.target = 'dlc'
                         mod.datatype = 'dlc'
-                        mod.enabled = not path.name.startswith('~')
+                        mod.enabled = not all(file.name.endswith('.disabled')
+                                              for file in path.glob('**/*') if file.is_file()
+                                              and not file.name == '.w3mm')
                         self._modList[(mod.filename, mod.target)] = mod
                         asyncio.create_task(self.update(mod))
                 except InvalidPathError:
@@ -157,7 +166,7 @@ class Model:
         async with self.updateLock:
             if (mod.filename, mod.target) in self._modList:
                 raise ModExistsError(mod.filename, mod.target)
-            target: Path = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+            target = self.getModPath(mod)
             if target.exists():
                 # TODO: incomplete: make sure the mod is tracked by the model
                 raise ModExistsError(mod.filename, mod.target)
@@ -183,14 +192,14 @@ class Model:
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def update(self, mod: Mod) -> None:
-        target: Path = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+        target = self.getModPath(mod)
         # serialize and store mod structure
         try:
             with target.joinpath('.w3mm').open('w', encoding='utf-8') as modInfoFile:
                 modSerialized = mod.to_json()
                 modInfoFile.write(modSerialized)
         except Exception as e:
-            raise e
+            logger.exception(f'Could not update mod: {e}')
 
     async def replace(self, filename: str, target: str, mod: Mod) -> None:
         # TODO: incomplete: handle possible conflict with existing mods
@@ -201,7 +210,7 @@ class Model:
     async def remove(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
-            target = self.gamepath.joinpath(mod.target).joinpath(mod.filename)
+            target = self.getModPath(mod)
             removeDirectory(target)
             del self._modList[(mod.filename, mod.target)]
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
@@ -209,22 +218,85 @@ class Model:
     async def enable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
-            mod.enabled = True
-            await self.update(mod)
+            oldstat = mod.enabled
+            oldpath = self.getModPath(mod)
+            renames = []
+            try:
+                mod.enabled = True
+                if mod.target == 'mods':
+                    newpath = self.getModPath(mod)
+                    oldpath.rename(newpath)
+                if mod.target == 'dlc':
+                    for file in oldpath.glob('**/*'):
+                        while file.is_file() and file.suffix == '.disabled':
+                            file = file.rename(file.with_suffix(''))
+                            renames.append(file)
+                await self.update(mod)
+            except PermissionError:
+                logger.bind(path=oldpath).exception(
+                    'Could not enable mod, invalid permissions. Is it open in the explorer?')
+                mod.enabled = oldstat
+                for rename in reversed(renames):
+                    rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
+            except Exception as e:
+                logger.exception(f'Could not enable mod: {e}')
+                mod.enabled = oldstat
+                for rename in reversed(renames):
+                    rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
+        # TODO: incomplete: update mods.settings entry
+        # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def disable(self, mod: ModelIndexType) -> None:
         async with self.updateLock:
             mod = self[mod]
-            mod.enabled = False
-            await self.update(mod)
+            oldstat = mod.enabled
+            oldpath = self.getModPath(mod)
+            renames = []
+            try:
+                mod.enabled = False
+                if mod.target == 'mods':
+                    newpath = self.getModPath(mod)
+                    oldpath.rename(newpath)
+                if mod.target == 'dlc':
+                    for file in oldpath.glob('**/*'):
+                        if file.is_file() and not file.name == '.w3mm' and not file.suffix == '.disabled':
+                            file = file.rename(file.with_suffix(file.suffix + '.disabled'))
+                            renames.append(file)
+                await self.update(mod)
+            except PermissionError:
+                logger.bind(path=oldpath).exception(
+                    'Could not disable mod, invalid permissions. Is it open in the explorer?')
+                mod.enabled = oldstat
+                for rename in reversed(renames):
+                    rename.rename(rename.with_suffix(''))
+            except Exception as e:
+                logger.exception(f'Could not disable mod: {e}')
+                mod.enabled = oldstat
+                for rename in reversed(renames):
+                    rename.rename(rename.with_suffix(''))
+        # TODO: incomplete: update mods.settings entry
+        # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def setFilename(self, mod: ModelIndexType, filename: str) -> None:
         async with self.updateLock:
             mod = self[mod]
+            oldname = mod.filename
+            oldpath = self.getModPath(mod)
             mod.filename = filename
-            await self.update(mod)
+            newpath = self.getModPath(mod)
+            try:
+                oldpath.rename(newpath)
+                await self.update(mod)
+            except PermissionError:
+                logger.bind(path=oldpath).exception(
+                    'Could not rename mod, invalid permissions. Is it open in the explorer?')
+                mod.filename = oldname
+            except Exception as e:
+                logger.exception(f'Could not rename mod: {e}')
+                mod.filename = oldname
+        # TODO: incomplete: update mods.settings entry
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPackage(self, mod: ModelIndexType, package: str) -> None:
@@ -256,7 +328,8 @@ class Model:
 
 
     def getModPath(self, mod: ModelIndexType) -> Path:
-        mod = self[mod]
+        if not isinstance(mod, Mod):
+            mod = self[mod]
         basepath = self.gamepath.joinpath(mod.target).resolve()
         if not mod.enabled and mod.target == 'mods':
             return basepath.joinpath(f'~{mod.filename}')
@@ -274,7 +347,9 @@ class Model:
             if mod not in self._modList:
                 raise ModNotFoundError(tuple(mod)[0], tuple(mod)[1])
             return self._modList[mod]
-        if isinstance(mod, Mod) and mod in self.values():
+        if isinstance(mod, Mod):
+            if mod not in self.values():
+                raise ModNotFoundError(mod.filename, mod.target)
             return mod
         raise IndexError(f'invalid index type {type(mod)}')
 
