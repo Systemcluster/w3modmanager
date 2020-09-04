@@ -53,6 +53,6 @@ This list is preliminary and may change before release.
 
 ## Source and Development
 
-Download the source and install the requirements with `pipenv install`. Python 3.8+ and Pipenv have to be installed.
+Download the source and install the requirements with `pipenv install --python 3`. Python 3.8+ and Pipenv have to be installed.
 
 Afterwards run with `pipenv run invoke start`. To show the available build and test tasks run `pipenv run invoke --list`.
