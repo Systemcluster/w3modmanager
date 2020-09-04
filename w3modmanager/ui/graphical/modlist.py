@@ -19,7 +19,7 @@ from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QP
     QDesktopServices
 
 from w3modmanager.core.model import Model
-from w3modmanager.core.errors import ModExistsError, ModNotFoundError, ModelError
+from w3modmanager.core.errors import ModExistsError, ModelError
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
@@ -298,10 +298,13 @@ class ModList(QTableView):
         mods = self.getSelectedMods()
         self.setDisabled(True)
         for mod in mods:
-            if enable:
-                await self.modmodel.enable(mod)
-            else:
-                await self.modmodel.disable(mod)
+            try:
+                if enable:
+                    await self.modmodel.enable(mod)
+                else:
+                    await self.modmodel.disable(mod)
+            except Exception as e:
+                logger.bind(name=mod.filename).exception(f'Could not enable/disable mod: {e}')
         self.setDisabled(False)
         self.setFocus()
 
@@ -316,8 +319,8 @@ class ModList(QTableView):
         for mod in mods:
             try:
                 await self.modmodel.remove(mod)
-            except ModNotFoundError:
-                logger.bind(name=mod.filename).warning('Mod not found')
+            except Exception as e:
+                logger.bind(name=mod.filename).exception(f'Could not delete mod: {e}')
         asyncio.get_running_loop().call_later(100 / 1000.0, partial(self.selectRowChecked, inds[0].row()))
         self.setDisabled(False)
         self.setFocus()

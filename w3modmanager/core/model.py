@@ -1,4 +1,5 @@
 from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.domain.bin.modifier import addSettings, removeSettings
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
     InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
@@ -170,6 +171,7 @@ class Model:
             if target.exists():
                 # TODO: incomplete: make sure the mod is tracked by the model
                 raise ModExistsError(mod.filename, mod.target)
+            settings = 0
             try:
                 target.mkdir(parents=True)
                 # copy mod files
@@ -184,16 +186,19 @@ class Model:
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
                     copyfile(sourceFile, targetFile)
                 mod.installed = True
+                settings = addSettings(mod, self.configpath.joinpath('user.settings'))
                 await self.update(mod)
             except Exception as e:
                 removeDirectory(target)
+                if settings:
+                    removeSettings(mod, self.configpath.joinpath('user.settings'))
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def update(self, mod: Mod) -> None:
-        target = self.getModPath(mod)
         # serialize and store mod structure
+        target = self.getModPath(mod)
         try:
             with target.joinpath('.w3mm').open('w', encoding='utf-8') as modInfoFile:
                 modSerialized = mod.to_json()
@@ -212,6 +217,10 @@ class Model:
             mod = self[mod]
             target = self.getModPath(mod)
             removeDirectory(target)
+            try:
+                removeSettings(mod, self.configpath.joinpath('user.settings'))
+            except Exception as e:
+                logger.bind(name=mod.filename).warning(f'Could not remove settings from user.settings: {e}')
             del self._modList[(mod.filename, mod.target)]
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -221,6 +230,7 @@ class Model:
             oldstat = mod.enabled
             oldpath = self.getModPath(mod)
             renames = []
+            settings = 0
             try:
                 mod.enabled = True
                 if mod.target == 'mods':
@@ -231,6 +241,7 @@ class Model:
                         while file.is_file() and file.suffix == '.disabled':
                             file = file.rename(file.with_suffix(''))
                             renames.append(file)
+                settings = addSettings(mod, self.configpath.joinpath('user.settings'))
                 await self.update(mod)
             except PermissionError:
                 logger.bind(path=oldpath).exception(
@@ -238,11 +249,15 @@ class Model:
                 mod.enabled = oldstat
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
+                if settings:
+                    removeSettings(mod, self.configpath.joinpath('user.settings'))
             except Exception as e:
                 logger.exception(f'Could not enable mod: {e}')
                 mod.enabled = oldstat
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
+                if settings:
+                    removeSettings(mod, self.configpath.joinpath('user.settings'))
         # TODO: incomplete: update mods.settings entry
         # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
@@ -253,6 +268,7 @@ class Model:
             oldstat = mod.enabled
             oldpath = self.getModPath(mod)
             renames = []
+            settings = 0
             try:
                 mod.enabled = False
                 if mod.target == 'mods':
@@ -263,6 +279,7 @@ class Model:
                         if file.is_file() and not file.name == '.w3mm' and not file.suffix == '.disabled':
                             file = file.rename(file.with_suffix(file.suffix + '.disabled'))
                             renames.append(file)
+                settings = removeSettings(mod, self.configpath.joinpath('user.settings'))
                 await self.update(mod)
             except PermissionError:
                 logger.bind(path=oldpath).exception(
@@ -270,11 +287,15 @@ class Model:
                 mod.enabled = oldstat
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(''))
+                if settings:
+                    addSettings(mod, self.configpath.joinpath('user.settings'))
             except Exception as e:
                 logger.exception(f'Could not disable mod: {e}')
                 mod.enabled = oldstat
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(''))
+                if settings:
+                    addSettings(mod, self.configpath.joinpath('user.settings'))
         # TODO: incomplete: update mods.settings entry
         # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))

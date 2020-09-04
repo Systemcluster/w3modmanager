@@ -38,7 +38,7 @@ def getSupportedExtensions() -> List[str]:
 
 def detectEncoding(path: Path) -> str:
     encoding = cchardet.detect(path.read_bytes())
-    if encoding['confidence'] > 0.7:
+    if encoding['confidence'] and encoding['confidence'] > 0.7:
         return encoding['encoding']
     return 'utf-8'
 
