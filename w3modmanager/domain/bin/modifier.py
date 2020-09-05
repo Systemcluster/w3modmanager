@@ -7,6 +7,8 @@ from configparser import ConfigParser
 
 
 def addSettings(settingslist: Sequence[Settings], path: Path) -> int:
+    if not path.is_file():
+        path.touch()
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
@@ -25,6 +27,8 @@ def addSettings(settingslist: Sequence[Settings], path: Path) -> int:
 
 
 def removeSettings(settingslist: Sequence[Settings], path: Path) -> int:
+    if not path.is_file():
+        return 0
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
@@ -45,17 +49,22 @@ def removeSettings(settingslist: Sequence[Settings], path: Path) -> int:
 
 
 def removeSettingsSection(section: str, path: Path) -> None:
+    if not path.is_file():
+        return
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
     config.read(path, encoding=encoding)
-    if config.has_section(section):
-        config.remove_section(section)
+    if not config.has_section(section):
+        return
+    config.remove_section(section)
     with open(path, 'w', encoding=encoding) as file:
         config.write(file, space_around_delimiters=False)
 
 
 def renameSettingsSection(section: str, to: str, path: Path) -> None:
+    if not path.is_file():
+        path.touch()
     if section == to:
         return
     encoding = detectEncoding(path)
@@ -75,6 +84,8 @@ def renameSettingsSection(section: str, to: str, path: Path) -> None:
 
 
 def setSettingsValue(section: str, key: str, val: str, path: Path) -> None:
+    if not path.is_file():
+        path.touch()
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
@@ -92,6 +103,8 @@ def setSettingsValue(section: str, key: str, val: str, path: Path) -> None:
 
 
 def getSettingsValue(section: str, key: str, path: Path) -> Optional[str]:
+    if not path.is_file():
+        return None
     encoding = detectEncoding(path)
     config = ConfigParser(strict=False)
     config.optionxform = str  # type: ignore
