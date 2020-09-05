@@ -1,5 +1,6 @@
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.bin.modifier import addSettings, removeSettings
+from w3modmanager.domain.bin.modifier import addSettings, removeSettings, removeSettingsSection, \
+    renameSettingsSection, setSettingsValue
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
     InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
@@ -189,6 +190,7 @@ class Model:
                 mod.installed = True
                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
+                setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
                 await self.update(mod)
             except Exception as e:
                 removeDirectory(target)
@@ -196,6 +198,7 @@ class Model:
                     removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
+                removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
@@ -229,6 +232,10 @@ class Model:
                 removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
             except Exception as e:
                 logger.bind(name=mod.filename).warning(f'Could not remove settings from input.settings: {e}')
+            try:
+                removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
+            except Exception as e:
+                logger.bind(name=mod.filename).warning(f'Could not remove settings from mods.settings: {e}')
             del self._modList[(mod.filename, mod.target)]
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -246,6 +253,7 @@ class Model:
                 if mod.target == 'mods':
                     newpath = self.getModPath(mod)
                     oldpath.rename(newpath)
+                    setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
                         while file.is_file() and file.suffix == '.disabled':
@@ -270,7 +278,8 @@ class Model:
                     removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-        # TODO: incomplete: update mods.settings entry
+                if mod.target == 'mods':
+                    setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -288,6 +297,7 @@ class Model:
                 if mod.target == 'mods':
                     newpath = self.getModPath(mod)
                     oldpath.rename(newpath)
+                    setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
                         if file.is_file() and not file.name == '.w3mm' and not file.suffix == '.disabled':
@@ -311,7 +321,8 @@ class Model:
                     addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-        # TODO: incomplete: update mods.settings entry
+                if mod.target == 'mods':
+                    setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -322,17 +333,24 @@ class Model:
             oldpath = self.getModPath(mod)
             mod.filename = filename
             newpath = self.getModPath(mod)
+            renamed = False
+            undo = False
             try:
                 oldpath.rename(newpath)
+                renamed = True
+                renameSettingsSection(oldname, filename, self.configpath.joinpath('mods.settings'))
                 await self.update(mod)
             except PermissionError:
                 logger.bind(path=oldpath).exception(
                     'Could not rename mod, invalid permissions. Is it open in the explorer?')
-                mod.filename = oldname
+                undo = True
             except Exception as e:
                 logger.exception(f'Could not rename mod: {e}')
+                undo = True
+            if undo:
                 mod.filename = oldname
-        # TODO: incomplete: update mods.settings entry
+                if renamed:
+                    newpath.rename(oldpath)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPackage(self, mod: ModelIndexType, package: str) -> None:
@@ -353,6 +371,9 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             mod.priority = priority
+            if mod.target == 'mods':
+                setSettingsValue(mod.filename, 'Priority', str(priority) if priority >= 0 else '',
+                                 self.configpath.joinpath('mods.settings'))
             await self.update(mod)
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
