@@ -123,7 +123,7 @@ def isValidModDirectory(path: Path) -> bool:
     # valid if path starts with mod and contains a non-empty content dir
     # and is not contained in a dlc dir
     if path.is_dir() \
-    and re.match('^(mod).*', path.name, re.IGNORECASE) \
+    and re.match('^((~)?mod).*', path.name, re.IGNORECASE) \
     and not re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE) \
     and containsContentDirectory(path):
         return True
