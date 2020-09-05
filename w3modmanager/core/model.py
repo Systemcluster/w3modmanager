@@ -1,6 +1,6 @@
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.bin.modifier import addSettings, removeSettings, removeSettingsSection, \
-    renameSettingsSection, setSettingsValue
+from w3modmanager.domain.bin.modifier import addSettings, getSettingsValue, removeSettings, \
+    removeSettingsSection, renameSettingsSection, setSettingsValue
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
     InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
@@ -113,6 +113,10 @@ class Model:
                 mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
                 mod.enabled = not path.name.startswith('~')
                 mod.filename = re.sub(r'^(~)', r'', path.name)
+                if mod.enabled:
+                    enabled = getSettingsValue(mod.filename, 'Enabled', self.configpath.joinpath('mods.settings'))
+                    if enabled == '0':
+                        mod.enabled = False
                 self._modList[(mod.filename, mod.target)] = mod
             else:
                 try:
@@ -121,6 +125,11 @@ class Model:
                         mod.target = 'mods'
                         mod.datatype = 'mod'
                         mod.enabled = not path.name.startswith('~')
+                        if mod.enabled:
+                            enabled = getSettingsValue(mod.filename, 'Enabled',
+                                                       self.configpath.joinpath('mods.settings'))
+                            if enabled == '0':
+                                mod.enabled = False
                         self._modList[(mod.filename, mod.target)] = mod
                         asyncio.create_task(self.update(mod))
                 except InvalidPathError:
@@ -205,7 +214,7 @@ class Model:
 
     async def update(self, mod: Mod) -> None:
         # serialize and store mod structure
-        target = self.getModPath(mod)
+        target = self.getModPath(mod, True)
         try:
             with target.joinpath('.w3mm').open('w', encoding='utf-8') as modInfoFile:
                 modSerialized = mod.to_json()
@@ -220,9 +229,10 @@ class Model:
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def remove(self, mod: ModelIndexType) -> None:
+        await self.disable(mod)
         async with self.updateLock:
             mod = self[mod]
-            target = self.getModPath(mod)
+            target = self.getModPath(mod, True)
             removeDirectory(target)
             try:
                 removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
@@ -243,7 +253,7 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             oldstat = mod.enabled
-            oldpath = self.getModPath(mod)
+            oldpath = self.getModPath(mod, True)
             undo = False
             renames = []
             settings = 0
@@ -252,7 +262,8 @@ class Model:
                 mod.enabled = True
                 if mod.target == 'mods':
                     newpath = self.getModPath(mod)
-                    oldpath.rename(newpath)
+                    if oldpath != newpath:
+                        oldpath.rename(newpath)
                     setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
@@ -271,7 +282,10 @@ class Model:
                 mod.enabled = oldstat
                 undo = True
             if undo:
+                newpath = self.getModPath(mod)
                 mod.enabled = oldstat
+                if newpath.is_dir() and newpath != oldpath:
+                    newpath.rename(oldpath)
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
                 if settings:
@@ -287,7 +301,7 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             oldstat = mod.enabled
-            oldpath = self.getModPath(mod)
+            oldpath = self.getModPath(mod, True)
             undo = False
             renames = []
             settings = 0
@@ -296,7 +310,8 @@ class Model:
                 mod.enabled = False
                 if mod.target == 'mods':
                     newpath = self.getModPath(mod)
-                    oldpath.rename(newpath)
+                    if oldpath != newpath:
+                        oldpath.rename(newpath)
                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
@@ -314,7 +329,10 @@ class Model:
                 logger.exception(f'Could not disable mod: {e}')
                 undo = True
             if undo:
+                newpath = self.getModPath(mod)
                 mod.enabled = oldstat
+                if newpath.is_dir() and newpath != oldpath:
+                    newpath.rename(oldpath)
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(''))
                 if settings:
@@ -330,14 +348,15 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             oldname = mod.filename
-            oldpath = self.getModPath(mod)
+            oldpath = self.getModPath(mod, True)
             mod.filename = filename
             newpath = self.getModPath(mod)
             renamed = False
             undo = False
             try:
-                oldpath.rename(newpath)
-                renamed = True
+                if oldpath != newpath:
+                    oldpath.rename(newpath)
+                    renamed = True
                 renameSettingsSection(oldname, filename, self.configpath.joinpath('mods.settings'))
                 await self.update(mod)
             except PermissionError:
@@ -384,14 +403,20 @@ class Model:
             self.updateCallbacks.fire(self)
 
 
-    def getModPath(self, mod: ModelIndexType) -> Path:
+    def getModPath(self, mod: ModelIndexType, resolve: bool = False) -> Path:
         if not isinstance(mod, Mod):
             mod = self[mod]
         basepath = self.gamepath.joinpath(mod.target).resolve()
         if not mod.enabled and mod.target == 'mods':
-            return basepath.joinpath(f'~{mod.filename}')
+            target = basepath.joinpath(f'~{mod.filename}')
         else:
-            return basepath.joinpath(mod.filename)
+            target = basepath.joinpath(mod.filename)
+        if resolve and not target.is_dir():
+            if not mod.enabled and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
+                target = target.parent.joinpath(re.sub(r'^~', r'', target.name))
+            if not target.is_dir():
+                raise ModNotFoundError(mod.filename, mod.target)
+        return target
 
 
     def __len__(self) -> int:

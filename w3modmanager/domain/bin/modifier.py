@@ -1,7 +1,7 @@
 from w3modmanager.domain.mod.mod import Settings
 from w3modmanager.util.util import detectEncoding
 
-from typing import Sequence
+from typing import Sequence, Optional
 from pathlib import Path
 from configparser import ConfigParser
 
@@ -89,3 +89,15 @@ def setSettingsValue(section: str, key: str, val: str, path: Path) -> None:
         config.remove_section(section)
     with open(path, 'w', encoding=encoding) as file:
         config.write(file, space_around_delimiters=False)
+
+
+def getSettingsValue(section: str, key: str, path: Path) -> Optional[str]:
+    encoding = detectEncoding(path)
+    config = ConfigParser(strict=False)
+    config.optionxform = str  # type: ignore
+    config.read(path, encoding=encoding)
+    if not config.has_section(section):
+        return None
+    if not config.has_option(section, key):
+        return None
+    return config.get(section, key)
