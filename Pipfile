@@ -23,7 +23,7 @@ invoke = ">=1.4"
 
 [packages]
 fasteners = ">=0.15"
-PySide2 = "==5.14.2.3"
+PySide2 = "==5.15.1"
 loguru = ">=0.4"
 vdf = ">=3.2"
 appdirs = ">=1.4"
