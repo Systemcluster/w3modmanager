@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import Optional, Dict, Any
 import asyncio
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex
+from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QSettings
 from PySide2.QtGui import QFontDatabase, QColor, QIcon
 from PySide2.QtWidgets import QWidget
 
@@ -61,6 +61,18 @@ class ModListModel(QAbstractTableModel):
         self.headerData.cache_clear()
 
     def update(self, model: Model) -> None:
+        settings = QSettings()
+
+        self._colorNewest = QColor(242, 255, 242) \
+            if settings.value('highlightNewest', 'True') == 'True' else None
+        self._colorRecent = QColor(242, 246, 255) \
+            if settings.value('highlightRecent', 'True') == 'True' else None
+        self._colorUnmanaged = QColor(250, 240, 240) \
+            if settings.value('highlightUnmanaged', 'True') == 'True' else None
+        self._colorDisabled = QColor(240, 240, 240) \
+            if settings.value('highlightDisabled', 'True') == 'True' else None
+        self._colorUnavailable = QColor(240, 240, 240)
+
         self.layoutAboutToBeChanged.emit()
         self.clearCache()
         self._lastUpdate = model.lastUpdate
@@ -161,15 +173,15 @@ class ModListModel(QAbstractTableModel):
         if role == Qt.BackgroundRole:
             mod = self.modmodel[index.row()]
             if not mod.enabled:
-                return QColor(240, 240, 240)
+                return self._colorDisabled
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
-                return QColor(240, 240, 240)
+                return self._colorUnavailable
             if mod.installdate > self._lastUpdate:
-                return QColor(242, 255, 242)
+                return self._colorNewest
             if mod.installdate > self._lastInitialization:
-                return QColor(242, 246, 255)
+                return self._colorRecent
             if not mod.installed:
-                return QColor(250, 240, 240)
+                return self._colorUnmanaged
             return None
 
         if role == Qt.ForegroundRole:

@@ -8,10 +8,11 @@ from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 
 from typing import Any
 
-from PySide2.QtCore import QSize, QSettings, Qt
-from PySide2.QtWidgets import QMainWindow, QMenuBar, QAction, \
+from PySide2.QtCore import QSize, QSettings, Qt, QUrl
+from PySide2.QtWidgets import QMainWindow, QMenuBar, \
     QFileDialog, QMessageBox, QMenu, QApplication
-from PySide2.QtGui import QIcon, QCloseEvent
+from PySide2.QtGui import QIcon, QCloseEvent, QPixmap, QPainter, \
+    QBrush, QColor, QDesktopServices
 
 from asyncqt import asyncSlot  # noqa
 
@@ -71,32 +72,24 @@ class MainWindow(QMainWindow):
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
         dirsIcon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
+        smilIcon = QIcon(str(getRuntimePath('resources/icons/smile.ico')))
 
-        actionAddModFromFile = QAction('&Add Mods', self)
+        actionAddModFromFile = menuMods.addAction('&Add Mods')
         actionAddModFromFile.triggered.connect(self.showAddModFromFileDialog)
-        menuMods.addAction(actionAddModFromFile)
-        actionAddModFromFolder = QAction('Add u&npacked Mod', self)
+        actionAddModFromFolder = menuMods.addAction('Add u&npacked Mod')
         actionAddModFromFolder.triggered.connect(self.showAddModFromFolderDialog)
-        menuMods.addAction(actionAddModFromFolder)
-        actionDownloadMod = QAction('&Download Mod', self)
+        actionDownloadMod = menuMods.addAction(downIcon, '&Download Mod')
         actionDownloadMod.triggered.connect(self.showDownloadModDialog)
-        actionDownloadMod.setIcon(downIcon)
-        menuMods.addAction(actionDownloadMod)
 
         menuMods.addSeparator()
-        actionGetInfo = QAction('Update Mod de&tails', self)
+        actionGetInfo = menuMods.addAction(downIcon, 'Update Mod de&tails')
         actionGetInfo.triggered.connect(self.showGetInfoDialog)
-        actionGetInfo.setIcon(downIcon)
-        menuMods.addAction(actionGetInfo)
-        actionGetUpdates = QAction('Check for Mod &updates', self)
+        actionGetUpdates = menuMods.addAction(downIcon, 'Check for Mod &updates')
         actionGetUpdates.triggered.connect(self.showGetUpdatesDialog)
-        actionGetUpdates.setIcon(downIcon)
-        menuMods.addAction(actionGetUpdates)
 
         menuMods.addSeparator()
-        actionExport = QAction('&Export Modlist', self)
+        actionExport = menuMods.addAction('&Export Modlist')
         actionExport.triggered.connect(self.showExportDialog)
-        menuMods.addAction(actionExport)
 
         menuMods.aboutToShow.connect(lambda: [
             actionDownloadMod.setDisabled(not str(settings.value('nexusAPIKey'))),
@@ -111,13 +104,75 @@ class MainWindow(QMainWindow):
             actionExport.setDisabled(not len(self.model))
         ])
 
+        # view menu
+
+        menuView: QMenu = self.menuBar().addMenu('&View')
+
+        toggleHighlightNewest = menuView.addAction('Highlight &Newest')
+        toggleHighlightNewest.setCheckable(True)
+        toggleHighlightNewest.setChecked(settings.value('highlightNewest', 'True') == 'True')
+        toggleHighlightNewest.triggered.connect(lambda checked: [
+            settings.setValue('highlightNewest', str(checked)),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        iconHighlightNewest = QPixmap(256, 256)
+        iconHighlightNewest.fill(Qt.transparent)
+        painter = QPainter(iconHighlightNewest)
+        painter.setBrush(QBrush(QColor(222, 255, 222)))
+        painter.drawEllipse(10, 10, 236, 236)
+        toggleHighlightNewest.setIcon(QIcon(iconHighlightNewest))
+        painter.end()
+
+        toggleHighlightRecent = menuView.addAction('Highlight &Recent')
+        toggleHighlightRecent.setCheckable(True)
+        toggleHighlightRecent.setChecked(settings.value('highlightRecent', 'True') == 'True')
+        toggleHighlightRecent.triggered.connect(lambda checked: [
+            settings.setValue('highlightRecent', str(checked)),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        iconHighlightRecent = QPixmap(256, 256)
+        iconHighlightRecent.fill(Qt.transparent)
+        painter = QPainter(iconHighlightRecent)
+        painter.setBrush(QBrush(QColor(222, 226, 255)))
+        painter.drawEllipse(10, 10, 236, 236)
+        toggleHighlightRecent.setIcon(QIcon(iconHighlightRecent))
+        painter.end()
+
+        toggleHighlightUnmanaged = menuView.addAction('Highlight &Unmanaged')
+        toggleHighlightUnmanaged.setCheckable(True)
+        toggleHighlightUnmanaged.setChecked(settings.value('highlightUnmanaged', 'True') == 'True')
+        toggleHighlightUnmanaged.triggered.connect(lambda checked: [
+            settings.setValue('highlightUnmanaged', str(checked)),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        iconHighlightUnmanaged = QPixmap(256, 256)
+        iconHighlightUnmanaged.fill(Qt.transparent)
+        painter = QPainter(iconHighlightUnmanaged)
+        painter.setBrush(QBrush(QColor(250, 220, 220)))
+        painter.drawEllipse(10, 10, 236, 236)
+        toggleHighlightUnmanaged.setIcon(QIcon(iconHighlightUnmanaged))
+        painter.end()
+
+        toggleHighlightDisabled = menuView.addAction('Highlight &Disabled')
+        toggleHighlightDisabled.setCheckable(True)
+        toggleHighlightDisabled.setChecked(settings.value('highlightDisabled', 'True') == 'True')
+        toggleHighlightDisabled.triggered.connect(lambda checked: [
+            settings.setValue('highlightDisabled', str(checked)),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        iconHighlightDisabled = QPixmap(256, 256)
+        iconHighlightDisabled.fill(Qt.transparent)
+        painter = QPainter(iconHighlightDisabled)
+        painter.setBrush(QBrush(QColor(230, 230, 230)))
+        painter.drawEllipse(10, 10, 236, 236)
+        toggleHighlightDisabled.setIcon(QIcon(iconHighlightDisabled))
+        painter.end()
+
         # settings menu
 
         menuSettings: QMenu = self.menuBar().addMenu('&Tools')
-        actionSettings = QAction('&Settings', self)
+        actionSettings = menuSettings.addAction(gearIcon, '&Settings')
         actionSettings.triggered.connect(self.showSettingsDialog)
-        actionSettings.setIcon(gearIcon)
-        menuSettings.addAction(actionSettings)
 
         menuSettings.addSeparator()
         actionOpenGameDirectory = menuSettings.addAction(dirsIcon, 'Open &Game directory')
@@ -128,10 +183,12 @@ class MainWindow(QMainWindow):
         # info menu
 
         menuInfo: QMenu = self.menuBar().addMenu('&Info')
-        actionAbout = QAction('&About', self)
+
+        actionFeedback = menuInfo.addAction(smilIcon, 'Send &Feedback')
+        actionFeedback.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(w3modmanager.URL_ISSUES)))
+        menuInfo.addSeparator()
+        actionAbout = menuInfo.addAction(QIcon.fromTheme('document-open'), '&About')
         actionAbout.triggered.connect(self.showAboutDialog)
-        actionAbout.setIcon(QIcon.fromTheme('document-open'))
-        menuInfo.addAction(actionAbout)
 
     def showExportDialog(self) -> None:
         # TODO: incomplete: implement modlist export
