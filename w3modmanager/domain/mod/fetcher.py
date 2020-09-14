@@ -44,7 +44,7 @@ def formatPackageName(name: str) -> str:
     name = re.sub(r'\s+', r' ', name)
     name = name.strip()
     # return orginal name if formatted name is too short
-    if len(name) < 4 and len(original) >= 4:
+    if len(name) < 2 and len(original) >= 2:
         return original
     return name
 
