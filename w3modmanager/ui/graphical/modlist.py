@@ -16,7 +16,7 @@ from PySide2.QtWidgets import QApplication, QStyledItemDelegate, \
     QTableView, QMessageBox, QPushButton, QMenu
 from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon, \
-    QDesktopServices
+    QDesktopServices, QWheelEvent
 
 from w3modmanager.core.model import Model
 from w3modmanager.core.errors import ModExistsError, ModelError
@@ -206,6 +206,27 @@ class ModList(QTableView):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.hoverIndexRow = self.indexAt(event.pos()).row()
         return super().mouseMoveEvent(event)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        result = super().wheelEvent(event)
+        # repaint previously hovered row on scroll avoid repaint artifacts
+        index = self.model().index(self.hoverIndexRow, 0)
+        self.hoverIndexRow = self.indexAt(event.position().toPoint()).row()
+        rect = self.visualRect(index)
+        rect.setLeft(0)
+        rect.setRight(self.viewport().width())
+        self.viewport().repaint(rect)
+        return result
+
+    def leaveEvent(self, event: QEvent) -> None:
+        index = self.model().index(self.hoverIndexRow, 0)
+        # unset row hover state and repaint previously hovered row
+        self.hoverIndexRow = -1
+        rect = self.visualRect(index)
+        rect.setLeft(0)
+        rect.setRight(self.viewport().width())
+        self.viewport().repaint(rect)
+        return super().leaveEvent(event)
 
     def doubleClickEvent(self, index: QModelIndex) -> None:
         if self.filtermodel.mapToSource(index).column() == 0:
