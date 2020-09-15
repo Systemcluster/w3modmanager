@@ -391,7 +391,9 @@ class ModList(QTableView):
         self.setFocus()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.matches(QKeySequence.Delete):
+        if event.key() == Qt.Key_Escape:
+            self.selectionModel().clear()
+        elif event.matches(QKeySequence.Delete):
             asyncio.create_task(self.deleteSelectedMods())
         super().keyPressEvent(event)
 
