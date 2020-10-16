@@ -234,6 +234,11 @@ class BinFile:
                 and self.target == Path(match[0][1])
         return False
 
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, BinFile):
+            return self.source < other.source
+        return False
+
 
 @dataclass
 class ContentFile(DataClassJsonMixin):
@@ -247,6 +252,11 @@ class ContentFile(DataClassJsonMixin):
             return self.source == other.source
         if isinstance(other, str):
             return self.source == Path(other)
+        return False
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ContentFile):
+            return self.source < other.source
         return False
 
 
@@ -430,8 +440,7 @@ def findGamePath() -> Union[Path, None]:
             r'SOFTWARE',
             access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
         subkey = winreg.OpenKeyEx(key, r'WOW6432Node\GOG.com\Games\1207664663')
-        game = winreg.QueryValueEx(subkey, 'exe')
-        game = Path(str(game[0]))
+        game = Path(str(winreg.QueryValueEx(subkey, 'exe')[0]))
         if verifyGamePath(game):
             return game
     except Exception:  # noqa
@@ -446,8 +455,7 @@ def findGamePath() -> Union[Path, None]:
             r'SOFTWARE',
             access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
         subkey = winreg.OpenKeyEx(key, r'WOW6432Node\Valve\Steam')
-        steam = winreg.QueryValueEx(subkey, 'installPath')
-        steam = Path(str(steam[0]))
+        steam = Path(str(winreg.QueryValueEx(subkey, 'installPath')[0]))
         libs = steam.joinpath('steamapps/libraryfolders.vdf')
         if steam.exists() and libs.is_file():
             # found Steam installation, now read library folders manifest
