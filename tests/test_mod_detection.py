@@ -274,3 +274,51 @@ def test_mod_dlc_same_name(mockdata: Path) -> None:
     assert mod.menuFiles == []
     assert mod.settings == []
     assert mod.inputs == []
+
+
+def test_mod_with_inputs(mockdata: Path) -> None:
+    source = mockdata.joinpath('mods/mod-with-inputs')
+    mods = Mod.fromDirectory(source)
+    assert len(mods) == 1
+    mod = mods[0]
+    assert mod.package == 'with inputs'
+    assert mod.filename == 'modWithInputs'
+    assert mod.datatype == 'mod'
+    assert mod.source == source
+    assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
+    assert mod.scriptFiles == []
+    assert mod.binFiles == []
+    assert mod.menuFiles == []
+    assert mod.settings == []
+    assert mod.inputs == [InputSettings(Path('input.settings.part.txt'), '''
+        [Test]
+        IK_0=(Action=TEST_0)
+        IK_1=(Action=TEST_1)
+        IK_Tab=(Action=TEST_2)
+    ''')]
+    assert len(mod.inputs[0]) == 3
+
+
+def test_mod_with_inputs_readme(mockdata: Path) -> None:
+    source = mockdata.joinpath('mods/mod-with-inputs-readme')
+    mods = Mod.fromDirectory(source)
+    assert len(mods) == 1
+    mod = mods[0]
+    assert mod.package == 'with inputs readme'
+    assert mod.filename == 'modWithInputsReadme'
+    assert mod.datatype == 'mod'
+    assert mod.source == source
+    assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
+    assert mod.scriptFiles == []
+    assert mod.binFiles == []
+    assert mod.menuFiles == []
+    assert mod.settings == []
+    assert mod.inputs == [InputSettings(Path('input.settings.readme.txt'), '''
+        [Test]
+        IK_0=(Action=TEST_0)
+        IK_1=(Action=TEST_1)
+        IK_Tab=(Action=TEST_2)
+        [Exploration]
+        IK_Z=(Action=OpenTestMenu)
+    ''')]
+    assert len(mod.inputs[0]) == 4

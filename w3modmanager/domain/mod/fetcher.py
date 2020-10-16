@@ -267,14 +267,16 @@ class Settings(DataClassJsonMixin):
 
     def __init__(self, source: Path, content: str) -> None:
         self.source = source
-        # remove any instructions or comments included at the top of the file
-        cleanContent = content.splitlines()
-        start = 0
-        for line in cleanContent:
-            if line.strip().startswith('['):
-                break
-            start += 1
-        self.content = '\n'.join(cleanContent[start:])
+
+        # remove any instructional content or comments
+        cleanContent = []
+        for line in content.splitlines():
+            line = line.strip()
+            if re.match(r'^([a-zA-Z0-9_]+[ ]?=|\[[a-zA-Z0-9_/]+\]$)', line):
+                cleanContent.append(line)
+            if match := re.match(r'^[=]+.*(\[[a-zA-Z0-9_/]+\])', line):
+                cleanContent.append(match[1])
+        self.content = '\n'.join(cleanContent)
 
         config = ConfigParser(strict=False)
         config.optionxform = str  # type: ignore
@@ -285,6 +287,12 @@ class Settings(DataClassJsonMixin):
         return '\'%s\': %s' % (
             str(self.source),
             str({section: dict(self.config[section]) for section in self.config.sections()}))
+
+    def __len__(self) -> int:
+        val = 0
+        for n in self.config.sections():
+            val += len(self.config.items(n))
+        return val
 
 
 class UserSettings(Settings):
@@ -350,19 +358,19 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 ))
 
             # detect input.settings
-            if re.match(r'.*input[.]?s(ettings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
+            if re.match(r'.*input[.]?s(ettings)?([-_.].+)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
                 try:
                     inpu.append(InputSettings(relpath, util.readText(file)))
                 except Exception:
-                    logger.bind(file=file).debug('Could not parse input settings')
+                    logger.bind(file=file).warning('Could not parse input settings')
                 continue
 
             # detect user.settings
-            if re.match(r'.*user[.]?(settings)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
+            if re.match(r'.*user[.]?(settings)?([-_.].+)?(\.part)?(\.txt)?$', relpath.name, re.IGNORECASE):
                 try:
                     user.append(UserSettings(relpath, util.readText(file)))
                 except Exception:
-                    logger.bind(file=file).debug('Could not parse user settings')
+                    logger.bind(file=file).warning('Could not parse user settings')
                 continue
 
         dirs += sorted(
