@@ -5,8 +5,8 @@ from w3modmanager.core.model import *
 
 from pathlib import Path
 
-from PySide2.QtCore import QSettings, Qt, QSize
-from PySide2.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
+from PySide6.QtCore import QSettings, Qt, QSize
+from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
     QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog, QWidget
 
 

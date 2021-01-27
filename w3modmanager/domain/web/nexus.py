@@ -12,8 +12,7 @@ import asyncio
 from functools import partial
 
 from httpx import AsyncClient, HTTPError, HTTPStatusError, Response, Request, stream
-from PySide2.QtCore import QSettings
-from asyncqt import asyncClose  # noqa
+from PySide6.QtCore import QSettings
 from loguru import logger
 
 

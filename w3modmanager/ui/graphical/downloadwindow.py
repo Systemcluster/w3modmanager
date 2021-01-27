@@ -7,10 +7,10 @@ import html
 
 import dateparser  # noqa
 
-from PySide2.QtCore import Qt, QSize, Signal, QObject
-from PySide2.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
+from PySide6.QtCore import Qt, QSize, Signal, QObject
+from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
     QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
-from PySide2.QtGui import QMouseEvent
+from PySide6.QtGui import QMouseEvent
 
 
 class DownloadWindowEvents(QObject):

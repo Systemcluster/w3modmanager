@@ -30,7 +30,7 @@ if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
 
 if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
     del os.environ['QT_DEVICE_PIXEL_RATIO']
-os.environ['QT_API'] = 'pyside2'
+os.environ['QT_API'] = 'pyside6'
 
 
 # setup logger if tty is attached
@@ -109,11 +109,11 @@ def main(gamePath: Optional[str] = None,
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions
 
-    from PySide2.QtCore import Qt, QSettings
-    from PySide2.QtWidgets import QApplication, QMessageBox
-    from PySide2.QtGui import QIcon, QPalette, QFont
+    from PySide6.QtCore import Qt, QSettings
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    from PySide6.QtGui import QIcon, QPalette, QFont
 
-    from asyncqt import QEventLoop  # noqa
+    from qasync import QEventLoop
 
 
     QApplication.setOrganizationName(w3modmanager.ORG_NAME)
@@ -122,10 +122,6 @@ def main(gamePath: Optional[str] = None,
     QApplication.setApplicationVersion(w3modmanager.VERSION)
     QApplication.setApplicationDisplayName('')
     QApplication.setAttribute(Qt.AA_NativeWindows)
-    QApplication.setAttribute(Qt.AA_DisableWindowContextHelpButton)
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
-    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.RoundPreferFloor)
 
     app = QApplication(sys.argv)
     app.setStyleSheet('''
@@ -138,6 +134,7 @@ def main(gamePath: Optional[str] = None,
     palette = QPalette(QApplication.palette())
     palette.setColor(QPalette.Link, Qt.red)
     palette.setColor(QPalette.LinkVisited, Qt.red)
+    palette.setColor(QPalette.PlaceholderText, Qt.gray)
     app.setPalette(palette)
 
     font = QFont('Segoe UI')

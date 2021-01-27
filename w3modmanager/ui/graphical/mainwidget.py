@@ -7,10 +7,10 @@ from typing import Any
 import asyncio
 
 from loguru import logger
-from PySide2.QtCore import QSettings, Qt
-from PySide2.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
     QLabel, QStackedWidget, QLineEdit, QApplication
-from PySide2.QtGui import QKeyEvent, QKeySequence, QIcon
+from PySide6.QtGui import QKeyEvent, QKeySequence, QIcon
 
 
 class MainWidget(QWidget):

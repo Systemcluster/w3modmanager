@@ -7,14 +7,14 @@ import asyncio
 from loguru import logger
 import dateparser
 
-from PySide2.QtCore import Qt, QSettings, QUrl, QPoint, \
+from PySide6.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
     QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
     QObject, QEvent, QTimer, QSize, QRegularExpression
-from PySide2.QtWidgets import QApplication, QStyledItemDelegate, \
+from PySide6.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton, QMenu
-from PySide2.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
+from PySide6.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon, \
     QDesktopServices, QWheelEvent
 
