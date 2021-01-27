@@ -8,13 +8,11 @@ from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 
 from typing import Any
 
-from PySide2.QtCore import QSize, QSettings, Qt, QUrl
-from PySide2.QtWidgets import QMainWindow, QMenuBar, \
+from PySide6.QtCore import QSize, QSettings, Qt, QUrl
+from PySide6.QtWidgets import QMainWindow, QMenuBar, \
     QFileDialog, QMessageBox, QMenu, QApplication
-from PySide2.QtGui import QIcon, QCloseEvent, QPixmap, QPainter, \
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QPainter, \
     QBrush, QColor, QDesktopServices
-
-from asyncqt import asyncSlot  # noqa
 
 
 class MainWindow(QMainWindow):

@@ -5,9 +5,9 @@ from functools import lru_cache
 from typing import Optional, Dict, Any
 import asyncio
 
-from PySide2.QtCore import Qt, QAbstractTableModel, QModelIndex, QSettings
-from PySide2.QtGui import QFontDatabase, QColor, QIcon
-from PySide2.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSettings
+from PySide6.QtGui import QFontDatabase, QColor, QIcon
+from PySide6.QtWidgets import QWidget
 
 
 class ModListModel(QAbstractTableModel):
