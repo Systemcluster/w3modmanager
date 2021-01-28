@@ -81,7 +81,6 @@ class ModListFilterModel(QSortFilterProxyModel):
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
         self.setSortCaseSensitivity(Qt.CaseInsensitive)
         self.setSortRole(Qt.UserRole)
-        # TODO: enhancement: filter for multiple columns
 
     def filterAcceptsRow(self, row: int, parent: QModelIndex) -> bool:
         filterRegExp = self.filterRegularExpression()
@@ -182,8 +181,6 @@ class ModList(QTableView):
         ])
         self.viewportCache = QPixmap()
         self.viewportCacheSize = QSize(0, 0)
-
-        # TODO: enhancement: notify of inconsistencies like enabled-but-unconfigured-mods
 
         # TODO: enhancement: offer option to read readme and other additional text files
 
