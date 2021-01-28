@@ -69,6 +69,12 @@ class ResponseContentError(ResponseError):
         super().__init__(message)
 
 
+async def closeSession() -> None:
+    global __session
+    if __session:
+        await __session.aclose()
+
+
 def getSession() -> AsyncClient:
     global __session
     if not __session:

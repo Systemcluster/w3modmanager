@@ -106,6 +106,7 @@ def main(gamePath: Optional[str] = None,
     from w3modmanager.core.model import Model
     from w3modmanager.core.errors import OtherInstanceError, InvalidGamePath, InvalidConfigPath
     from w3modmanager.ui.graphical.mainwindow import MainWindow
+    from w3modmanager.domain.web.nexus import closeSession
     from w3modmanager.domain.system.permissions import \
         getWritePermissions, setWritePermissions
 
@@ -202,7 +203,9 @@ def main(gamePath: Optional[str] = None,
         sys.excepthook = show_exception_hook
 
         with eventloop:
-            sys.exit(eventloop.run_forever())
+            status = eventloop.run_forever()
+            eventloop.run_until_complete(closeSession())
+            sys.exit(status)
 
     except OtherInstanceError as e:
         sys.exit(f'error: {str(e)}')
