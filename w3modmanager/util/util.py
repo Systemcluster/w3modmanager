@@ -161,7 +161,6 @@ def extractArchive(archive: Path, target: Path) -> None:
         removeDirectory(target)
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))
-    # TODO: incomplete: check if target works if spaces are in path
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
