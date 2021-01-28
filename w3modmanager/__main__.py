@@ -162,6 +162,8 @@ def main(gamePath: Optional[str] = None,
         MainWindow.showSettingsDialog(None).exec_()
         sys.exit()
 
+    exception_hook_set = False
+
     def createModel(ignorelock: bool = False) -> Model:
         nonlocal settings
         return Model(
@@ -201,6 +203,7 @@ def main(gamePath: Optional[str] = None,
                 traceback.format_exception(exctype, value, tb))).exec_()
             exception_hook(exctype, value, tb)
         sys.excepthook = show_exception_hook
+        exception_hook_set = True
 
         with eventloop:
             status = eventloop.run_forever()
@@ -219,7 +222,8 @@ def main(gamePath: Optional[str] = None,
         sys.exit(f'error: {str(e)}')
 
     except Exception as e:
-        MainWindow.showCritcalErrorDialog(None, str(e)).exec_()
+        if not exception_hook_set:
+            MainWindow.showCritcalErrorDialog(None, str(e)).exec_()
         raise e
 
     sys.exit()
