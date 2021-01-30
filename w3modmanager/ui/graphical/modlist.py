@@ -408,11 +408,29 @@ class ModList(QTableView):
         self.setDisabled(False)
         self.setFocus()
 
+    async def changeSelectedModsPriority(self, delta: int) -> None:
+        mods = self.getSelectedMods()
+        await asyncio.gather(*[
+            self.modmodel.setPriority(mod, max(-1, min(9999, int(mod.priority + delta))))
+            for mod in mods if mod.datatype in ('mod', 'udf',)
+        ], loop=asyncio.get_running_loop())
+        self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Escape:
             self.selectionModel().clear()
         elif event.matches(QKeySequence.Delete):
             asyncio.create_task(self.deleteSelectedMods())
+        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_Up:
+            asyncio.create_task(self.changeSelectedModsPriority(1))
+        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_Down:
+            asyncio.create_task(self.changeSelectedModsPriority(-1))
+        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_P:
+            index = self.selectionModel().selectedRows()[0]
+            index = index.sibling(index.row(), 5)
+            if index.flags() & Qt.ItemIsEditable:
+                self.setCurrentIndex(index)
+                self.edit(index)
         super().keyPressEvent(event)
 
     def setFilter(self, search: str) -> None:
