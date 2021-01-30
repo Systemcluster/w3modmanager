@@ -70,6 +70,7 @@ class MainWindow(QMainWindow):
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
         dirsIcon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
+        colrIcon = QIcon(str(getRuntimePath('resources/icons/color-circle.ico')))
         smilIcon = QIcon(str(getRuntimePath('resources/icons/smile.ico')))
 
         actionAddModFromFile = menuMods.addAction('&Add Mods')
@@ -165,6 +166,17 @@ class MainWindow(QMainWindow):
         painter.drawEllipse(10, 10, 236, 236)
         toggleHighlightDisabled.setIcon(QIcon(iconHighlightDisabled))
         painter.end()
+
+        menuView.addSeparator()
+        toggleColors = menuView.addAction('&Colored Icons')
+        toggleColors.setCheckable(True)
+        toggleColors.setChecked(settings.value('iconColors', 'True') == 'True')
+        toggleColors.triggered.connect(lambda checked: [
+            settings.setValue('iconColors', str(checked)),
+            self.mainwidget.modlist.listmodel.setIcons(),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        toggleColors.setIcon(colrIcon)
 
         # settings menu
 

@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 import asyncio
 
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSettings
-from PySide6.QtGui import QFontDatabase, QColor, QIcon
+from PySide6.QtGui import QFontDatabase, QColor, QIcon, QPixmap, QPainter
 from PySide6.QtWidgets import QWidget
 
 
@@ -33,13 +33,6 @@ class ModListModel(QAbstractTableModel):
             ('Source', 'source')
         ]
 
-        self._icons: Dict[str, QIcon] = {}
-        self._icons['mod'] = QIcon(str(getRuntimePath('resources/icons/dia.ico')))
-        self._icons['dlc'] = QIcon(str(getRuntimePath('resources/icons/puzzle.ico')))
-        self._icons['bin'] = QIcon(str(getRuntimePath('resources/icons/folder.ico')))
-        self._icons['pat'] = QIcon(str(getRuntimePath('resources/icons/patch.ico')))
-        self._icons['udf'] = QIcon(str(getRuntimePath('resources/icons/question.ico')))
-
         self._datatypes: Dict[str, str] = {}
         self._datatypes['mod'] = 'Mod'
         self._datatypes['dlc'] = 'DLC'
@@ -47,11 +40,54 @@ class ModListModel(QAbstractTableModel):
         self._datatypes['pat'] = 'Patch'
         self._datatypes['udf'] = 'Undefined / Mod?'
 
+        self.setIcons()
+
         self._lastUpdate = model.lastUpdate
         self._lastInitialization = model.lastInitialization
         self.modmodel = model
         model.updateCallbacks.append(self.update)
         self.update(self.modmodel)
+
+    def setIcons(self) -> None:
+        settings = QSettings()
+        colored = str(settings.value('iconColors', 'True')) == 'True'
+
+        self._icons: Dict[str, QIcon] = {}
+
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/dia.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#427aa1') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['mod'] = QIcon(pixmap)
+
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/puzzle.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#aad576') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['dlc'] = QIcon(pixmap)
+
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/folder.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#E55934') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['bin'] = QIcon(pixmap)
+
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/patch.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#b08968') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['pat'] = QIcon(pixmap)
+
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/question.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#ffcf40') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['udf'] = QIcon(pixmap)
 
     def clearCache(self) -> None:
         self.rowCount.cache_clear()
