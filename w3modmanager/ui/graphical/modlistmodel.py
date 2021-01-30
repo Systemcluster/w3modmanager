@@ -108,7 +108,11 @@ class ModListModel(QAbstractTableModel):
                 self.index(row, self.columnCount() - 1))
         if col in ('priority',):
             mod = self.modmodel[row]
-            await self.modmodel.setPriority(mod, max(-1, min(9999, int(value))))
+            try:
+                priority = max(-1, min(9999, int(value)))
+            except ValueError:
+                priority = -1
+            await self.modmodel.setPriority(mod, priority)
             self.data.cache_clear()
             self.dataChanged.emit(
                 self.index(row, 0),
