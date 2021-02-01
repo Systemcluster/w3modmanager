@@ -107,6 +107,15 @@ class MainWindow(QMainWindow):
 
         menuView: QMenu = self.menuBar().addMenu('&View')
 
+        showSummary = menuView.addAction('Show &Summary')
+        showSummary.setCheckable(True)
+        showSummary.setChecked(settings.value('showSummary', 'True') == 'True')
+        showSummary.triggered.connect(lambda checked: [
+            settings.setValue('showSummary', str(checked)),
+            self.mainwidget.summary.setVisible(checked)
+        ])
+        menuView.addSeparator()
+
         toggleHighlightNewest = menuView.addAction('Highlight &Newest')
         toggleHighlightNewest.setCheckable(True)
         toggleHighlightNewest.setChecked(settings.value('highlightNewest', 'True') == 'True')

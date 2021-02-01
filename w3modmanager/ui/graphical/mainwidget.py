@@ -1,5 +1,6 @@
 from w3modmanager.core.model import Model
 from w3modmanager.ui.graphical.modlist import ModList
+from w3modmanager.ui.graphical.flowlayout import FlowLayout
 from w3modmanager.util.util import getRuntimePath, isValidNexusModsUrl, isValidModDownloadUrl, isValidFileUrl
 
 import html
@@ -8,9 +9,9 @@ import asyncio
 
 from loguru import logger
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtWidgets import QVBoxLayout, QSplitter, QWidget, QTextEdit, \
-    QLabel, QStackedWidget, QLineEdit, QApplication
-from PySide6.QtGui import QKeyEvent, QKeySequence, QIcon
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSplitter, \
+    QStackedWidget, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtGui import QIcon, QKeyEvent, QKeySequence
 
 
 class MainWidget(QWidget):
@@ -19,6 +20,7 @@ class MainWidget(QWidget):
 
         logger.add(self.log)
 
+        settings = QSettings()
         self.mainlayout = QVBoxLayout()
         self.mainlayout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.mainlayout)
@@ -88,12 +90,54 @@ class MainWidget(QWidget):
         self.output.setPlaceholderText('Program output...')
         self.splitter.addWidget(self.output)
 
-        # TODO: enhancement: add a launch game icon
         # TODO: enhancement: show indicator if scripts have to be merged
 
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
         self.mainlayout.addWidget(self.splitter)
+
+        # summary
+
+        summarylayout = FlowLayout()
+        summarylayout.setContentsMargins(0, 0, 0, 0)
+        self.summary = QWidget()
+        self.summary.setLayout(summarylayout)
+        self.mainlayout.addWidget(self.summary)
+        self.summary.setVisible(settings.value('showSummary', 'True') == 'True')
+
+        detailslayout = QHBoxLayout()
+        detailslayout.setContentsMargins(1, 0, 0, 0)
+        detailslayout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        detailslayout.setSpacing(10)
+        details = QWidget()
+        details.setLayout(detailslayout)
+        summarylayout.addWidget(details)
+
+        self.modstotal = QLabel()
+        detailslayout.addWidget(self.modstotal)
+        self.modsenabled = QLabel()
+        detailslayout.addWidget(self.modsenabled)
+
+        buttonslayout = QHBoxLayout()
+        buttonslayout.setContentsMargins(0, 0, 0, 0)
+        buttonslayout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        buttons = QWidget()
+        buttons.setLayout(buttonslayout)
+        summarylayout.addWidget(buttons)
+
+        self.startscriptmerger = QPushButton('Start Script Merger')
+        self.startscriptmerger.setContentsMargins(0, 0, 0, 0)
+        self.startscriptmerger.setMinimumWidth(140)
+        self.startscriptmerger.setIcon(QIcon(str(getRuntimePath('resources/icons/script.ico'))))
+        buttonslayout.addWidget(self.startscriptmerger)
+
+        self.startgame = QPushButton('Start Game')
+        self.startgame.setContentsMargins(0, 0, 0, 0)
+        self.startgame.setMinimumWidth(100)
+        self.startgame.setIcon(QIcon(str(getRuntimePath('resources/icons/w3b.ico'))))
+        buttonslayout.addWidget(self.startgame)
+
+        # TODO: incomplete: make start game / start script merger buttons functional
 
         if len(model):
             self.stack.setCurrentIndex(0)
@@ -111,6 +155,7 @@ class MainWidget(QWidget):
             self.searchbar.setFocus()
         elif event.matches(QKeySequence.Paste):
             self.pasteEvent()
+        # TODO: enhancement: add start game / start script merger shortcuts
         super().keyPressEvent(event)
 
     def pasteEvent(self) -> None:
@@ -123,6 +168,13 @@ class MainWidget(QWidget):
                 asyncio.create_task(self.modlist.checkInstallFromURLs(urls))
 
     def modelUpdateEvent(self, model: Model) -> None:
+        self.modstotal.setText(
+            f'<font color="#888">⬤ Installed Mods:</font> {len(model)}'
+        )
+        self.modsenabled.setText(
+            f'<font color="#888">✔ Enabled Mods:</font> {len([mod for mod in model if model[mod].enabled])}'
+        )
+
         if len(model) > 0:
             if self.stack.currentIndex() != 0:
                 self.stack.setCurrentIndex(0)
