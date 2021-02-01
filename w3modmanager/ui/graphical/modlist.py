@@ -98,6 +98,8 @@ class ModList(QTableView):
     def __init__(self, parent: QWidget, model: Model) -> None:
         super().__init__(parent)
 
+        settings = QSettings()
+
         self.hoverIndexRow = -1
         self.modmodel = model
         self.modCountLastUpdate = len(self.modmodel)
@@ -129,7 +131,8 @@ class ModList(QTableView):
 
         self.verticalHeader().hide()
         self.verticalHeader().setVisible(False)
-        self.verticalHeader().setDefaultSectionSize(25)
+        self.setSectionSize(settings.value('compactMode', 'False') == 'True')
+
         self.setCornerButtonEnabled(False)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
@@ -144,7 +147,6 @@ class ModList(QTableView):
 
         self.resizeColumnsToContents()
 
-        settings = QSettings()
         if settings.value('modlistHorizontalHeaderState'):
             self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
 
@@ -183,6 +185,12 @@ class ModList(QTableView):
         self.viewportCacheSize = QSize(0, 0)
 
         # TODO: enhancement: offer option to read readme and other additional text files
+
+    def setSectionSize(self, compact: bool) -> None:
+        if compact:
+            self.verticalHeader().setDefaultSectionSize(25)
+        else:
+            self.verticalHeader().setDefaultSectionSize(30)
 
     @debounce(200)
     async def headerChangedEvent(self) -> None:

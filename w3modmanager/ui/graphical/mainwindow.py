@@ -187,6 +187,15 @@ class MainWindow(QMainWindow):
         ])
         toggleColors.setIcon(colrIcon)
 
+        menuView.addSeparator()
+        toggleCompact = menuView.addAction('Compact &Mode')
+        toggleCompact.setCheckable(True)
+        toggleCompact.setChecked(settings.value('compactMode', 'False') == 'True')
+        toggleCompact.triggered.connect(lambda checked: [
+            settings.setValue('compactMode', str(checked)),
+            self.mainwidget.modlist.setSectionSize(checked)
+        ])
+
         # settings menu
 
         menuSettings: QMenu = self.menuBar().addMenu('&Tools')
