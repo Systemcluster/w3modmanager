@@ -39,6 +39,7 @@ class Mod(DataClassJsonMixin):
     contents: List[ContentFile] = field(default_factory=list)
     settings: List[UserSettings] = field(default_factory=list)
     inputs: List[InputSettings] = field(default_factory=list)
+    bundled: List[BundledFile] = field(default_factory=list)
 
     dataversion: int = 1
 
@@ -74,6 +75,10 @@ class Mod(DataClassJsonMixin):
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
+    @property
+    def bundledFiles(self) -> List[BundledFile]:
+        return self.bundled
+
 
     @classmethod
     def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True) -> List[Mod]:
@@ -96,10 +101,13 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
+                        if _content.source.suffix == '.bundle':
+                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -111,7 +119,8 @@ class Mod(DataClassJsonMixin):
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=contents
+                        contents=contents,
+                        bundled=bundled
                     ))
                     continue
                 # fetch dlc dirs
@@ -121,10 +130,13 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
+                        if _content.source.suffix == '.bundle':
+                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -136,7 +148,8 @@ class Mod(DataClassJsonMixin):
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=contents
+                        contents=contents,
+                        bundled=bundled
                     ))
                     continue
                 # fetch unspecified mod or doc dirs
@@ -146,10 +159,13 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
+                        if _content.source.suffix == '.bundle':
+                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -161,7 +177,8 @@ class Mod(DataClassJsonMixin):
                         files=files,
                         settings=settings,
                         inputs=inputs,
-                        contents=contents
+                        contents=contents,
+                        bundled=bundled
                     ))
                     continue
                 if recursive:
@@ -197,8 +214,11 @@ class Mod(DataClassJsonMixin):
                 name = formatModName(path.name, 'pat')
                 logger.bind(name=name, path=path).debug('Detected PAT')
                 size = 0
+                bundled = []
                 for content in contents:
                     size += path.joinpath(content.source).stat().st_size
+                    if _content.source.suffix == '.bundle':
+                        bundled.extend(fetchBundleContents(check, path.joinpath(_content.source)))
                 mods.append(cls(
                     package,
                     filename=name,
@@ -209,7 +229,8 @@ class Mod(DataClassJsonMixin):
                     size=size,
                     settings=settings,
                     inputs=inputs,
-                    contents=contents
+                    contents=contents,
+                    bundled=bundled
                 ))
         if not mods:
             raise InvalidPathError(path, 'Invalid mod')

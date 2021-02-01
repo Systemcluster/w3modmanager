@@ -260,6 +260,29 @@ class ContentFile(DataClassJsonMixin):
         return False
 
 
+@dataclass
+class BundledFile(DataClassJsonMixin):
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
+    bundled: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
+
+    def __repr__(self) -> str:
+        return '\'%s\' (\'%s\')' % (str(self.source), str(self.bundled))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, BundledFile):
+            return self.source == other.source and self.bundled == other.bundled
+        if isinstance(other, str):
+            return self.source == Path(other)
+        return False
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, BundledFile):
+            if self.source == other.source:
+                return self.bundled < other.bundled
+            return self.source < other.source
+        return False
+
+
 @dataclass(init=False)
 class Settings(DataClassJsonMixin):
     source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
@@ -428,6 +451,14 @@ def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
     for file in files:
         file.source = file.source.relative_to(common)
     return root.joinpath(common)
+
+
+def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
+    try:
+        return [BundledFile(path.relative_to(root), Path(bundled)) for bundled in util.scanBundle(path)]
+    except Exception:
+        logger.bind(file=path).warning('Could not parse bundle')
+    return []
 
 
 #

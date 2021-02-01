@@ -45,7 +45,7 @@ class ModListItemDelegate(QStyledItemDelegate):
         super().paint(painter, itemOption, index)
 
         # draw lines around numeric columns
-        if index.column() in (5, 11):
+        if index.column() in (5, 12):
             oldpen = painter.pen()
             painter.setPen(self.linepen)
             painter.drawLine(

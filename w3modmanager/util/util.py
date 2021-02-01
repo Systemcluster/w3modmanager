@@ -156,6 +156,34 @@ def openDirectory(path: Path) -> None:
         logger.bind(path=path).warning('Not a valid directory, could not open')
 
 
+def scanBundle(bundle: Path) -> List[str]:
+    if not bundle.exists():
+        raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
+    if not bundle.suffix == '.bundle':
+        raise InvalidPathError(bundle, 'Invalid bundle')
+    exe = str(getRuntimePath('tools/quickbms/quickbms.exe'))
+    script = str(getRuntimePath('tools/quickbms/witcher3.bms'))
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    CREATE_NO_WINDOW = 0x08000000
+    result: subprocess.CompletedProcess = subprocess.run(  # noqa
+        [exe, '-l', script, str(bundle)],
+        stdin=subprocess.DEVNULL, capture_output=True,
+        creationflags=CREATE_NO_WINDOW, startupinfo=si
+    )
+    if result.returncode != 0:
+        raise InvalidPathError(
+            bundle,
+            result.stderr.decode('utf-8') if result.stderr else 'Could not read bundle'
+        )
+    output: str = result.stdout.decode('utf-8')
+    files = []
+    for line in output.splitlines():
+        space = line.rfind(' ')
+        files.append(line[space + 1 if space else 0:])
+    return files
+
+
 def extractArchive(archive: Path, target: Path) -> None:
     if target.exists():
         removeDirectory(target)

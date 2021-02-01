@@ -27,6 +27,7 @@ class ModListModel(QAbstractTableModel):
             ('Bins', 'binFiles'),
             ('Settings', 'settings'),
             ('Inputs', 'inputs'),
+            ('Bundled', 'bundledFiles'),
             ('Size', 'size'),
             ('Date Installed', 'installdate'),
             ('Version', 'version'),
@@ -252,7 +253,7 @@ class ModListModel(QAbstractTableModel):
                 # Right|VCenter
                 return 0x0082
             if col in ('priority', 'installdate', 'binFiles', 'menuFiles', 'settings',
-                       'inputs', 'contentFiles', 'scriptFiles',):
+                       'inputs', 'contentFiles', 'scriptFiles', 'bundledFiles',):
                 # HCenter|VCenter
                 return 0x0084
             # Left|VCenter
@@ -272,7 +273,7 @@ class ModListModel(QAbstractTableModel):
             if col in ('size',):
                 return int(mod[col])
             if col in ('binFiles', 'menuFiles', 'contentFiles', \
-                       'scriptFiles', 'settings', 'inputs',):
+                       'scriptFiles', 'settings', 'inputs', 'bundledFiles',):
                 return len(mod[col])
             return str(mod[col])
 
@@ -305,7 +306,7 @@ class ModListModel(QAbstractTableModel):
                         val += len(s.config.items(n))
                 return val if val else None
 
-            if col in ('binFiles', 'menuFiles', 'contentFiles', 'scriptFiles',):
+            if col in ('binFiles', 'menuFiles', 'contentFiles', 'scriptFiles', 'bundledFiles',):
                 val = len(mod[col])
                 if val < 1:
                     return ''
