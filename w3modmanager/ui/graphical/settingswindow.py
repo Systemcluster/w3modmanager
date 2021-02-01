@@ -22,6 +22,7 @@ class SettingsWindow(QDialog):
 
         settings = QSettings()
         mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(5, 5, 5, 5)
 
         # First Start info
 

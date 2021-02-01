@@ -20,6 +20,7 @@ class MainWidget(QWidget):
         logger.add(self.log)
 
         self.mainlayout = QVBoxLayout()
+        self.mainlayout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.mainlayout)
 
         self.splitter = QSplitter(Qt.Vertical)

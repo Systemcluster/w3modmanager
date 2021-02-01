@@ -28,6 +28,7 @@ class DownloadWindow(QDialog):
             self.setAttribute(Qt.WA_DeleteOnClose)
 
         mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(5, 5, 5, 5)
 
         self.signals = DownloadWindowEvents(self)
 

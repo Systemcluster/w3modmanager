@@ -297,6 +297,7 @@ class MainWindow(QMainWindow):
         messagebox.setMinimumSize(QSize(500, 500))
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
@@ -324,6 +325,7 @@ class MainWindow(QMainWindow):
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
         messagebox.setAttribute(Qt.WA_DeleteOnClose)
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
@@ -349,6 +351,7 @@ class MainWindow(QMainWindow):
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
@@ -371,6 +374,7 @@ class MainWindow(QMainWindow):
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setStandardButtons(QMessageBox.Ok)
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
@@ -397,6 +401,7 @@ class MainWindow(QMainWindow):
         )
         messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         messagebox.setDefaultButton(QMessageBox.Cancel)
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
@@ -424,6 +429,7 @@ class MainWindow(QMainWindow):
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
+        messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
         messagebox.open()
