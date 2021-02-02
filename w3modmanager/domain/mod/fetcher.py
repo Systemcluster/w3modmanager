@@ -462,9 +462,13 @@ def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
     return root.joinpath(common)
 
 
-def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
+async def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
+    logger.bind(path=path).debug('Scanning bundle')
     try:
-        return [BundledFile(path.relative_to(root), Path(bundled)) for bundled in util.scanBundle(path)]
+        return [
+            BundledFile(path.relative_to(root), Path(bundled))
+            for bundled
+            in await util.scanBundle(path)]
     except Exception:
         logger.bind(path=path).warning('Could not parse bundle')
     return []

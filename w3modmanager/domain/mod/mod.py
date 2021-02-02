@@ -100,7 +100,9 @@ class Mod(DataClassJsonMixin):
 
 
     @classmethod
-    def fromDirectory(cls: Type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True) -> List[Mod]:
+    async def fromDirectory(
+        cls: Type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True
+    ) -> List[Mod]:
         mods: List[Mod] = []
         dirs = [path]
         if len(list(path.iterdir())) == 1 \
@@ -126,7 +128,7 @@ class Mod(DataClassJsonMixin):
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
                         if _content.source.suffix == '.bundle':
-                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
+                            bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -155,7 +157,7 @@ class Mod(DataClassJsonMixin):
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
                         if _content.source.suffix == '.bundle':
-                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
+                            bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -184,7 +186,7 @@ class Mod(DataClassJsonMixin):
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
                         if _content.source.suffix == '.bundle':
-                            bundled.extend(fetchBundleContents(check, check.joinpath(_content.source)))
+                            bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
                         filename=name,
@@ -237,7 +239,7 @@ class Mod(DataClassJsonMixin):
                 for content in contents:
                     size += path.joinpath(content.source).stat().st_size
                     if _content.source.suffix == '.bundle':
-                        bundled.extend(fetchBundleContents(check, path.joinpath(_content.source)))
+                        bundled.extend(await fetchBundleContents(check, path.joinpath(_content.source)))
                 mods.append(cls(
                     package,
                     filename=name,

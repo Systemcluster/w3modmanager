@@ -151,6 +151,8 @@ class MainWidget(QWidget):
             self.splitter.setSizes([self.splitter.size().height(), 0])
         model.updateCallbacks.append(self.modelUpdateEvent)
 
+        asyncio.create_task(model.loadInstalled())
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Escape:
             self.modlist.setFocus()

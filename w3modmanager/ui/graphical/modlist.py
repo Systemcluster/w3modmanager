@@ -102,7 +102,6 @@ class ModList(QTableView):
 
         self.hoverIndexRow = -1
         self.modmodel = model
-        self.modCountLastUpdate = len(self.modmodel)
         self.installLock = asyncio.Lock()
 
         self.setMouseTracking(True)
@@ -145,7 +144,11 @@ class ModList(QTableView):
         self.setItemDelegate(ModListItemDelegate(self))
         self.setSelectionModel(ModListSelectionModel(self, self.filtermodel))
 
-        self.resizeColumnsToContents()
+        if len(model):
+            self.modCountLastUpdate = len(model)
+            self.resizeColumnsToContents()
+        else:
+            self.modCountLastUpdate = -1
 
         if settings.value('modlistHorizontalHeaderState'):
             self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
@@ -203,7 +206,7 @@ class ModList(QTableView):
         )
 
     def modelUpdateEvent(self, model: Model) -> None:
-        if not self.modCountLastUpdate:
+        if not self.modCountLastUpdate and len(self.modmodel):
             # if list was empty before, auto resize columns
             self.resizeColumnsToContents()
         self.modCountLastUpdate = len(self.modmodel)
@@ -569,7 +572,7 @@ class ModList(QTableView):
                     raise InvalidPathError(path, 'Stopped searching for mod')
                 else:
                     raise InvalidPathError(path, 'Invalid mod')
-            mods = Mod.fromDirectory(path, searchCommonRoot=not archive)
+            mods = await Mod.fromDirectory(path, searchCommonRoot=not archive)
 
             installedMods = []
             # update mod details and add mods to the model

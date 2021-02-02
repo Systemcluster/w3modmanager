@@ -124,10 +124,6 @@ class Model:
         self.lastInitialization = datetime.now(tz=timezone.utc)
 
         self._modList = {}
-        self.loadInstalled()
-
-        self.updateBundledContentsConflicts()
-        self.updateCallbacks.fire(self)
 
 
     @debounce(25)
@@ -141,67 +137,78 @@ class Model:
             self._bundledContentConflicts = result[0]
             self.updateCallbacks.fire(self)
 
-
-    def loadInstalled(self) -> None:
-        for path in self.modspath.iterdir():
-            if path.joinpath('.w3mm').is_file():
-                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
-                mod.enabled = not path.name.startswith('~')
-                mod.filename = re.sub(r'^(~)', r'', path.name)
-                if mod.enabled:
-                    enabled = getSettingsValue(mod.filename, 'Enabled', self.configpath.joinpath('mods.settings'))
-                    if enabled == '0':
-                        mod.enabled = False
-                if (mod.filename, mod.target) in self._modList:
-                    logger.bind(path=path).error('Ignoring duplicate MOD')
-                    if not self._modList[(mod.filename, mod.target)].enabled:
-                        self._modList[(mod.filename, mod.target)] = mod
-                else:
+    async def loadInstalledMod(self, path: Path) -> None:
+        if path.joinpath('.w3mm').is_file():
+            mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+            mod.enabled = not path.name.startswith('~')
+            mod.filename = re.sub(r'^(~)', r'', path.name)
+            if mod.enabled:
+                enabled = getSettingsValue(mod.filename, 'Enabled', self.configpath.joinpath('mods.settings'))
+                if enabled == '0':
+                    mod.enabled = False
+            if (mod.filename, mod.target) in self._modList:
+                logger.bind(path=path).error('Ignoring duplicate MOD')
+                if not self._modList[(mod.filename, mod.target)].enabled:
                     self._modList[(mod.filename, mod.target)] = mod
             else:
-                try:
-                    for mod in Mod.fromDirectory(path, recursive=False):
-                        mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
-                        mod.target = 'mods'
-                        mod.datatype = 'mod'
-                        mod.enabled = not path.name.startswith('~')
-                        mod.filename = re.sub(r'^(~)', r'', path.name)
-                        if mod.enabled:
-                            enabled = getSettingsValue(mod.filename, 'Enabled',
-                                                       self.configpath.joinpath('mods.settings'))
-                            if enabled == '0':
-                                mod.enabled = False
-                        if (mod.filename, mod.target) in self._modList:
-                            logger.bind(path=path).error('Ignoring duplicate MOD')
-                            if not self._modList[(mod.filename, mod.target)].enabled:
-                                self._modList[(mod.filename, mod.target)] = mod
-                        else:
-                            self._modList[(mod.filename, mod.target)] = mod
-                            asyncio.create_task(self.update(mod))
-                except InvalidPathError:
-                    logger.bind(path=path).debug('Invalid MOD')
-        for path in self.dlcspath.iterdir():
-            if path.joinpath('.w3mm').is_file():
-                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
-                mod.enabled = not all(file.name.endswith('.disabled')
-                                      for file in path.glob('**/*') if file.is_file()
-                                      and not file.name == '.w3mm')
-                mod.filename = path.name
                 self._modList[(mod.filename, mod.target)] = mod
-            else:
-                try:
-                    for mod in Mod.fromDirectory(path, recursive=False):
-                        mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
-                        mod.target = 'dlc'
-                        mod.datatype = 'dlc'
-                        mod.enabled = not all(file.name.endswith('.disabled')
-                                              for file in path.glob('**/*') if file.is_file()
-                                              and not file.name == '.w3mm')
-                        mod.filename = path.name
+        else:
+            try:
+                for mod in await Mod.fromDirectory(path, recursive=False):
+                    mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                    mod.target = 'mods'
+                    mod.datatype = 'mod'
+                    mod.enabled = not path.name.startswith('~')
+                    mod.filename = re.sub(r'^(~)', r'', path.name)
+                    if mod.enabled:
+                        enabled = getSettingsValue(mod.filename, 'Enabled',
+                                                   self.configpath.joinpath('mods.settings'))
+                        if enabled == '0':
+                            mod.enabled = False
+                    if (mod.filename, mod.target) in self._modList:
+                        logger.bind(path=path).error('Ignoring duplicate MOD')
+                        if not self._modList[(mod.filename, mod.target)].enabled:
+                            self._modList[(mod.filename, mod.target)] = mod
+                    else:
                         self._modList[(mod.filename, mod.target)] = mod
-                        asyncio.create_task(self.update(mod))
-                except InvalidPathError:
-                    logger.bind(path=path).debug('Invalid DLC')
+                        await self.update(mod)
+            except InvalidPathError:
+                logger.bind(path=path).debug('Invalid MOD')
+
+    async def loadInstalledDlc(self, path: Path) -> None:
+        if path.joinpath('.w3mm').is_file():
+            mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+            mod.enabled = not all(file.name.endswith('.disabled')
+                                  for file in path.glob('**/*') if file.is_file()
+                                  and not file.name == '.w3mm')
+            mod.filename = path.name
+            self._modList[(mod.filename, mod.target)] = mod
+        else:
+            try:
+                for mod in await Mod.fromDirectory(path, recursive=False):
+                    mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                    mod.target = 'dlc'
+                    mod.datatype = 'dlc'
+                    mod.enabled = not all(file.name.endswith('.disabled')
+                                          for file in path.glob('**/*') if file.is_file()
+                                          and not file.name == '.w3mm')
+                    mod.filename = path.name
+                    self._modList[(mod.filename, mod.target)] = mod
+                    await self.update(mod)
+            except InvalidPathError:
+                logger.bind(path=path).debug('Invalid DLC')
+
+    async def loadInstalled(self) -> None:
+        await asyncio.gather(
+            *[self.loadInstalledMod(path) for path in self.modspath.iterdir()],
+            loop=asyncio.get_running_loop()
+        )
+        await asyncio.gather(
+            *[self.loadInstalledDlc(path) for path in self.dlcspath.iterdir()],
+            loop=asyncio.get_running_loop()
+        )
+        self.updateBundledContentsConflicts()
+        self.updateCallbacks.fire(self)
 
 
     def get(self, mod: ModelIndexType) -> Mod:
@@ -233,17 +240,20 @@ class Model:
             try:
                 target.mkdir(parents=True)
                 # copy mod files
+                logger.bind(name=mod.filename, path=target).debug('Copying binary files')
                 for _file in mod.files:
                     sourceFile = mod.source.joinpath(_file.source)
                     targetFile = target.joinpath(_file.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
                     copyfile(sourceFile, targetFile)
+                logger.bind(name=mod.filename, path=target).debug('Copying content files')
                 for _content in mod.contents:
                     sourceFile = mod.source.joinpath(_content.source)
                     targetFile = target.joinpath(_content.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
                     copyfile(sourceFile, targetFile)
                 mod.installed = True
+                logger.bind(name=mod.filename, path=target).debug('Updating settings')
                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
                 setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))

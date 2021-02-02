@@ -156,20 +156,27 @@ def openDirectory(path: Path) -> None:
         logger.bind(path=path).warning('Not a valid directory, could not open')
 
 
-def scanBundle(bundle: Path) -> List[str]:
-    if not bundle.exists():
-        raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
-    if not bundle.suffix == '.bundle':
-        raise InvalidPathError(bundle, 'Invalid bundle')
+def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess:
     exe = str(getRuntimePath('tools/quickbms/quickbms.exe'))
     script = str(getRuntimePath('tools/quickbms/witcher3.bms'))
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
-    result: subprocess.CompletedProcess = subprocess.run(  # noqa
+    return subprocess.run(  # noqa
         [exe, '-l', script, str(bundle)],
         stdin=subprocess.DEVNULL, capture_output=True,
         creationflags=CREATE_NO_WINDOW, startupinfo=si
+    )
+
+
+async def scanBundle(bundle: Path) -> List[str]:
+    if not bundle.exists():
+        raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
+    if not bundle.suffix == '.bundle':
+        raise InvalidPathError(bundle, 'Invalid bundle')
+    result = await asyncio.get_running_loop().run_in_executor(
+        None,
+        partial(scanBundleRaw, bundle)
     )
     if result.returncode != 0:
         raise InvalidPathError(

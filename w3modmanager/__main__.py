@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional, NoReturn, Any
 from argparse import ArgumentParser
 from enum import Enum
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import appdirs
 from loguru import logger
@@ -148,6 +149,9 @@ def main(gamePath: Optional[str] = None,
     icon = QIcon()
     icon.addFile(str(getRuntimePath('resources/icons/w3b.ico')))
     app.setWindowIcon(icon)
+
+    pool = ThreadPoolExecutor()
+    asyncio.get_running_loop().set_default_executor(pool)
 
     # configure startup overrides
     settings = QSettings()

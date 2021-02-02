@@ -13,7 +13,7 @@ from w3modmanager.util.util import *
 async def test_mod_extract_normal(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-normal.zip')
     source = await extractMod(archive)
-    mods = Mod.fromDirectory(source)
+    mods = await Mod.fromDirectory(source)
     assert len(mods) == 1
     mod = mods[0]
     assert mod.package == 'normal'
@@ -25,7 +25,7 @@ async def test_mod_extract_normal(mockdata: Path) -> None:
 async def test_mod_extract_long_name(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-with-long-name.zip')
     source = await extractMod(archive)
-    mods = Mod.fromDirectory(source)
+    mods = await Mod.fromDirectory(source)
     assert len(mods) == 1
     mod = mods[0]
     assert mod.package == 'with long name'
