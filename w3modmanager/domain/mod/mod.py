@@ -47,6 +47,25 @@ class Mod(DataClassJsonMixin):
     def __getitem__(self, attr: str) -> Any:
         return getattr(self, attr)
 
+    def __lt__(self, other: Mod) -> bool:
+        if self.datatype not in ('mod', 'udf',) or other.datatype not in ('mod', 'udf',):
+            if self.datatype == other.datatype:
+                return self.filename < other.filename
+            return self.datatype < other.datatype
+        if self.enabled != other.enabled:
+            return self.enabled > other.enabled
+        if self.priority == other.priority:
+            return self.filename < other.filename
+        if self.priority <= -2 and other.priority > -2:
+            return False
+        if self.priority <= -1 and other.priority > -1:
+            return False
+        if other.priority <= -2 and self.priority > -2:
+            return True
+        if other.priority <= -1 and self.priority > -1:
+            return True
+        return self.priority < other.priority
+
 
     @property
     def contentFiles(self) -> List[ContentFile]:

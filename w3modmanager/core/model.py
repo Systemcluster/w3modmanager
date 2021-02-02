@@ -1,18 +1,21 @@
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.domain.bin.modifier import addSettings, getSettingsValue, removeSettings, \
     removeSettingsSection, renameSettingsSection, setSettingsValue
+from w3modmanager.domain.mod.fetcher import BundledFile
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
     InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
     OtherInstanceError, InvalidPathError
 
 from loguru import logger
+from fasteners import InterProcessLock
 
 from pathlib import Path
-from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator
-from fasteners import InterProcessLock
+from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator, List
 from datetime import datetime, timezone
 from shutil import copyfile
+from functools import partial
+from concurrent.futures import ProcessPoolExecutor
 import asyncio
 import re
 
@@ -27,6 +30,21 @@ class CallbackList(list):
         async with self.fireLock:
             for listener in self:
                 listener(*args, **kwargs)
+
+
+def calculateBundledContentsConflicts(
+    modList: Dict[Tuple[str, str], Mod], iteration: int
+) -> Tuple[Dict[str, List[BundledFile]], int]:
+    existings: Dict[BundledFile, str] = {}
+    conflicts: Dict[str, List[BundledFile]] = {}
+    for mod in sorted(mod for mod in modList.values() if mod.enabled and mod.datatype in ('mod', 'udf',)):
+        conflicts[mod.filename] = []
+        for file in mod.bundledFiles:
+            if file in existings.keys():
+                conflicts[mod.filename].append(file)
+            else:
+                existings[file] = mod.filename
+    return (conflicts, iteration,)
 
 
 ModelIndexType = Union[Mod, Tuple[str, str], int]
@@ -52,6 +70,10 @@ class Model:
 
         self.updateCallbacks = CallbackList()
         self.updateLock = asyncio.Lock()
+
+        self._pool = ProcessPoolExecutor()
+        self._bundledContentConflicts: Dict[str, List[BundledFile]] = {}
+        self._iteration = 0
 
         if not ignorelock:
             self._lock = InterProcessLock(self.lockfile)
@@ -104,7 +126,20 @@ class Model:
         self._modList = {}
         self.loadInstalled()
 
+        self.updateBundledContentsConflicts()
         self.updateCallbacks.fire(self)
+
+
+    @debounce(25)
+    async def updateBundledContentsConflicts(self) -> None:
+        self._iteration += 1
+        result = await asyncio.get_running_loop().run_in_executor(
+            self._pool,
+            partial(calculateBundledContentsConflicts, self._modList, self._iteration)
+        )
+        if result[1] == self._iteration:
+            self._bundledContentConflicts = result[0]
+            self.updateCallbacks.fire(self)
 
 
     def loadInstalled(self) -> None:
@@ -222,6 +257,7 @@ class Model:
                 removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
+        self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def update(self, mod: Mod) -> None:
@@ -238,6 +274,7 @@ class Model:
         # TODO: incomplete: handle possible conflict with existing mods
         async with self.updateLock:
             self._modList[(filename, target)] = mod
+        self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def remove(self, mod: ModelIndexType) -> None:
@@ -259,6 +296,7 @@ class Model:
                 except Exception as e:
                     logger.bind(name=mod.filename).warning(f'Could not remove settings from mods.settings: {e}')
                 del self._modList[(mod.filename, mod.target)]
+            self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def enable(self, mod: ModelIndexType) -> bool:
@@ -310,6 +348,7 @@ class Model:
                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
         if not undo:
+            self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
             return True
         return False
@@ -362,6 +401,7 @@ class Model:
                     setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
         if not undo:
+            self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
             return True
         return False
@@ -392,6 +432,7 @@ class Model:
                 mod.filename = oldname
                 if renamed:
                     newpath.rename(oldpath)
+        self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
     async def setPackage(self, mod: ModelIndexType, package: str) -> None:
@@ -416,6 +457,7 @@ class Model:
                 setSettingsValue(mod.filename, 'Priority', str(priority) if priority >= 0 else '',
                                  self.configpath.joinpath('mods.settings'))
             await self.update(mod)
+        self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
 
@@ -445,6 +487,10 @@ class Model:
                 if not target.is_dir():
                     raise ModNotFoundError(mod.filename, mod.target)
         return target
+
+
+    def getConflictingBundledContents(self) -> Dict[str, List[BundledFile]]:
+        return self._bundledContentConflicts
 
 
     def __len__(self) -> int:

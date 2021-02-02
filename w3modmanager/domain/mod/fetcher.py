@@ -234,6 +234,9 @@ class BinFile:
                 and self.target == Path(match[0][1])
         return False
 
+    def __hash__(self) -> int:
+        return hash((self.source, self.target))
+
     def __lt__(self, other: object) -> bool:
         if isinstance(other, BinFile):
             return self.source < other.source
@@ -253,6 +256,9 @@ class ContentFile(DataClassJsonMixin):
         if isinstance(other, str):
             return self.source == Path(other)
         return False
+
+    def __hash__(self) -> int:
+        return hash(self.source)
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, ContentFile):
@@ -274,6 +280,9 @@ class BundledFile(DataClassJsonMixin):
         if isinstance(other, str):
             return self.source == Path(other)
         return False
+
+    def __hash__(self) -> int:
+        return hash((self.source, self.bundled))
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, BundledFile):
