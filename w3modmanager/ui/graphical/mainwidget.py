@@ -25,6 +25,49 @@ class MainWidget(QWidget):
         self.mainlayout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.mainlayout)
 
+        # summary
+
+        summarylayout = FlowLayout()
+        summarylayout.setContentsMargins(0, 0, 0, 0)
+        self.summary = QWidget()
+        self.summary.setLayout(summarylayout)
+        self.mainlayout.addWidget(self.summary)
+        self.summary.setVisible(settings.value('showSummary', 'True') == 'True')
+
+        detailslayout = QHBoxLayout()
+        detailslayout.setContentsMargins(1, 0, 0, 0)
+        detailslayout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        detailslayout.setSpacing(15)
+        details = QWidget()
+        details.setLayout(detailslayout)
+        summarylayout.addWidget(details)
+
+        self.modstotal = QLabel()
+        detailslayout.addWidget(self.modstotal)
+        self.modsenabled = QLabel()
+        detailslayout.addWidget(self.modsenabled)
+
+        buttonslayout = QHBoxLayout()
+        buttonslayout.setContentsMargins(0, 0, 0, 0)
+        buttonslayout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        buttons = QWidget()
+        buttons.setLayout(buttonslayout)
+        summarylayout.addWidget(buttons)
+
+        self.startscriptmerger = QPushButton('Start Script Merger')
+        self.startscriptmerger.setContentsMargins(0, 0, 0, 0)
+        self.startscriptmerger.setMinimumWidth(140)
+        self.startscriptmerger.setIcon(QIcon(str(getRuntimePath('resources/icons/script.ico'))))
+        buttonslayout.addWidget(self.startscriptmerger)
+
+        self.startgame = QPushButton('Start Game')
+        self.startgame.setContentsMargins(0, 0, 0, 0)
+        self.startgame.setMinimumWidth(100)
+        self.startgame.setIcon(QIcon(str(getRuntimePath('resources/icons/w3b.ico'))))
+        buttonslayout.addWidget(self.startgame)
+
+        # splitter
+
         self.splitter = QSplitter(Qt.Vertical)
 
         self.stack = QStackedWidget()
@@ -96,47 +139,6 @@ class MainWidget(QWidget):
         self.splitter.setStretchFactor(1, 0)
         self.mainlayout.addWidget(self.splitter)
 
-        # summary
-
-        summarylayout = FlowLayout()
-        summarylayout.setContentsMargins(0, 0, 0, 0)
-        self.summary = QWidget()
-        self.summary.setLayout(summarylayout)
-        self.mainlayout.addWidget(self.summary)
-        self.summary.setVisible(settings.value('showSummary', 'True') == 'True')
-
-        detailslayout = QHBoxLayout()
-        detailslayout.setContentsMargins(1, 0, 0, 0)
-        detailslayout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        detailslayout.setSpacing(10)
-        details = QWidget()
-        details.setLayout(detailslayout)
-        summarylayout.addWidget(details)
-
-        self.modstotal = QLabel()
-        detailslayout.addWidget(self.modstotal)
-        self.modsenabled = QLabel()
-        detailslayout.addWidget(self.modsenabled)
-
-        buttonslayout = QHBoxLayout()
-        buttonslayout.setContentsMargins(0, 0, 0, 0)
-        buttonslayout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        buttons = QWidget()
-        buttons.setLayout(buttonslayout)
-        summarylayout.addWidget(buttons)
-
-        self.startscriptmerger = QPushButton('Start Script Merger')
-        self.startscriptmerger.setContentsMargins(0, 0, 0, 0)
-        self.startscriptmerger.setMinimumWidth(140)
-        self.startscriptmerger.setIcon(QIcon(str(getRuntimePath('resources/icons/script.ico'))))
-        buttonslayout.addWidget(self.startscriptmerger)
-
-        self.startgame = QPushButton('Start Game')
-        self.startgame.setContentsMargins(0, 0, 0, 0)
-        self.startgame.setMinimumWidth(100)
-        self.startgame.setIcon(QIcon(str(getRuntimePath('resources/icons/w3b.ico'))))
-        buttonslayout.addWidget(self.startgame)
-
         # TODO: incomplete: make start game / start script merger buttons functional
 
         if len(model):
@@ -168,11 +170,15 @@ class MainWidget(QWidget):
                 asyncio.create_task(self.modlist.checkInstallFromURLs(urls))
 
     def modelUpdateEvent(self, model: Model) -> None:
+        total = len(model)
+        enabled = len([mod for mod in model if model[mod].enabled])
         self.modstotal.setText(
-            f'<font color="#888">⬤ Installed Mods:</font> {len(model)}'
+            f'<font color="#73b500" size="4">{total}</font> \
+                <font color="#888" text-align="center">Installed Mod{"" if total == 1 else "s"}</font>'
         )
         self.modsenabled.setText(
-            f'<font color="#888">✔ Enabled Mods:</font> {len([mod for mod in model if model[mod].enabled])}'
+            f'<font color="#73b500" size="4">{enabled}</font> \
+                <font color="#888">Enabled Mod{"" if enabled == 1 else "s"}</font>'
         )
 
         if len(model) > 0:
