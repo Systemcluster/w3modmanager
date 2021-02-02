@@ -238,21 +238,35 @@ class Model:
             settings = 0
             inputs = 0
             try:
+                event_loop = asyncio.get_running_loop()
                 target.mkdir(parents=True)
                 # copy mod files
+                copies = []
                 logger.bind(name=mod.filename, path=target).debug('Copying binary files')
                 for _file in mod.files:
                     sourceFile = mod.source.joinpath(_file.source)
                     targetFile = target.joinpath(_file.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
-                    copyfile(sourceFile, targetFile)
+                    copies.append((sourceFile, targetFile))
+                await asyncio.gather(*[
+                    event_loop.run_in_executor(
+                        None,
+                        partial(copyfile, _copy[0], _copy[1])) for _copy in copies
+                ])
+                copies = []
                 logger.bind(name=mod.filename, path=target).debug('Copying content files')
                 for _content in mod.contents:
                     sourceFile = mod.source.joinpath(_content.source)
                     targetFile = target.joinpath(_content.source)
                     targetFile.parent.mkdir(parents=True, exist_ok=True)
-                    copyfile(sourceFile, targetFile)
+                    copies.append((sourceFile, targetFile))
+                await asyncio.gather(*[
+                    event_loop.run_in_executor(
+                        None,
+                        partial(copyfile, _copy[0], _copy[1])) for _copy in copies
+                ])
                 mod.installed = True
+                # update settings
                 logger.bind(name=mod.filename, path=target).debug('Updating settings')
                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
