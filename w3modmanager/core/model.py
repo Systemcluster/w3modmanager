@@ -229,27 +229,27 @@ class Model:
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     async def remove(self, mod: ModelIndexType) -> None:
-        await self.disable(mod)
-        async with self.updateLock:
-            mod = self[mod]
-            target = self.getModPath(mod, True)
-            removeDirectory(target)
-            try:
-                removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
-            except Exception as e:
-                logger.bind(name=mod.filename).warning(f'Could not remove settings from user.settings: {e}')
-            try:
-                removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-            except Exception as e:
-                logger.bind(name=mod.filename).warning(f'Could not remove settings from input.settings: {e}')
-            try:
-                removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
-            except Exception as e:
-                logger.bind(name=mod.filename).warning(f'Could not remove settings from mods.settings: {e}')
-            del self._modList[(mod.filename, mod.target)]
-        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+        if await self.disable(mod):
+            async with self.updateLock:
+                mod = self[mod]
+                target = self.getModPath(mod, True)
+                removeDirectory(target)
+                try:
+                    removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
+                except Exception as e:
+                    logger.bind(name=mod.filename).warning(f'Could not remove settings from user.settings: {e}')
+                try:
+                    removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
+                except Exception as e:
+                    logger.bind(name=mod.filename).warning(f'Could not remove settings from input.settings: {e}')
+                try:
+                    removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
+                except Exception as e:
+                    logger.bind(name=mod.filename).warning(f'Could not remove settings from mods.settings: {e}')
+                del self._modList[(mod.filename, mod.target)]
+            self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
-    async def enable(self, mod: ModelIndexType) -> None:
+    async def enable(self, mod: ModelIndexType) -> bool:
         async with self.updateLock:
             mod = self[mod]
             oldstat = mod.enabled
@@ -295,9 +295,12 @@ class Model:
                 if mod.target == 'mods':
                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
-        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+        if not undo:
+            self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+            return True
+        return False
 
-    async def disable(self, mod: ModelIndexType) -> None:
+    async def disable(self, mod: ModelIndexType) -> bool:
         async with self.updateLock:
             mod = self[mod]
             oldstat = mod.enabled
@@ -342,7 +345,10 @@ class Model:
                 if mod.target == 'mods':
                     setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
         # TODO: incomplete: handle xml and ini changes
-        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+        if not undo:
+            self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+            return True
+        return False
 
     async def setFilename(self, mod: ModelIndexType, filename: str) -> None:
         async with self.updateLock:
