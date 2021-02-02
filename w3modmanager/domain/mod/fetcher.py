@@ -385,7 +385,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 try:
                     inpu.append(InputSettings(relpath, util.readText(file)))
                 except Exception:
-                    logger.bind(file=file).warning('Could not parse input settings')
+                    logger.bind(path=file).warning('Could not parse input settings')
                 continue
 
             # detect user.settings
@@ -393,7 +393,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 try:
                     user.append(UserSettings(relpath, util.readText(file)))
                 except Exception:
-                    logger.bind(file=file).warning('Could not parse user settings')
+                    logger.bind(path=file).warning('Could not parse user settings')
                 continue
 
         dirs += sorted(
@@ -457,7 +457,7 @@ def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
     try:
         return [BundledFile(path.relative_to(root), Path(bundled)) for bundled in util.scanBundle(path)]
     except Exception:
-        logger.bind(file=path).warning('Could not parse bundle')
+        logger.bind(path=path).warning('Could not parse bundle')
     return []
 
 
