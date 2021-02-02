@@ -439,7 +439,8 @@ class ModList(QTableView):
             if index.flags() & Qt.ItemIsEditable:
                 self.setCurrentIndex(index)
                 self.edit(index)
-        super().keyPressEvent(event)
+        else:
+            super().keyPressEvent(event)
 
     def setFilter(self, search: str) -> None:
         self.filtermodel.setFilterRegularExpression(

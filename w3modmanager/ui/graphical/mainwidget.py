@@ -158,7 +158,8 @@ class MainWidget(QWidget):
         elif event.matches(QKeySequence.Paste):
             self.pasteEvent()
         # TODO: enhancement: add start game / start script merger shortcuts
-        super().keyPressEvent(event)
+        else:
+            super().keyPressEvent(event)
 
     def pasteEvent(self) -> None:
         clipboard = QApplication.clipboard().text().splitlines()
