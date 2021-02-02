@@ -322,7 +322,7 @@ class SettingsWindow(QDialog):
                 }
                 ''')
             self.nexusAPIKeyInfo.setText(f'''
-                <font color="#888">Could not validate API Key: {e}.</font>
+                <font color="#888">Could not validate API Key: {str(e) if str(e) else 'Request error'}.</font>
                 ''')
             self.validNexusAPIKey = False
             self.updateSaveButton()
