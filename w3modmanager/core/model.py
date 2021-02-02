@@ -117,7 +117,12 @@ class Model:
                     enabled = getSettingsValue(mod.filename, 'Enabled', self.configpath.joinpath('mods.settings'))
                     if enabled == '0':
                         mod.enabled = False
-                self._modList[(mod.filename, mod.target)] = mod
+                if (mod.filename, mod.target) in self._modList:
+                    logger.bind(path=path).error('Ignoring duplicate MOD')
+                    if not self._modList[(mod.filename, mod.target)].enabled:
+                        self._modList[(mod.filename, mod.target)] = mod
+                else:
+                    self._modList[(mod.filename, mod.target)] = mod
             else:
                 try:
                     for mod in Mod.fromDirectory(path, recursive=False):
@@ -125,13 +130,19 @@ class Model:
                         mod.target = 'mods'
                         mod.datatype = 'mod'
                         mod.enabled = not path.name.startswith('~')
+                        mod.filename = re.sub(r'^(~)', r'', path.name)
                         if mod.enabled:
                             enabled = getSettingsValue(mod.filename, 'Enabled',
                                                        self.configpath.joinpath('mods.settings'))
                             if enabled == '0':
                                 mod.enabled = False
-                        self._modList[(mod.filename, mod.target)] = mod
-                        asyncio.create_task(self.update(mod))
+                        if (mod.filename, mod.target) in self._modList:
+                            logger.bind(path=path).error('Ignoring duplicate MOD')
+                            if not self._modList[(mod.filename, mod.target)].enabled:
+                                self._modList[(mod.filename, mod.target)] = mod
+                        else:
+                            self._modList[(mod.filename, mod.target)] = mod
+                            asyncio.create_task(self.update(mod))
                 except InvalidPathError:
                     logger.bind(path=path).debug('Invalid MOD')
         for path in self.dlcspath.iterdir():
@@ -151,6 +162,7 @@ class Model:
                         mod.enabled = not all(file.name.endswith('.disabled')
                                               for file in path.glob('**/*') if file.is_file()
                                               and not file.name == '.w3mm')
+                        mod.filename = path.name
                         self._modList[(mod.filename, mod.target)] = mod
                         asyncio.create_task(self.update(mod))
                 except InvalidPathError:
@@ -254,6 +266,7 @@ class Model:
             mod = self[mod]
             oldstat = mod.enabled
             oldpath = self.getModPath(mod, True)
+            renamed = False
             undo = False
             renames = []
             settings = 0
@@ -264,6 +277,7 @@ class Model:
                     newpath = self.getModPath(mod)
                     if oldpath != newpath:
                         oldpath.rename(newpath)
+                        renamed = True
                     setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
@@ -284,7 +298,7 @@ class Model:
             if undo:
                 newpath = self.getModPath(mod)
                 mod.enabled = oldstat
-                if newpath.is_dir() and newpath != oldpath:
+                if newpath.is_dir() and newpath != oldpath and renamed:
                     newpath.rename(oldpath)
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
@@ -305,6 +319,7 @@ class Model:
             mod = self[mod]
             oldstat = mod.enabled
             oldpath = self.getModPath(mod, True)
+            renamed = False
             undo = False
             renames = []
             settings = 0
@@ -315,6 +330,7 @@ class Model:
                     newpath = self.getModPath(mod)
                     if oldpath != newpath:
                         oldpath.rename(newpath)
+                        renamed = True
                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
@@ -334,7 +350,7 @@ class Model:
             if undo:
                 newpath = self.getModPath(mod)
                 mod.enabled = oldstat
-                if newpath.is_dir() and newpath != oldpath:
+                if newpath.is_dir() and newpath != oldpath and renamed:
                     newpath.rename(oldpath)
                 for rename in reversed(renames):
                     rename.rename(rename.with_suffix(''))
@@ -417,11 +433,17 @@ class Model:
             target = basepath.joinpath(f'~{mod.filename}')
         else:
             target = basepath.joinpath(mod.filename)
-        if resolve and not target.is_dir():
-            if not mod.enabled and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
+        if resolve:
+            if not mod.enabled and target.is_dir() \
+            and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
+                # if the mod is disabled but there are two directories with each enabled and disabled names,
+                # resolve to the non-disabled directory
                 target = target.parent.joinpath(re.sub(r'^~', r'', target.name))
             if not target.is_dir():
-                raise ModNotFoundError(mod.filename, mod.target)
+                if not mod.enabled and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
+                    target = target.parent.joinpath(re.sub(r'^~', r'', target.name))
+                if not target.is_dir():
+                    raise ModNotFoundError(mod.filename, mod.target)
         return target
 
 
