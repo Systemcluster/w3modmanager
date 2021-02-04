@@ -48,6 +48,8 @@ class MainWidget(QWidget):
         detailslayout.addWidget(self.modsenabled)
         self.overridden = QLabel()
         detailslayout.addWidget(self.overridden)
+        self.conflicts = QLabel()
+        detailslayout.addWidget(self.conflicts)
 
         buttonslayout = QHBoxLayout()
         buttonslayout.setContentsMargins(0, 0, 0, 0)
@@ -177,7 +179,8 @@ class MainWidget(QWidget):
     def modelUpdateEvent(self, model: Model) -> None:
         total = len(model)
         enabled = len([mod for mod in model if model[mod].enabled])
-        overridden = sum(len(file) for file in model.getConflictingBundledContents().values())
+        overridden = sum(len(file) for file in model.conflicts.bundled.values())
+        conflicts = sum(len(file) for file in model.conflicts.scripts.values())
         self.modstotal.setText(
             f'<font color="#73b500" size="4">{total}</font> \
                 <font color="#888" text-align="center">Installed Mod{"" if total == 1 else "s"}</font>'
@@ -189,6 +192,10 @@ class MainWidget(QWidget):
         self.overridden.setText(
             f'<font color="{"#b08968" if overridden > 0 else "#84C318"}" size="4">{overridden}</font> \
                 <font color="#888">Overridden File{"" if overridden == 1 else "s"}</font> '
+        )
+        self.conflicts.setText(
+            f'<font color="{"#E55934" if conflicts > 0 else "#aad576"}" size="4">{conflicts}</font> \
+                <font color="#888">Unresolved Conflict{"" if conflicts == 1 else "s"}</font> '
         )
 
         if len(model) > 0:

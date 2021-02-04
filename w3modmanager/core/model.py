@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.domain.bin.modifier import addSettings, getSettingsValue, removeSettings, \
     removeSettingsSection, renameSettingsSection, setSettingsValue
-from w3modmanager.domain.mod.fetcher import BundledFile
+from w3modmanager.domain.mod.fetcher import BundledFile, ContentFile
 from w3modmanager.util.util import debounce, removeDirectory
 from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
     InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
@@ -11,11 +13,12 @@ from loguru import logger
 from fasteners import InterProcessLock
 
 from pathlib import Path
-from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator, List
+from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator, List, Type
 from datetime import datetime, timezone
 from shutil import copyfile
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass, field
 import asyncio
 import re
 
@@ -32,23 +35,42 @@ class CallbackList(list):
                 listener(*args, **kwargs)
 
 
-def calculateBundledContentsConflicts(
-    modList: Dict[Tuple[str, str], Mod], iteration: int
-) -> Tuple[Dict[str, List[BundledFile]], int]:
-    existings: Dict[BundledFile, str] = {}
-    conflicts: Dict[str, List[BundledFile]] = {}
-    for mod in sorted(mod for mod in modList.values() if mod.enabled and mod.datatype in ('mod', 'udf',)):
-        conflicts[mod.filename] = []
-        for file in mod.bundledFiles:
-            if file in existings.keys():
-                conflicts[mod.filename].append(file)
-            else:
-                existings[file] = mod.filename
-    return (conflicts, iteration,)
-
-
 ModelIndexType = Union[Mod, Tuple[str, str], int]
 '''The type for indexing the model - options are mod, (modname, target) tuple, or index'''
+
+
+@dataclass
+class ModelConflicts:
+    bundled: Dict[str, List[BundledFile]] = field(default_factory=dict)
+    scripts: Dict[str, List[ContentFile]] = field(default_factory=dict)
+    iteration: int = 0
+
+    @classmethod
+    def fromModList(
+        cls: Type[ModelConflicts], modList: Dict[Tuple[str, str], Mod], iteration: int
+    ) -> ModelConflicts:
+        existingsBundled: Dict[BundledFile, str] = {}
+        conflictsBundled: Dict[str, List[BundledFile]] = {}
+        existingsScripts: Dict[ContentFile, str] = {}
+        conflictsScripts: Dict[str, List[ContentFile]] = {}
+        for mod in sorted(mod for mod in modList.values() if mod.enabled and mod.datatype in ('mod', 'udf',)):
+            conflictsBundled[mod.filename] = []
+            conflictsScripts[mod.filename] = []
+            for bundledFile in mod.bundledFiles:
+                if bundledFile in existingsBundled.keys():
+                    conflictsBundled[mod.filename].append(bundledFile)
+                else:
+                    existingsBundled[bundledFile] = mod.filename
+            for scriptFile in mod.scriptFiles:
+                if scriptFile in existingsScripts.keys():
+                    conflictsScripts[mod.filename].append(scriptFile)
+                else:
+                    existingsScripts[scriptFile] = mod.filename
+        return cls(
+            bundled=conflictsBundled,
+            scripts=conflictsScripts,
+            iteration=iteration
+        )
 
 
 class Model:
@@ -71,8 +93,8 @@ class Model:
         self.updateCallbacks = CallbackList()
         self.updateLock = asyncio.Lock()
 
+        self.conflicts = ModelConflicts()
         self._pool = ProcessPoolExecutor()
-        self._bundledContentConflicts: Dict[str, List[BundledFile]] = {}
         self._iteration = 0
 
         if not ignorelock:
@@ -129,13 +151,14 @@ class Model:
     @debounce(25)
     async def updateBundledContentsConflicts(self) -> None:
         self._iteration += 1
-        result = await asyncio.get_running_loop().run_in_executor(
+        conflicts = await asyncio.get_running_loop().run_in_executor(
             self._pool,
-            partial(calculateBundledContentsConflicts, self._modList, self._iteration)
+            partial(ModelConflicts.fromModList, self._modList, self._iteration)
         )
-        if result[1] == self._iteration:
-            self._bundledContentConflicts = result[0]
+        if conflicts.iteration == self._iteration:
+            self.conflicts = conflicts
             self.updateCallbacks.fire(self)
+
 
     async def loadInstalledMod(self, path: Path) -> None:
         if path.joinpath('.w3mm').is_file():
@@ -511,10 +534,6 @@ class Model:
                 if not target.is_dir():
                     raise ModNotFoundError(mod.filename, mod.target)
         return target
-
-
-    def getConflictingBundledContents(self) -> Dict[str, List[BundledFile]]:
-        return self._bundledContentConflicts
 
 
     def __len__(self) -> int:
