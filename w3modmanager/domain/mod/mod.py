@@ -103,6 +103,8 @@ class Mod(DataClassJsonMixin):
     async def fromDirectory(
         cls: Type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True
     ) -> List[Mod]:
+        if not os.path.isdir(path):
+            raise InvalidPathError(path, 'Invalid mod')
         mods: List[Mod] = []
         dirs = [path]
         if len(list(path.iterdir())) == 1 \

@@ -6,6 +6,7 @@ from typing import List, Tuple, Union
 from configparser import ConfigParser
 import itertools
 import re
+import os
 
 from loguru import logger
 from dataclasses_json import DataClassJsonMixin, config as JsonConfig
@@ -509,14 +510,14 @@ def findGamePath() -> Union[Path, None]:
         subkey = winreg.OpenKeyEx(key, r'WOW6432Node\Valve\Steam')
         steam = Path(str(winreg.QueryValueEx(subkey, 'installPath')[0]))
         libs = steam.joinpath('steamapps/libraryfolders.vdf')
-        if steam.exists() and libs.is_file():
+        if os.path.isdir(steam) and os.path.isfile(libs):
             # found Steam installation, now read library folders manifest
             # and iterate libraries
             libdict = vdf.loads(util.readText(libs), mapper=vdf.VDFDict)
             libvals = libdict['LibraryFolders']
             for key in libvals:
                 checkpath = Path(libvals[key])
-                if checkpath.is_dir() and checkpath.joinpath('steamapps').is_dir():
+                if os.path.isdir(checkpath) and os.path.isdir(checkpath.joinpath('steamapps')):
                     # Steam library path found, now check for Witcher 3 installation
                     steamapps = checkpath.joinpath('steamapps')
                     game = steamapps.joinpath('common/The Witcher 3/bin/x64/witcher3.exe')

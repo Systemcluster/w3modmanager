@@ -98,7 +98,7 @@ def normalizeUrl(url: str) -> str:
 
 
 def normalizePath(path: Path, long: bool = True) -> Path:
-    normalized = os.fspath(path.resolve())
+    normalized = os.fspath(os.path.abspath(path))
     if long:
         if not normalized.startswith('\\\\?\\'):
             normalized = '\\\\?\\' + normalized
@@ -139,7 +139,7 @@ def isValidFileUrl(url: str) -> bool:
 
 
 def isArchive(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in getSupportedExtensions()
+    return os.path.isfile(path) and path.suffix.lower() in getSupportedExtensions()
 
 
 def removeDirectory(path: Path) -> None:
@@ -147,22 +147,25 @@ def removeDirectory(path: Path) -> None:
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
-    if path.is_dir():
-        shutil.rmtree(path, onerror=getWriteAccess)
+    if os.path.isdir(path):
+        try:
+            shutil.rmtree(path, onerror=getWriteAccess)
+        except OSError:
+            logger.bind(path=path).error('Illegal path, could not delete')
     else:
         logger.bind(path=path).warning('Not a valid directory, could not delete')
 
 
 def openDirectory(path: Path) -> None:
-    if path.is_dir():
-        os.startfile(str(path.absolute()), 'explore')  # noqa
+    if os.path.isdir(path):
+        os.startfile(os.path.abspath(path), 'explore')  # noqa
     else:
         logger.bind(path=path).warning('Not a valid directory, could not open')
 
 
 def openExecutable(path: Path, once: bool = False) -> None:
     path = normalizePath(path, False)
-    if not path.is_file():
+    if not os.path.isfile(path):
         logger.bind(path=path).warning('Not a valid executable, could not open')
         return
     start = True
@@ -217,7 +220,7 @@ def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess:
 
 
 async def scanBundle(bundle: Path) -> List[str]:
-    if not bundle.exists():
+    if not os.path.isfile(bundle):
         raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
     if not bundle.suffix == '.bundle':
         raise InvalidPathError(bundle, 'Invalid bundle')
@@ -239,7 +242,7 @@ async def scanBundle(bundle: Path) -> List[str]:
 
 
 def extractArchive(archive: Path, target: Path) -> None:
-    if target.exists():
+    if os.path.exists(target):
         removeDirectory(target)
     target.mkdir(parents=True)
     exe = str(getRuntimePath('tools/7zip/7z.exe'))

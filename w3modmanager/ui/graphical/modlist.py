@@ -3,6 +3,7 @@ from urllib.parse import urlparse, unquote
 from typing import Union, List, Tuple, Optional, cast
 from datetime import datetime, timezone
 import asyncio
+import re
 
 from loguru import logger
 import dateparser
@@ -517,8 +518,9 @@ class ModList(QTableView):
             installtime = datetime.now(tz=timezone.utc)
         try:
             target = Path(urlparse(url).path)
+            filename = re.sub(r'[^\w\-_\. ]', '_', unquote(target.name))
             target = Path(tempfile.gettempdir()).joinpath(
-                'w3modmanager/download').joinpath(f'{unquote(target.name)}')
+                'w3modmanager/download').joinpath(f'{filename}')
         except ValueError:
             logger.bind(name=url).exception('Wrong request URL')
             return 0, 1
