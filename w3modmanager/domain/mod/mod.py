@@ -109,7 +109,7 @@ class Mod(DataClassJsonMixin):
         dirs = [path]
         if len(list(path.iterdir())) == 1 \
                 and len([d for d in path.iterdir() if d.is_dir() and d.name[:3].lower() not in ('dlc', 'mod',) \
-                         and d.name not in ('content',)]) == 1:
+                         and d.name not in ('content',) and len(d.name) > 3]) == 1:
             # if directory contains only one subdirectory and it's not the mod, dlc or content dir,
             # use it for the package name
             package = formatPackageName(list(path.iterdir())[0].name)
