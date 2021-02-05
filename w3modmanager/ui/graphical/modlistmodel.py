@@ -269,7 +269,7 @@ class ModListModel(QAbstractTableModel):
         if role == Qt.UserRole:
             mod = self.modmodel[index.row()]
             if col in ('priority',):
-                return f'{int(mod[col]): >20} {mod["filename"]}'
+                return f'{"-" if int(mod[col]) < 0 else "+"}{abs(int(mod[col])): >20} {mod["filename"]}'
             if col in ('size',):
                 return int(mod[col])
             if col in ('binFiles', 'menuFiles', 'contentFiles', \
