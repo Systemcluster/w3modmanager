@@ -2,6 +2,7 @@ import w3modmanager
 from w3modmanager.core.model import Model
 from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
+from w3modmanager.domain.bin.merger import verifyScriptMergerPath
 from w3modmanager.ui.graphical.mainwidget import MainWidget
 from w3modmanager.ui.graphical.settingswindow import SettingsWindow
 from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
@@ -284,10 +285,15 @@ class MainWindow(QMainWindow):
 
         settingswindow.setModal(True)
         settingswindow.open()
-        settingswindow.finished.connect(lambda: self.model.setPaths(
-            Path(str(settings.value('gamePath'))),
-            Path(str(settings.value('configPath'))))
-        )
+        settingswindow.finished.connect(lambda: [
+            self.model.setPaths(
+                Path(str(settings.value('gamePath'))),
+                Path(str(settings.value('configPath')))
+            ),
+            self.mainwidget.startscriptmerger.setEnabled(
+                verifyScriptMergerPath(Path(str(settings.value('scriptMergerPath')))) is not None
+            )
+        ])
         return settingswindow
 
     def showAboutDialog(self: Any) -> QMessageBox:

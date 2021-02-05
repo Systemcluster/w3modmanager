@@ -1,5 +1,6 @@
 from w3modmanager.util.util import getTitleString, debounce
 from w3modmanager.domain.mod import fetcher
+from w3modmanager.domain.bin.merger import findScriptMergerPath, verifyScriptMergerPath
 from w3modmanager.domain.web.nexus import RequestError, ResponseError, UnauthorizedError, getUserInformation
 from w3modmanager.core.model import *
 
@@ -64,7 +65,7 @@ class SettingsWindow(QDialog):
         gamePathInfoLayout = QHBoxLayout()
         self.gamePathInfo = QLabel('', self)
         self.gamePathInfo.setContentsMargins(4, 4, 4, 4)
-        self.gamePathInfo.setMinimumHeight(36)
+        self.gamePathInfo.setMinimumHeight(40)
         self.gamePathInfo.setWordWrap(True)
         gamePathInfoLayout.addWidget(self.gamePathInfo)
         gbGameLayout.addLayout(gamePathInfoLayout)
@@ -94,10 +95,41 @@ class SettingsWindow(QDialog):
         configPathInfoLayout = QHBoxLayout()
         self.configPathInfo = QLabel('', self)
         self.configPathInfo.setContentsMargins(4, 4, 4, 4)
-        self.configPathInfo.setMinimumHeight(36)
+        self.configPathInfo.setMinimumHeight(40)
         self.configPathInfo.setWordWrap(True)
         configPathInfoLayout.addWidget(self.configPathInfo)
         gbConfigLayout.addLayout(configPathInfoLayout)
+
+        # Script Merger
+
+        gbScriptMerger = QGroupBox('Script Merger', self)
+        mainLayout.addWidget(gbScriptMerger)
+        gbScriptMergerLayout = QVBoxLayout(gbScriptMerger)
+
+        scriptMergerPathLayout = QHBoxLayout()
+        self.scriptMergerPath = QLineEdit(self)
+        self.scriptMergerPath.setPlaceholderText('Path to WitcherScriptMerger.exe...')
+        if settings.value('scriptMergerPath'):
+            self.scriptMergerPath.setText(str(settings.value('scriptMergerPath')))
+        self.scriptMergerPath.textChanged.connect(lambda: self.validateScriptMergerPath(self.scriptMergerPath.text()))
+        scriptMergerPathLayout.addWidget(self.scriptMergerPath)
+        self.locateScriptMerger = QPushButton('Detect', self)
+        self.locateScriptMerger.clicked.connect(self.locateScriptMergerEvent)
+        self.locateScriptMerger.setToolTip('Automatically detect the script merger path if possible')
+        scriptMergerPathLayout.addWidget(self.locateScriptMerger)
+        selectScriptMerger = QPushButton('Browse', self)
+        selectScriptMerger.clicked.connect(self.selectScriptMergerEvent)
+        scriptMergerPathLayout.addWidget(selectScriptMerger)
+        gbScriptMergerLayout.addLayout(scriptMergerPathLayout)
+
+        scriptMergerPathInfoLayout = QHBoxLayout()
+        self.scriptMergerPathInfo = QLabel('', self)
+        self.scriptMergerPathInfo.setOpenExternalLinks(True)
+        self.scriptMergerPathInfo.setContentsMargins(4, 4, 4, 4)
+        self.scriptMergerPathInfo.setMinimumHeight(40)
+        self.scriptMergerPathInfo.setWordWrap(True)
+        scriptMergerPathInfoLayout.addWidget(self.scriptMergerPathInfo)
+        gbScriptMergerLayout.addLayout(scriptMergerPathInfoLayout)
 
         # Nexus Mods API
 
@@ -164,16 +196,18 @@ class SettingsWindow(QDialog):
 
         if not settings.value('gamePath'):
             self.locateGameEvent()
-        self.setMinimumSize(QSize(420, 420))
+        self.setMinimumSize(QSize(440, 440))
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
         self.validGamePath = False
         self.validConfigPath = False
         self.validNexusAPIKey = False
+        self.validScriptMergerPath = False
 
         self.validateGamePath(self.gamePath.text())
         self.validateConfigPath(self.configPath.text())
         self.validateApiKey(self.nexusAPIKey.text())
+        self.validateScriptMergerPath(self.scriptMergerPath.text())
         self.updateSaveButton()
 
         self.finished.connect(lambda: self.validateApiKey.cancel())  # type: ignore
@@ -183,6 +217,7 @@ class SettingsWindow(QDialog):
         settings.setValue('settingsWindowGeometry', self.saveGeometry())
         settings.setValue('gamePath', self.gamePath.text())
         settings.setValue('configPath', self.configPath.text())
+        settings.setValue('scriptMergerPath', self.scriptMergerPath.text())
         settings.setValue('nexusAPIKey', self.nexusAPIKey.text())
         settings.setValue('nexusGetInfo', str(self.nexusGetInfo.isChecked()))
         settings.setValue('nexusCheckUpdates', str(self.nexusCheckUpdates.isChecked()))
@@ -210,6 +245,16 @@ class SettingsWindow(QDialog):
             if dialog.selectedFiles():
                 self.configPath.setText(dialog.selectedFiles()[0])
 
+    def selectScriptMergerEvent(self) -> None:
+        dialog: QFileDialog = QFileDialog(
+            self, 'Select WitcherScriptMerger.exe', '', 'Script Merger (WitcherScriptMerger.exe)'
+        )
+        dialog.setOptions(QFileDialog.ReadOnly)
+        dialog.setFileMode(QFileDialog.ExistingFile)
+        if (dialog.exec_()):
+            if dialog.selectedFiles():
+                self.scriptMergerPath.setText(dialog.selectedFiles()[0])
+
     def locateGameEvent(self) -> None:
         game = fetcher.findGamePath()
         if game:
@@ -231,6 +276,18 @@ class SettingsWindow(QDialog):
                 Could not detect a valid config path!
                 Please make sure the The Witcher 3 was started at least once,
                 or set the path manually.
+                </font>''')
+
+    def locateScriptMergerEvent(self) -> None:
+        scriptmerger = findScriptMergerPath()
+        if scriptmerger:
+            self.scriptMergerPath.setText(str(scriptmerger))
+        else:
+            self.scriptMergerPathInfo.setText('''
+                <font color="#888">
+                Could not detect Script Merger! Please make sure Script Merger is running,<br>
+                or set the path manually.
+                Download Script Merger <a href="https://www.nexusmods.com/witcher3/mods/484">here</a>.
                 </font>''')
 
     def validateGamePath(self, text: str) -> bool:
@@ -278,6 +335,39 @@ class SettingsWindow(QDialog):
             self.configPathInfo.setText('<font color="#888">Everything looks good!</font>')
             self.validConfigPath = True
             self.locateConfig.setDisabled(True)
+            self.updateSaveButton()
+            return True
+
+    def validateScriptMergerPath(self, text: str) -> bool:
+        # validate script merger path
+        if not text:
+            self.scriptMergerPath.setStyleSheet('')
+            self.scriptMergerPathInfo.setText('''
+                <font color="#888">Script Merger is used to resolve conflicts between mods \
+                by merging scripts and other text files. \
+                Download Script Merger <a href="https://www.nexusmods.com/witcher3/mods/484">here</a>.</font>
+                ''')
+            self.validScriptMergerPath = True
+            self.updateSaveButton()
+            return True
+        if not verifyScriptMergerPath(Path(text)):
+            self.scriptMergerPath.setStyleSheet('''
+                *{
+                    border: 1px solid #B22222;
+                    padding: 1px 0px;
+                }
+                ''')
+            self.scriptMergerPathInfo.setText('''<font color="#888">Please enter a valid script merger path.</font>
+                ''')
+            self.validScriptMergerPath = False
+            self.locateScriptMerger.setDisabled(False)
+            self.updateSaveButton()
+            return False
+        else:
+            self.scriptMergerPath.setStyleSheet('')
+            self.scriptMergerPathInfo.setText('<font color="#888">Everything looks good!</font>')
+            self.validScriptMergerPath = True
+            self.locateScriptMerger.setDisabled(True)
             self.updateSaveButton()
             return True
 
@@ -341,5 +431,6 @@ class SettingsWindow(QDialog):
         #     self.validConfigPath,
         #     self.validGamePath,
         #     self.validNexusAPIKey,
+        #     self.validScriptMergerPath,
         # )))  # noqa
         self.save.setDisabled(False)

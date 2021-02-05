@@ -1,11 +1,14 @@
 from w3modmanager.core.model import Model
 from w3modmanager.ui.graphical.modlist import ModList
 from w3modmanager.ui.graphical.flowlayout import FlowLayout
-from w3modmanager.util.util import getRuntimePath, isValidNexusModsUrl, isValidModDownloadUrl, isValidFileUrl
+from w3modmanager.domain.bin.merger import verifyScriptMergerPath
+from w3modmanager.util.util import getRuntimePath, isValidFileUrl, isValidModDownloadUrl, \
+    isValidNexusModsUrl, openExecutable
 
 import html
 from typing import Any
 import asyncio
+from pathlib import Path
 
 from loguru import logger
 from PySide6.QtCore import QSettings, Qt
@@ -62,6 +65,12 @@ class MainWidget(QWidget):
         self.startscriptmerger.setContentsMargins(0, 0, 0, 0)
         self.startscriptmerger.setMinimumWidth(140)
         self.startscriptmerger.setIcon(QIcon(str(getRuntimePath('resources/icons/script.ico'))))
+        self.startscriptmerger.clicked.connect(lambda: [
+            openExecutable(Path(str(settings.value('scriptMergerPath'))), True)
+        ])
+        self.startscriptmerger.setEnabled(
+            verifyScriptMergerPath(Path(str(settings.value('scriptMergerPath')))) is not None
+        )
         buttonslayout.addWidget(self.startscriptmerger)
 
         self.startgame = QPushButton('Start Game')
@@ -143,7 +152,7 @@ class MainWidget(QWidget):
         self.splitter.setStretchFactor(1, 0)
         self.mainlayout.addWidget(self.splitter)
 
-        # TODO: incomplete: make start game / start script merger buttons functional
+        # TODO: incomplete: make start game button functional
 
         if len(model):
             self.stack.setCurrentIndex(0)

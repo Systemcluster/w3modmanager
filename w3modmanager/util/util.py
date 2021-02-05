@@ -97,10 +97,14 @@ def normalizeUrl(url: str) -> str:
     return url
 
 
-def normalizePath(path: Path) -> Path:
+def normalizePath(path: Path, long: bool = True) -> Path:
     normalized = os.fspath(path.resolve())
-    if not normalized.startswith('\\\\?\\'):
-        normalized = '\\\\?\\' + normalized
+    if long:
+        if not normalized.startswith('\\\\?\\'):
+            normalized = '\\\\?\\' + normalized
+    else:
+        if normalized.startswith('\\\\?\\'):
+            normalized = normalized[4:]
     return Path(normalized)
 
 
@@ -154,6 +158,49 @@ def openDirectory(path: Path) -> None:
         os.startfile(str(path.absolute()), 'explore')  # noqa
     else:
         logger.bind(path=path).warning('Not a valid directory, could not open')
+
+
+def openExecutable(path: Path, once: bool = False) -> None:
+    path = normalizePath(path, False)
+    if not path.is_file():
+        logger.bind(path=path).warning('Not a valid executable, could not open')
+        return
+    start = True
+    if once:
+        try:
+            from win32.win32gui import EnumWindows, SetForegroundWindow, ShowWindow, IsIconic, GetWindow
+            from win32.win32process import GetWindowThreadProcessId, GetModuleFileNameEx
+            from win32.win32api import OpenProcess
+            existingWindows = []
+            windowHandles = []
+            EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
+            for windowHandle in windowHandles:
+                processIds = GetWindowThreadProcessId(windowHandle)
+                for processId in processIds:
+                    try:
+                        processHandle = OpenProcess(0x1000, False, processId)
+                        fileName = GetModuleFileNameEx(processHandle, None)
+                        if normalizePath(Path(fileName), False) == path:
+                            existingWindows.append(windowHandle)
+                    except Exception:  # noqa
+                        continue
+                else:
+                    continue
+                break
+            for existingWindow in existingWindows:
+                parentWindow = GetWindow(existingWindow, 4)
+                if not parentWindow:
+                    if IsIconic(existingWindow):
+                        ShowWindow(existingWindow, 9)
+                    SetForegroundWindow(existingWindow)
+                    start = False
+        except Exception as e:
+            logger.bind(path=path).debug(f'Could not get open windows: {e}')
+    if start:
+        subprocess.Popen(  # noqa
+            [path], cwd=path.parent,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
 
 
 def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess:
