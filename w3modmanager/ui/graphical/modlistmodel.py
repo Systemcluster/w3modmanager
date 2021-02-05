@@ -229,6 +229,14 @@ class ModListModel(QAbstractTableModel):
             mod = self.modmodel[index.row()]
             if not mod.enabled:
                 return QColor(60, 60, 60)
+            elif col in ('scriptFiles',):
+                if mod.filename in self.modmodel.conflicts.scripts \
+                and self.modmodel.conflicts.scripts[mod.filename]:
+                    return QColor('#E55934')
+            elif col in ('bundledFiles',):
+                if mod.filename in self.modmodel.conflicts.bundled \
+                and self.modmodel.conflicts.bundled[mod.filename]:
+                    return QColor('#b08968')
             return None
 
         if role == Qt.DecorationRole:
