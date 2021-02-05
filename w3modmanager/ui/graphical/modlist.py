@@ -277,7 +277,8 @@ class ModList(QTableView):
         if not mods:
             return
         menu = QMenu(self)
-        actionOpen = menu.addAction(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))), '&Open Directory')
+        actionOpen = menu.addAction('&Open Directory')
+        actionOpen.setIcon(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))))
         actionOpen.triggered.connect(lambda: [
             util.openDirectory(self.modmodel.getModPath(mod))  # type: ignore
             for mod in mods
@@ -299,8 +300,8 @@ class ModList(QTableView):
             asyncio.create_task(self.deleteSelectedMods())
         ])
         menu.addSeparator()
-        actionOpenNexus = menu.addAction(
-            QIcon(str(getRuntimePath('resources/icons/browse.ico'))), 'Open &Nexus Mods page')
+        actionOpenNexus = menu.addAction('Open &Nexus Mods page')
+        actionOpenNexus.setIcon(QIcon(str(getRuntimePath('resources/icons/browse.ico'))))
         actionOpenNexus.triggered.connect(lambda: [
             QDesktopServices.openUrl(QUrl(f'https://www.nexusmods.com/witcher3/mods/{modid}'))
             for modid in {mod.modid for mod in mods if mod.modid > 0}

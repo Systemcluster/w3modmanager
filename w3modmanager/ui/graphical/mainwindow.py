@@ -78,13 +78,16 @@ class MainWindow(QMainWindow):
         actionAddModFromFile.triggered.connect(self.showAddModFromFileDialog)
         actionAddModFromFolder = menuMods.addAction('Add u&npacked Mod')
         actionAddModFromFolder.triggered.connect(self.showAddModFromFolderDialog)
-        actionDownloadMod = menuMods.addAction(downIcon, '&Download Mod')
+        actionDownloadMod = menuMods.addAction('&Download Mod')
+        actionDownloadMod.setIcon(downIcon)
         actionDownloadMod.triggered.connect(self.showDownloadModDialog)
 
         menuMods.addSeparator()
-        actionGetInfo = menuMods.addAction(downIcon, 'Update Mod de&tails')
+        actionGetInfo = menuMods.addAction('Update Mod de&tails')
+        actionGetInfo.setIcon(downIcon)
         actionGetInfo.triggered.connect(self.showGetInfoDialog)
-        actionGetUpdates = menuMods.addAction(downIcon, 'Check for Mod &updates')
+        actionGetUpdates = menuMods.addAction('Check for Mod &updates')
+        actionGetUpdates.setIcon(downIcon)
         actionGetUpdates.triggered.connect(self.showGetUpdatesDialog)
 
         menuMods.addSeparator()
@@ -200,23 +203,28 @@ class MainWindow(QMainWindow):
         # settings menu
 
         menuSettings: QMenu = self.menuBar().addMenu('&Tools')
-        actionSettings = menuSettings.addAction(gearIcon, '&Settings')
+        actionSettings = menuSettings.addAction('&Settings')
+        actionSettings.setIcon(gearIcon)
         actionSettings.triggered.connect(self.showSettingsDialog)
 
         menuSettings.addSeparator()
-        actionOpenGameDirectory = menuSettings.addAction(dirsIcon, 'Open &Game directory')
+        actionOpenGameDirectory = menuSettings.addAction('Open &Game directory')
+        actionOpenGameDirectory.setIcon(dirsIcon)
         actionOpenGameDirectory.triggered.connect(lambda: util.openDirectory(self.model.gamepath))
-        actionOpenConfigDirectory = menuSettings.addAction(dirsIcon, 'Open &Config directory')
+        actionOpenConfigDirectory = menuSettings.addAction('Open &Config directory')
+        actionOpenConfigDirectory.setIcon(dirsIcon)
         actionOpenConfigDirectory.triggered.connect(lambda: util.openDirectory(self.model.configpath))
 
         # info menu
 
         menuInfo: QMenu = self.menuBar().addMenu('&Info')
 
-        actionFeedback = menuInfo.addAction(smilIcon, 'Send &Feedback')
+        actionFeedback = menuInfo.addAction('Send &Feedback')
+        actionFeedback.setIcon(smilIcon)
         actionFeedback.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(w3modmanager.URL_ISSUES)))
         menuInfo.addSeparator()
-        actionAbout = menuInfo.addAction(QIcon.fromTheme('document-open'), '&About')
+        actionAbout = menuInfo.addAction('&About')
+        actionAbout.setIcon(QIcon.fromTheme('document-open'))
         actionAbout.triggered.connect(self.showAboutDialog)
 
     def showExportDialog(self) -> None:
