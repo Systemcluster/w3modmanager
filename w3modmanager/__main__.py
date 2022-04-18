@@ -199,6 +199,10 @@ def main(gamePath: Optional[str] = None,
     icon.addFile(str(getRuntimePath('resources/icons/w3b.ico')))
     app.setWindowIcon(icon)
 
+    import logging
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.WARNING)
+
     pool = ThreadPoolExecutor()
     asyncio.get_running_loop().set_default_executor(pool)
 
