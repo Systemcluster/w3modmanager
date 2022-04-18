@@ -24,13 +24,12 @@ def findScriptMergerPath() -> Optional[Path]:
                     try:
                         processHandle = OpenProcess(0x1000, False, processId)
                         fileName = GetModuleFileNameEx(processHandle, None)
-                        existingPaths.append(fileName)
+                        existingPaths.append(Path(fileName))
                     except Exception:  # noqa
                         continue
-                existingPaths.append(windowHandle)
         for path in existingPaths:
-            if verifyScriptMergerPath(Path(path)):
-                return Path(path)
+            if verifyScriptMergerPath(path):
+                return path
     except Exception as e:
         logger.bind().debug(f'Could not locate Script Merger: {e}')
     return None
