@@ -1,6 +1,6 @@
 from pathlib import Path
 from urllib.parse import urlparse, unquote
-from typing import Union, List, Tuple, Optional, cast
+from typing import Sequence, Union, List, Tuple, Optional, cast
 from datetime import datetime, timezone
 import asyncio
 import re
@@ -319,7 +319,7 @@ class ModList(QTableView):
 
     def getSelectedMods(self) -> List[Mod]:
         return [
-            self.modmodel[self.filtermodel.mapToSource(index).row()]
+            self.modmodel[self.filtermodel.mapToSource(cast(QModelIndex, index)).row()]
             for index in self.selectionModel().selectedRows()
         ]
 
@@ -352,7 +352,8 @@ class ModList(QTableView):
                 await self.modmodel.remove(mod)
             except Exception as e:
                 logger.bind(name=mod.filename).exception(f'Could not delete mod: {e}')
-        asyncio.get_running_loop().call_later(100 / 1000.0, partial(self.selectRowChecked, inds[0].row()))
+        asyncio.get_running_loop().call_later(
+            100 / 1000.0, partial(self.selectRowChecked, cast(QModelIndex, inds[0]).row()))
         self.setDisabled(False)
         self.setFocus()
 
@@ -407,8 +408,7 @@ class ModList(QTableView):
         mods = self.getSelectedMods()
         logger.bind(newline=True, output=False).debug(f'Requesting details for {len(mods)} mods')
         results = await asyncio.gather(
-            *[self.updateModDetails(mod) for mod in mods],
-            loop=asyncio.get_running_loop(), return_exceptions=True
+            *[self.updateModDetails(mod) for mod in mods], return_exceptions=True
         )
         successes = sum(results)
         errors = len(results) - successes
@@ -426,7 +426,7 @@ class ModList(QTableView):
         await asyncio.gather(*[
             self.modmodel.setPriority(mod, max(-1, min(9999, int(mod.priority + delta))))
             for mod in mods if mod.datatype in ('mod', 'udf',)
-        ], loop=asyncio.get_running_loop())
+        ])
         self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
@@ -439,7 +439,7 @@ class ModList(QTableView):
         elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_Down:
             asyncio.create_task(self.changeSelectedModsPriority(-1))
         elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_P:
-            index = self.selectionModel().selectedRows()[0]
+            index = cast(QModelIndex, self.selectionModel().selectedRows()[0])
             index = index.sibling(index.row(), 5)
             if index.flags() & Qt.ItemIsEditable:
                 self.setCurrentIndex(index)
@@ -452,7 +452,9 @@ class ModList(QTableView):
             QRegularExpression(search, QRegularExpression.CaseInsensitiveOption)
         )
 
-    async def checkInstallFromURLs(self, paths: List[Union[str, QUrl]], local: bool = True, web: bool = True) -> None:
+    async def checkInstallFromURLs(
+        self, paths: Sequence[Union[str, QUrl]], local: bool = True, web: bool = True
+    ) -> None:
         await self.installLock.acquire()
         installed = 0
         errors = 0
@@ -463,7 +465,6 @@ class ModList(QTableView):
         try:
             results = await asyncio.gather(
                 *[self.installFromURL(path, local, web, installtime) for path in paths],
-                loop=asyncio.get_running_loop()
             )
             for result in results:
                 installed += result[0]

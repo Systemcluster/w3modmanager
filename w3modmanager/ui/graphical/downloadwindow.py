@@ -1,3 +1,4 @@
+from typing import cast
 from w3modmanager.util.util import getTitleString, debounce
 from w3modmanager.ui.graphical.modlist import ModListItemDelegate
 from w3modmanager.domain.web.nexus import RequestError, ResponseError, getModId, getModFileUrls, getModFiles
@@ -5,9 +6,9 @@ from w3modmanager.core.model import *
 
 import html
 
-import dateparser  # noqa
+import dateparser
 
-from PySide6.QtCore import Qt, QSize, Signal, QObject
+from PySide6.QtCore import QModelIndex, Qt, QSize, Signal, QObject
 from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
     QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
 from PySide6.QtGui import QMouseEvent
@@ -241,12 +242,11 @@ class DownloadWindow(QDialog):
         self.download.setDisabled(True)
         self.url.setDisabled(True)
         selection = self.files.selectionModel().selectedRows()
-        files = [self.files.item(index.row(), 0).data(Qt.UserRole) for index in selection]
+        files = [self.files.item(cast(QModelIndex, index).row(), 0).data(Qt.UserRole) for index in selection]
         self.files.setDisabled(True)
         try:
             urls = await asyncio.gather(
                 *[getModFileUrls(self.modId, file) for file in files],
-                loop=asyncio.get_running_loop()
             )
         except (RequestError, ResponseError, Exception) as e:
             self.url.setStyleSheet('''

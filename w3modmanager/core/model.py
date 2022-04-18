@@ -223,12 +223,10 @@ class Model:
 
     async def loadInstalled(self) -> None:
         await asyncio.gather(
-            *[self.loadInstalledMod(path) for path in self.modspath.iterdir()],
-            loop=asyncio.get_running_loop()
+            *[self.loadInstalledMod(path) for path in self.modspath.iterdir()]
         )
         await asyncio.gather(
-            *[self.loadInstalledDlc(path) for path in self.dlcspath.iterdir()],
-            loop=asyncio.get_running_loop()
+            *[self.loadInstalledDlc(path) for path in self.dlcspath.iterdir()]
         )
         self.updateBundledContentsConflicts()
         self.updateCallbacks.fire(self)

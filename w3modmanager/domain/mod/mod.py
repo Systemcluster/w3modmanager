@@ -238,8 +238,8 @@ class Mod(DataClassJsonMixin):
                 logger.bind(name=name, path=path).debug('Detected PAT')
                 size = 0
                 bundled = []
-                for content in contents:
-                    size += path.joinpath(content.source).stat().st_size
+                for _content in contents:
+                    size += path.joinpath(_content.source).stat().st_size
                     if _content.source.suffix == '.bundle':
                         bundled.extend(await fetchBundleContents(check, path.joinpath(_content.source)))
                 mods.append(cls(

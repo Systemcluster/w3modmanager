@@ -30,7 +30,7 @@ class FlowLayout(QLayout):
         else:
             return self.smartSpacing(QStyle.PM_LayoutVerticalSpacing)
 
-    def smartSpacing(self, metric: QStyle) -> int:
+    def smartSpacing(self, metric: QStyle.PixelMetric) -> int:
         parent = self.parent()
         if parent is None:
             return -1

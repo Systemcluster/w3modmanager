@@ -2,8 +2,7 @@
 Framework for test cases
 """
 
-from shutil import rmtree
-from distutils.dir_util import copy_tree
+from shutil import rmtree, copytree
 from pathlib import Path
 from typing import Generator
 import sys
@@ -21,6 +20,6 @@ sys.path.append(str(_root))
 def mockdata() -> Generator:
     import tempfile
     tempdir = tempfile.mkdtemp()
-    copy_tree(str(_mockdata), tempdir)
+    copytree(_mockdata, tempdir, dirs_exist_ok=True)
     yield Path(tempdir)
     rmtree(tempdir)

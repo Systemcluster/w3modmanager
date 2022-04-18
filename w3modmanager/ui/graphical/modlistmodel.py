@@ -172,7 +172,7 @@ class ModListModel(QAbstractTableModel):
         return len(self._header)
 
     @lru_cache(maxsize=None)
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.EditRole) -> Any:
+    def headerData(self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.EditRole) -> Any:
         if role != Qt.DisplayRole:
             return None
         if orientation != Qt.Horizontal:

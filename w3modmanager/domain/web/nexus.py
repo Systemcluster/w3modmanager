@@ -11,7 +11,7 @@ from pathlib import Path
 import asyncio
 from functools import partial
 
-from httpx import AsyncClient, HTTPError, HTTPStatusError, Response, Request, stream
+from httpx import AsyncClient, HTTPError, HTTPStatusError, RequestError as HTTPXRequestError, Response, Request, stream
 from PySide6.QtCore import QSettings
 from loguru import logger
 
@@ -23,8 +23,8 @@ __modsUrl = '/v1/games/witcher3/mods'
 __session: Optional[AsyncClient] = None
 
 
-class RequestError(HTTPError):
-    def __init__(self, kind: str, request: Request, response: Response = None) -> None:
+class RequestError(HTTPXRequestError):
+    def __init__(self, kind: str, request: Request = None, response: Response = None) -> None:
         super().__init__(request=request, message=kind)
 
         self.response = response
@@ -112,8 +112,10 @@ async def getUserInformation(apikey: str) -> dict:
         )
     except HTTPStatusError as e:
         raise RequestError(request=e.request, response=e.response, kind=str(e))
-    except HTTPError as e:
+    except HTTPXRequestError as e:
         raise RequestError(request=e.request, response=None, kind=str(e))
+    except HTTPError as e:
+        raise RequestError(request=None, response=None, kind=str(e))
     if user.status_code == 429:
         raise RequestLimitReachedError()
     if user.status_code == 404:
@@ -142,8 +144,10 @@ async def getModInformation(md5hash: str) -> list:
         )
     except HTTPStatusError as e:
         raise RequestError(request=e.request, response=e.response, kind=str(e))
-    except HTTPError as e:
+    except HTTPXRequestError as e:
         raise RequestError(request=e.request, response=None, kind=str(e))
+    except HTTPError as e:
+        raise RequestError(request=None, response=None, kind=str(e))
     if info.status_code == 429:
         raise RequestLimitReachedError()
     if info.status_code == 404:
@@ -172,8 +176,10 @@ async def getModFiles(modid: int) -> dict:
         )
     except HTTPStatusError as e:
         raise RequestError(request=e.request, response=e.response, kind=str(e))
-    except HTTPError as e:
+    except HTTPXRequestError as e:
         raise RequestError(request=e.request, response=None, kind=str(e))
+    except HTTPError as e:
+        raise RequestError(request=None, response=None, kind=str(e))
     if files.status_code == 429:
         raise RequestLimitReachedError()
     if files.status_code == 404:
@@ -204,8 +210,10 @@ async def getModFileUrls(modid: int, fileid: int) -> list:
         )
     except HTTPStatusError as e:
         raise RequestError(request=e.request, response=e.response, kind=str(e))
-    except HTTPError as e:
+    except HTTPXRequestError as e:
         raise RequestError(request=e.request, response=None, kind=str(e))
+    except HTTPError as e:
+        raise RequestError(request=None, response=None, kind=str(e))
     if files.status_code == 429:
         raise RequestLimitReachedError()
     if files.status_code == 404:
@@ -257,8 +265,10 @@ def downloadFileSync(url: str, target: Path, apikey: str) -> None:
                     file.write(data)
     except HTTPStatusError as e:
         raise RequestError(request=e.request, response=e.response, kind=str(e))
-    except HTTPError as e:
+    except HTTPXRequestError as e:
         raise RequestError(request=e.request, response=None, kind=str(e))
+    except HTTPError as e:
+        raise RequestError(request=None, response=None, kind=str(e))
 
 
 def getCategoryName(categoryid: int) -> str:
