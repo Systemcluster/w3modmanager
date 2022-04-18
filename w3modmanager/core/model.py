@@ -175,17 +175,27 @@ class Model:
                     self._modList[(mod.filename, mod.target)] = mod
             else:
                 self._modList[(mod.filename, mod.target)] = mod
+            # TODO: incomplete: detect changed files
         else:
             try:
                 for mod in await Mod.fromDirectory(path, recursive=False):
                     mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
                     mod.target = 'mods'
-                    mod.datatype = 'mod'
                     mod.enabled = not path.name.startswith('~')
                     mod.filename = re.sub(r'^(~)', r'', path.name)
+                    priority = getSettingsValue(
+                        mod.filename, 'Priority',
+                        self.configpath.joinpath('mods.settings')
+                    )
+                    try:
+                        mod.priority = int(priority) if priority else mod.priority
+                    except ValueError:
+                        pass
                     if mod.enabled:
-                        enabled = getSettingsValue(mod.filename, 'Enabled',
-                                                   self.configpath.joinpath('mods.settings'))
+                        enabled = getSettingsValue(
+                            mod.filename, 'Enabled',
+                            self.configpath.joinpath('mods.settings')
+                        )
                         if enabled == '0':
                             mod.enabled = False
                     if (mod.filename, mod.target) in self._modList:
