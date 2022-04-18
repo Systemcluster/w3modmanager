@@ -127,7 +127,56 @@ def main(gamePath: Optional[str] = None,
 
     app = QApplication(sys.argv)
     app.setStyleSheet('''
-        Link { text-decoration: none; }
+        Link {
+            text-decoration: none;
+        }
+        QMainWindow,
+        QDialog,
+        QSplitter::handle {
+            background: white;
+        }
+        QScrollBar:horizontal {
+            border: 0;
+            background: #eee;
+            height: 10px;
+        }
+        QScrollBar:vertical {
+            border: 0;
+            background: #eee;
+            width: 10px;
+        }
+        QScrollBar::handle:horizontal {
+            background: lightblue;
+            min-width: 20px;
+        }
+        QScrollBar::handle:vertical {
+            background: lightblue;
+            min-height: 20px;
+        }
+        QScrollBar::handle:vertical:hover,
+        QScrollBar::handle:horizontal:hover {
+            background: #82c8df;
+        }
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical,
+        QScrollBar::add-line:horizontal,
+        QScrollBar::sub-line:horizontal {
+            border: 0;
+            background: transparent;
+            width: 0px;
+            height: 0px;
+        }
+        QTableView {
+            gridline-color: white;
+        }
+        QTableView::item {
+            padding: 5px;
+            margin: 1px 0;
+        }
+        QTableView::item:!selected:hover {
+            background-color: rgb(217, 235, 249);
+            padding: 0;
+        }
     ''')
 
     eventloop = QEventLoop(app)

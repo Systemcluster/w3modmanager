@@ -115,15 +115,6 @@ class ModList(QTableView):
         self.setEditTriggers(QTableView.EditKeyPressed | QTableView.DoubleClicked)
         self.setShowGrid(False)
 
-        self.setStyleSheet('''
-            QTableView {
-                gridline-color: rgba(255,255,255,1);
-            }
-            QTableView::item:!selected:hover {
-                background-color: rgb(217, 235, 249);
-            }
-            ''')
-
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.setContextMenuPolicy(Qt.CustomContextMenu)

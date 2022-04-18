@@ -81,19 +81,6 @@ class DownloadWindow(QDialog):
         self.files.verticalScrollBar().valueChanged.connect(lambda: self.files.clearFocus())
         self.files.itemSelectionChanged.connect(lambda: self.validateFiles())
         self.files.setDisabled(True)
-        self.files.setStyleSheet('''
-            QTableView {
-                gridline-color: rgba(255,255,255,1);
-            }
-            QTableView::item {
-                padding: 5px;
-                margin: 1px 0;
-            }
-            QTableView::item:!selected:hover {
-                background-color: rgb(217, 235, 249);
-                padding: 0;
-            }
-            ''')
         gbFilesLayout.addWidget(self.files)
 
         _mouseMoveEvent = self.files.mouseMoveEvent
@@ -126,9 +113,9 @@ class DownloadWindow(QDialog):
 
         # Setup
 
-        self.setMinimumSize(QSize(420, 420))
+        self.setMinimumSize(QSize(440, 440))
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-        self.resize(QSize(720, 420))
+        self.resize(QSize(720, 440))
 
         self.finished.connect(lambda: self.validateUrl.cancel())  # type: ignore
         self.finished.connect(lambda: self.downloadEvent.cancel())  # type: ignore
