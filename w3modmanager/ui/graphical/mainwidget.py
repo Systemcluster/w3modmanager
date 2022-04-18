@@ -265,6 +265,8 @@ class MainWidget(QWidget):
                 message = f'<font color="#aaa">{message}</font>'
                 path = f'<font color="#aaa">{path}</font>' if path else ''
                 d = f'<font color="#aaa">{d}</font>' if d else ''
+            elif len(name) and len(path):
+                path = f'<font color="#aaa">{path}</font>' if path else ''
 
             time = record['time'].astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S')
             message = f'<font color="#aaa">{time}</font> {message}'
