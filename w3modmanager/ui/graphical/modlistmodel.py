@@ -254,7 +254,10 @@ class ModListModel(QAbstractTableModel):
             if col in ('enabled',):
                 val = mod[col]
                 return 'Enabled' if val else 'Disabled'
-            return str(mod[col])
+            tip = str(mod[col])
+            if len(tip) > 4000:
+                return tip[:4000] + ' ...'
+            return tip
 
         if role == Qt.TextAlignmentRole:
             if col in ('size',):
