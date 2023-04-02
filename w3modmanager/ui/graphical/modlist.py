@@ -11,7 +11,7 @@ import dateparser
 from PySide6.QtCore import Qt, QSettings, QUrl, QPoint, \
     QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
     QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
-    QObject, QEvent, QTimer, QSize, QRegularExpression
+    QObject, QEvent, QTimer, QSize, QRegularExpression, QPersistentModelIndex
 from PySide6.QtWidgets import QApplication, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
     QTableView, QMessageBox, QPushButton, QMenu
@@ -29,19 +29,21 @@ from w3modmanager.ui.graphical.modlistmodel import ModListModel
 
 
 class ModListItemDelegate(QStyledItemDelegate):
-    def __init__(self, parent: QWidget) -> None:
+    def __init__(self, parent: QTableView) -> None:
         super().__init__(parent)
         self.linepen = QPen(QColor(200, 200, 200), 0, parent.gridStyle())
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]
+    ) -> None:
         itemOption = QStyleOptionViewItem(option)
 
         # disable focus outline
-        if itemOption.state & QStyle.State_HasFocus:
-            itemOption.state ^= QStyle.State_HasFocus
+        if itemOption.state & QStyle.StateFlag.State_HasFocus:  # type: ignore
+            itemOption.state ^= QStyle.StateFlag.State_HasFocus  # type: ignore
         # hover whole row
-        if index.row() == option.styleObject.hoverIndexRow:
-            itemOption.state |= QStyle.State_MouseOver
+        if index.row() == itemOption.styleObject.hoverIndexRow:  # type: ignore
+            itemOption.state |= QStyle.StateFlag.State_MouseOver  # type: ignore
 
         super().paint(painter, itemOption, index)
 
@@ -50,15 +52,17 @@ class ModListItemDelegate(QStyledItemDelegate):
             oldpen = painter.pen()
             painter.setPen(self.linepen)
             painter.drawLine(
-                itemOption.rect.topRight() + QPoint(0, 0),
-                itemOption.rect.bottomRight() + QPoint(0, 0)
+                itemOption.rect.topRight() + QPoint(0, 0),  # type: ignore
+                itemOption.rect.bottomRight() + QPoint(0, 0)  # type: ignore
             )
             painter.setPen(oldpen)
 
-    def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+    def updateEditorGeometry(
+        self, editor: QWidget, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]
+    ) -> None:
         itemOption = QStyleOptionViewItem(option)
         # set size of editor to size of cell
-        geom: QRect = QApplication.style().subElementRect(QStyle.SE_ItemViewItemText, itemOption, editor)
+        geom: QRect = QApplication.style().subElementRect(QStyle.SubElement.SE_ItemViewItemText, itemOption, editor)
         geom.setTop(geom.top())
         editor.setGeometry(geom)
 
@@ -67,7 +71,9 @@ class ModListSelectionModel(QItemSelectionModel):
     def __init__(self, parent: QWidget, model: QAbstractItemModel) -> None:
         super().__init__(model, parent)
 
-    def setCurrentIndex(self, index: QModelIndex, command: QItemSelectionModel.SelectionFlags) -> None:
+    def setCurrentIndex(
+        self, index: Union[QModelIndex, QPersistentModelIndex], command: QItemSelectionModel.SelectionFlag
+    ) -> None:
         if not index.isValid():
             return
         # always focus column 3
@@ -79,11 +85,11 @@ class ModListFilterModel(QSortFilterProxyModel):
     def __init__(self, parent: QWidget, source: QAbstractTableModel) -> None:
         super().__init__(parent)
         self.setSourceModel(source)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
-        self.setSortCaseSensitivity(Qt.CaseInsensitive)
-        self.setSortRole(Qt.UserRole)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setSortRole(Qt.ItemDataRole.UserRole)
 
-    def filterAcceptsRow(self, row: int, parent: QModelIndex) -> bool:
+    def filterAcceptsRow(self, row: int, parent: Union[QModelIndex, QPersistentModelIndex]) -> bool:
         filterRegExp = self.filterRegularExpression()
         if not filterRegExp.pattern() or not filterRegExp.isValid():
             return True
@@ -106,18 +112,18 @@ class ModList(QTableView):
         self.installLock = asyncio.Lock()
 
         self.setMouseTracking(True)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setWordWrap(False)
         self.setSortingEnabled(True)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setAcceptDrops(True)
-        self.setEditTriggers(QTableView.EditKeyPressed | QTableView.DoubleClicked)
+        self.setEditTriggers(QTableView.EditTrigger.EditKeyPressed | QTableView.EditTrigger.DoubleClicked)
         self.setShowGrid(False)
 
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
 
         self.verticalHeader().hide()
@@ -150,15 +156,16 @@ class ModList(QTableView):
 
         self.setFocus()
 
-        self.sortByColumn(3, Qt.AscendingOrder, False)
-        self.sortByColumn(2, Qt.AscendingOrder, False)
-        self.sortByColumn(1, Qt.AscendingOrder, False)
+        self.sortByColumn(3, Qt.SortOrder.AscendingOrder, False)
+        self.sortByColumn(2, Qt.SortOrder.AscendingOrder, False)
+        self.sortByColumn(1, Qt.SortOrder.AscendingOrder, False)
         if settings.value('modlistSortColumn') is not None and \
            settings.value('modlistSortOrder') is not None:
             try:
                 self.sortByColumn(
                     cast(int, settings.value('modlistSortColumn', 1, int)),
-                    Qt.DescendingOrder if cast(int, settings.value('modlistSortOrder', 1, int)) else Qt.AscendingOrder,
+                    Qt.SortOrder.DescendingOrder if cast(int, settings.value('modlistSortOrder', 1, int)
+                                                         ) else Qt.SortOrder.AscendingOrder,
                     False
                 )
             except Exception as e:
@@ -260,7 +267,7 @@ class ModList(QTableView):
         if save and col is not None and order is not None:
             settings = QSettings()
             settings.setValue('modlistSortColumn', col)
-            settings.setValue('modlistSortOrder', 0 if order == Qt.AscendingOrder else 1)
+            settings.setValue('modlistSortOrder', 0 if order == Qt.SortOrder.AscendingOrder else 1)
         super().sortByColumn(col, order)
 
     def showContextMenu(self, pos: QPoint) -> None:
@@ -421,7 +428,7 @@ class ModList(QTableView):
         self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.selectionModel().clear()
         elif event.matches(QKeySequence.Delete):
             asyncio.create_task(self.deleteSelectedMods())
@@ -432,7 +439,7 @@ class ModList(QTableView):
         elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_P:
             index = cast(QModelIndex, self.selectionModel().selectedRows()[0])
             index = index.sibling(index.row(), 5)
-            if index.flags() & Qt.ItemIsEditable:
+            if index.flags() & Qt.ItemFlag.ItemIsEditable:
                 self.setCurrentIndex(index)
                 self.edit(index)
         else:
@@ -440,7 +447,7 @@ class ModList(QTableView):
 
     def setFilter(self, search: str) -> None:
         self.filtermodel.setFilterRegularExpression(
-            QRegularExpression(search, QRegularExpression.CaseInsensitiveOption)
+            QRegularExpression(search, QRegularExpression.PatternOption.CaseInsensitiveOption)
         )
 
     async def checkInstallFromURLs(
@@ -524,9 +531,6 @@ class ModList(QTableView):
             installed, errors = await self.installFromFile(target, installtime)
         except (RequestError, ResponseError, Exception) as e:
             logger.bind(name=url).exception(f'Failed to download file: {e}')
-            return 0, 1
-        except Exception as e:
-            logger.exception(str(e))
             return 0, 1
         finally:
             if target.is_file():
@@ -663,12 +667,12 @@ class ModList(QTableView):
             <p>No mod detected after searching through {searchlimit} directories.</p>
             <p>Are you sure this is a valid mod?</p>
             ''')
-        messagebox.setTextFormat(Qt.RichText)
-        messagebox.setStandardButtons(QMessageBox.Cancel)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Cancel)
         yes: QPushButton = QPushButton(' Yes, continue searching ', messagebox)
         yes.setAutoDefault(True)
         yes.setDefault(True)
-        messagebox.addButton(yes, QMessageBox.YesRole)
+        messagebox.addButton(yes, QMessageBox.ButtonRole.YesRole)
         messagebox.exec_()
         return messagebox.clickedButton() == yes
 

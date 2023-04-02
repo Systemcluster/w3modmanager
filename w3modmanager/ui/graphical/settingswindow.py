@@ -19,7 +19,7 @@ class SettingsWindow(QDialog):
             self.setWindowTitle('Settings')
         else:
             self.setWindowTitle(getTitleString('Settings'))
-            self.setAttribute(Qt.WA_DeleteOnClose)
+            self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         settings = QSettings()
         mainLayout = QVBoxLayout(self)
@@ -37,7 +37,7 @@ class SettingsWindow(QDialog):
                 ''', self)
             firstStartInfo.setWordWrap(True)
             firstStartInfo.setContentsMargins(10, 10, 10, 10)
-            firstStartInfo.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            firstStartInfo.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
             mainLayout.addWidget(firstStartInfo)
 
         # Game
@@ -181,7 +181,7 @@ class SettingsWindow(QDialog):
         # Actions
 
         actionsLayout = QHBoxLayout()
-        actionsLayout.setAlignment(Qt.AlignRight)
+        actionsLayout.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.save = QPushButton('Save', self)
         self.save.clicked.connect(self.saveEvent)
         self.save.setAutoDefault(True)
@@ -197,7 +197,7 @@ class SettingsWindow(QDialog):
         if not settings.value('gamePath'):
             self.locateGameEvent()
         self.setMinimumSize(QSize(440, 440))
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
         self.validGamePath = False
         self.validConfigPath = False
@@ -231,16 +231,16 @@ class SettingsWindow(QDialog):
 
     def selectGameEvent(self) -> None:
         dialog: QFileDialog = QFileDialog(self, 'Select witcher3.exe', '', 'The Witcher 3 (witcher3.exe)')
-        dialog.setOptions(QFileDialog.ReadOnly)
-        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         if (dialog.exec_()):
             if dialog.selectedFiles():
                 self.gamePath.setText(dialog.selectedFiles()[0])
 
     def selectConfigEvent(self) -> None:
         dialog: QFileDialog = QFileDialog(self, 'Select config folder', '', 'The Witcher 3')
-        dialog.setOptions(QFileDialog.ReadOnly)
-        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
         if (dialog.exec_()):
             if dialog.selectedFiles():
                 self.configPath.setText(dialog.selectedFiles()[0])
@@ -249,8 +249,8 @@ class SettingsWindow(QDialog):
         dialog: QFileDialog = QFileDialog(
             self, 'Select WitcherScriptMerger.exe', '', 'Script Merger (WitcherScriptMerger.exe)'
         )
-        dialog.setOptions(QFileDialog.ReadOnly)
-        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         if (dialog.exec_()):
             if dialog.selectedFiles():
                 self.scriptMergerPath.setText(dialog.selectedFiles()[0])

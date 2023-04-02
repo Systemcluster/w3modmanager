@@ -22,22 +22,24 @@ class FlowLayout(QLayout):
         if self._spacing.width() >= 0:
             return self._spacing.width()
         else:
-            return self.smartSpacing(QStyle.PM_LayoutHorizontalSpacing)
+            return self.smartSpacing(QStyle.PixelMetric.PM_LayoutHorizontalSpacing)
 
     def verticalSpacing(self) -> int:
         if self._spacing.height() >= 0:
             return self._spacing.height()
         else:
-            return self.smartSpacing(QStyle.PM_LayoutVerticalSpacing)
+            return self.smartSpacing(QStyle.PixelMetric.PM_LayoutVerticalSpacing)
 
     def smartSpacing(self, metric: QStyle.PixelMetric) -> int:
         parent = self.parent()
         if parent is None:
             return -1
         elif parent.isWidgetType():
-            return parent.style().pixelMetric(metric, None, parent)
+            parentwidget: QWidget = parent  # type: ignore
+            return parentwidget.style().pixelMetric(metric, None, parentwidget)
         else:
-            return parent.spacing()
+            parentlayout: QLayout = parent  # type: ignore
+            return parentlayout.spacing()
 
     def count(self) -> int:
         return len(self._items)
@@ -52,8 +54,8 @@ class FlowLayout(QLayout):
             return self._items.pop(index)
         return None  # type: ignore
 
-    def expandingDirections(self) -> Qt.Orientations:
-        return Qt.Horizontal
+    def expandingDirections(self) -> Qt.Orientation:
+        return Qt.Orientation.Horizontal
 
     def hasHeightForWidth(self) -> bool:
         return True
@@ -72,34 +74,36 @@ class FlowLayout(QLayout):
         size = QSize()
         for item in self._items:
             size = size.expandedTo(item.minimumSize())
-        left, top, right, bottom = self.getContentsMargins()
+        margins: Tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
+        left, top, right, bottom = margins
         size += QSize(left + right, top + bottom)
         return size
 
     def doLayout(self, rect: QRect, testonly: bool) -> int:
-        left, top, right, bottom = self.getContentsMargins()
+        margins: Tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
+        left, top, right, bottom = margins
         effective = rect.adjusted(+left, +top, -right, -bottom)
         x = effective.x()
         y = effective.y()
+        hspace = self.horizontalSpacing()
 
         lines: List[Tuple[int, List[Tuple[QLayoutItem, QPoint]]]] = []
         line = 0
         lineheight = 0
         for item in self._items:
             widget = item.widget()
-            hspace = self.horizontalSpacing()
             if hspace == -1:
                 hspace = widget.style().layoutSpacing(
-                    QSizePolicy.Preferred,
-                    QSizePolicy.Preferred,
-                    Qt.Horizontal
+                    QSizePolicy.ControlType.DefaultType,
+                    QSizePolicy.ControlType.DefaultType,
+                    Qt.Orientation.Horizontal
                 )
             vspace = self.verticalSpacing()
             if vspace == -1:
                 vspace = widget.style().layoutSpacing(
-                    QSizePolicy.Preferred,
-                    QSizePolicy.Preferred,
-                    Qt.Vertical
+                    QSizePolicy.ControlType.DefaultType,
+                    QSizePolicy.ControlType.DefaultType,
+                    Qt.Orientation.Vertical
                 )
             nextX = x + item.sizeHint().width() + hspace
             if nextX - hspace > effective.right() and lineheight > 0:

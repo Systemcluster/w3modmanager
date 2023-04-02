@@ -18,7 +18,7 @@ URL_WEB = 'https://github.com/systemcluster/w3modmanager'
 URL_GIT = 'https://github.com/systemcluster/w3modmanager'
 URL_GITHUB_RELEASE = 'https://api.github.com/repos/systemcluster/w3modmanager/releases/latest'
 URL_ISSUES = 'https://github.com/systemcluster/w3modmanager/issues'
-MIN_PYTHON_VERSION = (3, 10)
+MIN_PYTHON_VERSION = (3, 11)
 
 
 __version__ = VERSION

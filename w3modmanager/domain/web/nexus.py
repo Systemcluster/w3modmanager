@@ -24,7 +24,7 @@ __session: Optional[AsyncClient] = None
 
 
 class RequestError(HTTPXRequestError):
-    def __init__(self, kind: str, request: Request = None, response: Response = None) -> None:
+    def __init__(self, kind: str, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
         super().__init__(request=request, message=kind)
 
         self.response = response
@@ -237,7 +237,7 @@ async def downloadFile(url: str, target: Path) -> None:
         raise NoAPIKeyError()
     await asyncio.get_running_loop().run_in_executor(
         None,
-        partial(downloadFileSync, url, target, apikey)
+        partial(downloadFileSync, url, target, str(apikey))
     )
 
 

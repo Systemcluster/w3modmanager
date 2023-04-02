@@ -11,7 +11,7 @@ import dateparser
 from PySide6.QtCore import QModelIndex, Qt, QSize, Signal, QObject
 from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
     QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QMouseEvent, QWheelEvent
 
 
 class DownloadWindowEvents(QObject):
@@ -26,7 +26,7 @@ class DownloadWindow(QDialog):
             self.setWindowTitle('Download Mod')
         else:
             self.setWindowTitle(getTitleString('Download Mod'))
-            self.setAttribute(Qt.WA_DeleteOnClose)
+            self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(5, 5, 5, 5)
@@ -37,7 +37,7 @@ class DownloadWindow(QDialog):
 
         gbUrl = QGroupBox('Mod URL')
         gbUrlLayout = QVBoxLayout()
-        gbUrl.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        gbUrl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
         self.url = QLineEdit()
         self.url.setPlaceholderText('https://www.nexusmods.com/witcher3/mods/...')
@@ -58,38 +58,51 @@ class DownloadWindow(QDialog):
 
         gbFiles = QGroupBox('Mod Files')
         gbFilesLayout = QVBoxLayout()
-        gbFiles.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        gbFiles.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
         self.files = QTableWidget(0, 4)
-        self.files.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.files.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.files.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.files.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.files.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.files.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.files.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.files.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.files.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.files.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.files.setWordWrap(False)
         self.files.setSortingEnabled(True)
-        self.files.setFocusPolicy(Qt.StrongFocus)
+        self.files.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.files.verticalHeader().hide()
         self.files.setSortingEnabled(True)
-        self.files.sortByColumn(2, Qt.DescendingOrder)
+        self.files.sortByColumn(2, Qt.SortOrder.DescendingOrder)
         self.files.verticalHeader().setVisible(False)
         self.files.verticalHeader().setDefaultSectionSize(25)
         self.files.horizontalHeader().setHighlightSections(False)
         self.files.horizontalHeader().setStretchLastSection(True)
         self.files.setHorizontalHeaderLabels(['File Name', 'Version', 'Upload Date', 'Description'])
-        self.files.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.files.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.files.verticalScrollBar().valueChanged.connect(lambda: self.files.clearFocus())
         self.files.itemSelectionChanged.connect(lambda: self.validateFiles())
         self.files.setDisabled(True)
         gbFilesLayout.addWidget(self.files)
 
         _mouseMoveEvent = self.files.mouseMoveEvent
-        self.files.hoverIndexRow = -1
+        _wheelEvent = self.files.wheelEvent
+        self.files.hoverIndexRow = -1  # type: ignore
 
         def mouseMoveEvent(event: QMouseEvent) -> None:
-            self.files.hoverIndexRow = self.files.indexAt(event.pos()).row()
             _mouseMoveEvent(event)
+            self.files.hoverIndexRow = self.files.indexAt(event.pos()).row()  # type: ignore
+
+        def wheelEvent(event: QWheelEvent) -> None:
+            _wheelEvent(event)
+            # repaint previously hovered row on scroll avoid repaint artifacts
+            index = self.files.model().index(self.files.hoverIndexRow, 0)  # type: ignore
+            self.files.hoverIndexRow = self.files.indexAt(event.position().toPoint()).row()  # type: ignore
+            rect = self.files.visualRect(index)
+            rect.setLeft(0)
+            rect.setRight(self.files.viewport().width())
+            self.files.viewport().repaint(rect)
+
         self.files.mouseMoveEvent = mouseMoveEvent  # type: ignore
+        self.files.wheelEvent = wheelEvent  # type: ignore
         self.files.setItemDelegate(ModListItemDelegate(self.files))
         self.files.setMouseTracking(True)
 
@@ -99,7 +112,7 @@ class DownloadWindow(QDialog):
         # Actions
 
         actionsLayout = QHBoxLayout()
-        actionsLayout.setAlignment(Qt.AlignRight)
+        actionsLayout.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.download = QPushButton('Download', self)
         self.download.clicked.connect(lambda: self.downloadEvent())
         self.download.setAutoDefault(True)
@@ -114,7 +127,7 @@ class DownloadWindow(QDialog):
         # Setup
 
         self.setMinimumSize(QSize(440, 440))
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         self.resize(QSize(720, 440))
 
         self.finished.connect(lambda: self.validateUrl.cancel())  # type: ignore
@@ -188,7 +201,7 @@ class DownloadWindow(QDialog):
                 description = html.unescape(str(file['description']))
                 nameItem = QTableWidgetItem(name)
                 nameItem.setToolTip(name)
-                nameItem.setData(Qt.UserRole, fileid)
+                nameItem.setData(Qt.ItemDataRole.UserRole, fileid)
                 self.files.setItem(i, 0, nameItem)
                 versionItem = QTableWidgetItem(version)
                 versionItem.setToolTip(version)
@@ -229,7 +242,8 @@ class DownloadWindow(QDialog):
         self.download.setDisabled(True)
         self.url.setDisabled(True)
         selection = self.files.selectionModel().selectedRows()
-        files = [self.files.item(cast(QModelIndex, index).row(), 0).data(Qt.UserRole) for index in selection]
+        files = [self.files.item(cast(QModelIndex, index).row(), 0).data(Qt.ItemDataRole.UserRole)
+                 for index in selection]
         self.files.setDisabled(True)
         try:
             urls = await asyncio.gather(

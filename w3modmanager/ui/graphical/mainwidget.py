@@ -39,7 +39,7 @@ class MainWidget(QWidget):
 
         detailslayout = QHBoxLayout()
         detailslayout.setContentsMargins(1, 0, 0, 0)
-        detailslayout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        detailslayout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         detailslayout.setSpacing(15)
         details = QWidget()
         details.setLayout(detailslayout)
@@ -56,7 +56,7 @@ class MainWidget(QWidget):
 
         buttonslayout = QHBoxLayout()
         buttonslayout.setContentsMargins(0, 0, 0, 0)
-        buttonslayout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        buttonslayout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         buttons = QWidget()
         buttons.setLayout(buttonslayout)
         summarylayout.addWidget(buttons)
@@ -81,7 +81,7 @@ class MainWidget(QWidget):
 
         # splitter
 
-        self.splitter = QSplitter(Qt.Vertical)
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
 
         self.stack = QStackedWidget()
         self.splitter.addWidget(self.stack)
@@ -110,7 +110,7 @@ class MainWidget(QWidget):
         # welcome message
 
         welcomelayout = QVBoxLayout()
-        welcomelayout.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        welcomelayout.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         welcomewidget = QWidget()
         welcomewidget.setLayout(welcomelayout)
         welcomewidget.dragEnterEvent = self.modlist.dragEnterEvent  # type: ignore
@@ -121,18 +121,18 @@ class MainWidget(QWidget):
 
         icon = QIcon(str(getRuntimePath('resources/icons/open-folder.ico')))
         iconpixmap = icon.pixmap(32, 32)
-        icon = QLabel()
-        icon.setPixmap(iconpixmap)
-        icon.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        icon.setContentsMargins(4, 4, 4, 4)
-        welcomelayout.addWidget(icon)
+        label = QLabel()
+        label.setPixmap(iconpixmap)
+        label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+        label.setContentsMargins(4, 4, 4, 4)
+        welcomelayout.addWidget(label)
 
         welcome = QLabel('''<p><font>
             No mod installed yet.
             Drag a mod into this area to get started!
             </font></p>''')
-        welcome.setAttribute(Qt.WA_TransparentForMouseEvents)
-        welcome.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        welcome.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        welcome.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         welcomelayout.addWidget(welcome)
 
         self.stack.addWidget(welcomewidget)
@@ -140,9 +140,9 @@ class MainWidget(QWidget):
         # output log
 
         self.output = QTextEdit(self)
-        self.output.setTextInteractionFlags(Qt.NoTextInteraction)
+        self.output.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.output.setReadOnly(True)
-        self.output.setContextMenuPolicy(Qt.NoContextMenu)
+        self.output.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.output.setPlaceholderText('Program output...')
         self.splitter.addWidget(self.output)
 
@@ -165,12 +165,12 @@ class MainWidget(QWidget):
         asyncio.create_task(model.loadInstalled())
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.modlist.setFocus()
             self.searchbar.setText('')
-        elif event.matches(QKeySequence.Find):
+        elif event.matches(QKeySequence.StandardKey.Find):
             self.searchbar.setFocus()
-        elif event.matches(QKeySequence.Paste):
+        elif event.matches(QKeySequence.StandardKey.Paste):
             self.pasteEvent()
         # TODO: enhancement: add start game / start script merger shortcuts
         else:
@@ -179,7 +179,7 @@ class MainWidget(QWidget):
     def pasteEvent(self) -> None:
         clipboard = QApplication.clipboard().text().splitlines()
         if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
-            self.parentWidget().showDownloadModDialog()
+            self.parentWidget().showDownloadModDialog()  # type: ignore
         else:
             urls = [url for url in QApplication.clipboard().text().splitlines() if len(str(url.strip()))]
             if all(isValidModDownloadUrl(url) or isValidFileUrl(url) for url in urls):

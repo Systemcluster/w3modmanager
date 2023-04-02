@@ -15,7 +15,7 @@ from urllib.parse import urlparse, urlsplit, ParseResult
 from typing import Union, List, Callable, Any, Awaitable
 from functools import wraps, partial
 
-import cchardet
+from charset_normalizer import detect
 from PySide6 import __version__ as PySide6Version
 from loguru import logger
 
@@ -37,9 +37,9 @@ def getSupportedExtensions() -> List[str]:
 
 
 def detectEncoding(path: Path) -> str:
-    encoding = cchardet.detect(path.read_bytes())
-    if encoding['confidence'] and encoding['confidence'] > 0.7:
-        return encoding['encoding']
+    encoding = detect(path.read_bytes())
+    if encoding['confidence'] and float(encoding['confidence']) > 0.7:
+        return str(encoding['encoding'])
     return 'utf-8'
 
 
@@ -55,7 +55,7 @@ def readText(path: Path) -> str:
 
 
 def getMD5Hash(path: Path) -> str:
-    hash_md5 = hashlib.md5()
+    hash_md5 = hashlib.md5(usedforsecurity=False)
     with path.open('rb') as file:
         for chunk in iter(lambda: file.read(4096), b''):
             hash_md5.update(chunk)
@@ -182,7 +182,7 @@ def openExecutable(path: Path, once: bool = False) -> None:
                 for processId in processIds:
                     try:
                         processHandle = OpenProcess(0x1000, False, processId)
-                        fileName = GetModuleFileNameEx(processHandle, None)
+                        fileName = GetModuleFileNameEx(processHandle, 0)
                         if normalizePath(Path(fileName), False) == path:
                             existingWindows.append(windowHandle)
                     except Exception:  # noqa

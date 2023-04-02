@@ -2,10 +2,10 @@ from w3modmanager.core.model import Model
 from w3modmanager.util.util import getRuntimePath
 
 from functools import lru_cache
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 import asyncio
 
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSettings
+from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings
 from PySide6.QtGui import QFontDatabase, QColor, QIcon, QPixmap, QPainter
 from PySide6.QtWidgets import QWidget
 
@@ -57,35 +57,35 @@ class ModListModel(QAbstractTableModel):
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/dia.ico')))
         painter = QPainter(pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor('#427aa1') if colored else QColor('#333333'))
         painter.end()
         self._icons['mod'] = QIcon(pixmap)
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/puzzle.ico')))
         painter = QPainter(pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor('#aad576') if colored else QColor('#333333'))
         painter.end()
         self._icons['dlc'] = QIcon(pixmap)
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/folder.ico')))
         painter = QPainter(pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor('#E55934') if colored else QColor('#333333'))
         painter.end()
         self._icons['bin'] = QIcon(pixmap)
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/patch.ico')))
         painter = QPainter(pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor('#b08968') if colored else QColor('#333333'))
         painter.end()
         self._icons['pat'] = QIcon(pixmap)
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/question.ico')))
         painter = QPainter(pixmap)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor('#ffcf40') if colored else QColor('#333333'))
         painter.end()
         self._icons['udf'] = QIcon(pixmap)
@@ -115,7 +115,8 @@ class ModListModel(QAbstractTableModel):
         self._lastUpdate = model.lastUpdate
         self._lastInitialization = model.lastInitialization
         self.layoutChanged.emit()
-        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
+        self.dataChanged.emit(self.index(0, 0), self.index(
+            self.rowCount() - 1, self.columnCount() - 1))
 
     def getColumnKey(self, column: int) -> str:
         return self._header[column][1]
@@ -155,7 +156,7 @@ class ModListModel(QAbstractTableModel):
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
 
-    def setData(self, index: QModelIndex, value: Any, _role: int = 0) -> bool:
+    def setData(self, index: Union[QModelIndex, QPersistentModelIndex], value: Any, _role: int = 0) -> bool:
         if not index.isValid():
             return False
         col = self.getColumnKey(index.column())
@@ -164,54 +165,56 @@ class ModListModel(QAbstractTableModel):
         return True
 
     @lru_cache(maxsize=None)
-    def rowCount(self, _index: QModelIndex = None) -> int:
+    def rowCount(self, _index: Optional[QModelIndex] = None) -> int:
         return len(self.modmodel)
 
     @lru_cache(maxsize=None)
-    def columnCount(self, _index: QModelIndex = None) -> int:
+    def columnCount(self, _index: Optional[QModelIndex] = None) -> int:
         return len(self._header)
 
     @lru_cache(maxsize=None)
-    def headerData(self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.EditRole) -> Any:
-        if role != Qt.DisplayRole:
+    def headerData(
+        self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.ItemDataRole.EditRole
+    ) -> Any:
+        if role != Qt.ItemDataRole.DisplayRole:
             return None
-        if orientation != Qt.Horizontal:
+        if orientation != Qt.Orientation.Horizontal:
             return None
         return self._header[section][0] if len(self._header) > section else '?'
 
     @lru_cache(maxsize=None)
-    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         col = self.getColumnKey(index.column())
         if col in ('package', 'filename', 'category', 'priority',):
             mod = self.modmodel[index.row()]
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
-                return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
     @lru_cache(maxsize=None)
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.DisplayRole) -> Any:
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
         col = self.getColumnKey(index.column())
         if not col:
             return None
 
-        if role == Qt.FontRole:
+        if role == Qt.ItemDataRole.FontRole:
             if col in ('datatype', 'size',):
-                return QFontDatabase.systemFont(QFontDatabase.FixedFont)
+                return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
             return None
 
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             if col in ('enabled',):
                 mod = self.modmodel[index.row()]
                 val = mod[col]
-                return Qt.Checked if val else Qt.Unchecked
+                return Qt.CheckState.Checked if val else Qt.CheckState.Unchecked
             return None
 
-        if role == Qt.BackgroundRole:
+        if role == Qt.ItemDataRole.BackgroundRole:
             mod = self.modmodel[index.row()]
             if not mod.enabled:
                 return self._colorDisabled
@@ -225,7 +228,7 @@ class ModListModel(QAbstractTableModel):
                 return self._colorUnmanaged
             return None
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             mod = self.modmodel[index.row()]
             if not mod.enabled:
                 return QColor(60, 60, 60)
@@ -239,14 +242,14 @@ class ModListModel(QAbstractTableModel):
                     return QColor('#b08968')
             return None
 
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if col in ('datatype',):
                 mod = self.modmodel[index.row()]
                 val = mod[col]
                 return self._icons[val] if val in self._icons else self._icons['udf']
             return None
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             mod = self.modmodel[index.row()]
             if col in ('datatype',):
                 val = mod[col]
@@ -259,7 +262,7 @@ class ModListModel(QAbstractTableModel):
                 return tip[:4000] + ' ...'
             return tip
 
-        if role == Qt.TextAlignmentRole:
+        if role == Qt.ItemDataRole.TextAlignmentRole:
             if col in ('size',):
                 # Right|VCenter
                 return 0x0082
@@ -270,14 +273,14 @@ class ModListModel(QAbstractTableModel):
             # Left|VCenter
             return 0x0081
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if col in ('package', 'filename', 'category', 'priority',):
                 mod = self.modmodel[index.row()]
                 return str(mod[col])
             return None
 
         # role used for sorting
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             mod = self.modmodel[index.row()]
             if col in ('priority',):
                 return f'{"-" if int(mod[col]) < 0 else "+"}{abs(int(mod[col])): >20} {mod["filename"]}'
@@ -288,7 +291,7 @@ class ModListModel(QAbstractTableModel):
                 return len(mod[col])
             return str(mod[col])
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if col in ('enabled',):
                 return None
             mod = self.modmodel[index.row()]

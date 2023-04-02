@@ -23,7 +23,7 @@ def findScriptMergerPath() -> Optional[Path]:
                 for processId in processIds:
                     try:
                         processHandle = OpenProcess(0x1000, False, processId)
-                        fileName = GetModuleFileNameEx(processHandle, None)
+                        fileName = GetModuleFileNameEx(processHandle, 0)
                         existingPaths.append(Path(fileName))
                     except Exception:  # noqa
                         continue

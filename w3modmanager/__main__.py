@@ -123,7 +123,10 @@ def main(gamePath: Optional[str] = None,
     QApplication.setApplicationName(w3modmanager.TITLE)
     QApplication.setApplicationVersion(w3modmanager.VERSION)
     QApplication.setApplicationDisplayName('')
-    QApplication.setAttribute(Qt.AA_NativeWindows)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
     app = QApplication(sys.argv)
     app.setStyleSheet('''
@@ -183,15 +186,15 @@ def main(gamePath: Optional[str] = None,
     asyncio.set_event_loop(eventloop)
 
     palette = QPalette(QApplication.palette())
-    palette.setColor(QPalette.Link, Qt.red)
-    palette.setColor(QPalette.LinkVisited, Qt.red)
-    palette.setColor(QPalette.PlaceholderText, Qt.gray)
+    palette.setColor(QPalette.ColorRole.Link, Qt.GlobalColor.red)
+    palette.setColor(QPalette.ColorRole.LinkVisited, Qt.GlobalColor.red)
+    palette.setColor(QPalette.ColorRole.PlaceholderText, Qt.GlobalColor.gray)
     app.setPalette(palette)
 
     font = QFont('Segoe UI')
-    font.setStyleHint(QFont.System)
-    font.setWeight(QFont.Normal)
-    font.setStyleStrategy(QFont.PreferDevice)
+    font.setStyleHint(QFont.StyleHint.System)
+    font.setWeight(QFont.Weight.Normal)
+    font.setStyleStrategy(QFont.StyleStrategy.PreferDevice)
     font.setPointSize(9)
     app.setFont(font)
 
@@ -234,7 +237,7 @@ def main(gamePath: Optional[str] = None,
             model = createModel()
         # if another instance is already open, inform and ask to open anyway
         except OtherInstanceError as e:
-            if MainWindow.showOtherInstanceDialog(None).exec_() == QMessageBox.Yes:
+            if MainWindow.showOtherInstanceDialog(None).exec_() == QMessageBox.StandardButton.Yes:
                 model = createModel(True)
             else:
                 raise e
@@ -247,7 +250,7 @@ def main(gamePath: Optional[str] = None,
         # check for write access to the game and config directories
         for path in (model.gamepath, model.configpath, model.cachepath,):
             if not getWritePermissions(path):
-                if MainWindow.showInvalidPermissionsDialog(None, path).exec_() != QMessageBox.Yes \
+                if MainWindow.showInvalidPermissionsDialog(None, path).exec_() != QMessageBox.StandardButton.Yes \
                 or not setWritePermissions(path):
                     raise PermissionError(f'Not enough permissions for {path}')
 

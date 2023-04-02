@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
             if len(clipboard) == 1 and isValidNexusModsUrl(clipboard[0]):
                 # TODO: enhancement: only allow one download window at once
                 self.show()
-                self.setWindowState(Qt.WindowActive)
+                self.setWindowState(Qt.WindowState.WindowActive)
                 self.activateWindow()
                 self.showDownloadModDialog()
 
@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
             self.model.updateCallbacks.fire(self.model)
         ])
         iconHighlightNewest = QPixmap(256, 256)
-        iconHighlightNewest.fill(Qt.transparent)
+        iconHighlightNewest.fill(Qt.GlobalColor.transparent)
         painter = QPainter(iconHighlightNewest)
         painter.setBrush(QBrush(QColor(222, 255, 222)))
         painter.drawEllipse(10, 10, 236, 236)
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
             self.model.updateCallbacks.fire(self.model)
         ])
         iconHighlightRecent = QPixmap(256, 256)
-        iconHighlightRecent.fill(Qt.transparent)
+        iconHighlightRecent.fill(Qt.GlobalColor.transparent)
         painter = QPainter(iconHighlightRecent)
         painter.setBrush(QBrush(QColor(222, 226, 255)))
         painter.drawEllipse(10, 10, 236, 236)
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
             self.model.updateCallbacks.fire(self.model)
         ])
         iconHighlightUnmanaged = QPixmap(256, 256)
-        iconHighlightUnmanaged.fill(Qt.transparent)
+        iconHighlightUnmanaged.fill(Qt.GlobalColor.transparent)
         painter = QPainter(iconHighlightUnmanaged)
         painter.setBrush(QBrush(QColor(250, 220, 220)))
         painter.drawEllipse(10, 10, 236, 236)
@@ -173,7 +173,7 @@ class MainWindow(QMainWindow):
             self.model.updateCallbacks.fire(self.model)
         ])
         iconHighlightDisabled = QPixmap(256, 256)
-        iconHighlightDisabled.fill(Qt.transparent)
+        iconHighlightDisabled.fill(Qt.GlobalColor.transparent)
         painter = QPainter(iconHighlightDisabled)
         painter.setBrush(QBrush(QColor(230, 230, 230)))
         painter.drawEllipse(10, 10, 236, 236)
@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
                     <p>Update details of the selected mod(s) with information from Nexus Mods?</p>
                     <p>This will replace existing details.</p>
                 ''',
-                QMessageBox.Yes | QMessageBox.Cancel) == QMessageBox.Yes:
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel) == QMessageBox.StandardButton.Yes:
             asyncio.create_task(self.mainwidget.modlist.updateSelectedModsDetails())
 
     def showGetUpdatesDialog(self) -> None:
@@ -248,8 +248,8 @@ class MainWindow(QMainWindow):
 
     def showAddModFromFolderDialog(self) -> QFileDialog:
         dialog: QFileDialog = QFileDialog(self, 'Select Mod to install')
-        dialog.setOptions(QFileDialog.ReadOnly)
-        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         dialog.setModal(True)
         dialog.open()
@@ -261,8 +261,8 @@ class MainWindow(QMainWindow):
     def showAddModFromFileDialog(self) -> QFileDialog:
         extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
         dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
-        dialog.setOptions(QFileDialog.ReadOnly)
-        dialog.setFileMode(QFileDialog.ExistingFiles)
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
 
         dialog.setModal(True)
         dialog.open()
@@ -289,7 +289,7 @@ class MainWindow(QMainWindow):
         settings = QSettings()
 
         settingswindow = SettingsWindow(self, firstStart)
-        settingswindow.setAttribute(Qt.WA_DeleteOnClose)
+        settingswindow.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         settingswindow.setModal(True)
         settingswindow.open()
@@ -322,13 +322,13 @@ class MainWindow(QMainWindow):
             </p>
             ''')
         # TODO: enhancement: check if new version is available
-        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
         messagebox.setMinimumSize(QSize(500, 500))
-        messagebox.setStandardButtons(QMessageBox.Ok)
-        messagebox.setAttribute(Qt.WA_DeleteOnClose)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Ok)
+        messagebox.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
@@ -351,12 +351,12 @@ class MainWindow(QMainWindow):
                 </a>
             </small></p>
             ''')
-        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
-        messagebox.setStandardButtons(QMessageBox.Ok)
-        messagebox.setAttribute(Qt.WA_DeleteOnClose)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Ok)
+        messagebox.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
@@ -378,11 +378,11 @@ class MainWindow(QMainWindow):
                 Automatically set the correct permissions?
             </p>
         ''')
-        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
-        messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
         messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
@@ -401,11 +401,11 @@ class MainWindow(QMainWindow):
                 or fix the permissions manually.
             </p>
         ''')
-        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
-        messagebox.setStandardButtons(QMessageBox.Ok)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Ok)
         messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
@@ -427,12 +427,12 @@ class MainWindow(QMainWindow):
                 Continue anyway?
             </p>
         ''')
-        messagebox.setTextFormat(Qt.RichText)
+        messagebox.setTextFormat(Qt.TextFormat.RichText)
         messagebox.setIconPixmap(
             messagebox.windowIcon().pixmap(messagebox.windowIcon().actualSize(QSize(64, 64)))
         )
-        messagebox.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-        messagebox.setDefaultButton(QMessageBox.Cancel)
+        messagebox.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
+        messagebox.setDefaultButton(QMessageBox.StandardButton.Cancel)
         messagebox.layout().setContentsMargins(5, 5, 5, 5)
 
         messagebox.setModal(True)
