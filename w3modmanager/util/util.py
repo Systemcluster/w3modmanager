@@ -12,7 +12,7 @@ import asyncio
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse, urlsplit, ParseResult
-from typing import Union, List, Callable, Any, Awaitable
+from typing import Coroutine, Generator, Union, List, Callable, Any, Awaitable
 from functools import wraps, partial
 
 from charset_normalizer import detect
@@ -271,6 +271,14 @@ async def extractMod(archive: Path) -> Path:
         partial(extractArchive, archive, target)
     )
     return target
+
+
+def createAsyncTask(coro: Generator[Any, Any, Any] | Coroutine[Any, Any, Any], refset: set[Any]) -> asyncio.Task[Any]:
+    """Create an async task and add it to a reference set to prevent it from being garbage collected"""
+    task = asyncio.create_task(coro)
+    refset.add(task)
+    task.add_done_callback(refset.discard)
+    return task
 
 
 def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:

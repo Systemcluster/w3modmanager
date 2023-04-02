@@ -111,6 +111,8 @@ class ModList(QTableView):
         self.modmodel = model
         self.installLock = asyncio.Lock()
 
+        self.tasks: set[asyncio.Task[Any]] = set()
+
         self.setMouseTracking(True)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -239,9 +241,9 @@ class ModList(QTableView):
         if self.filtermodel.mapToSource(index).column() == 0:
             mod = self.modmodel[self.filtermodel.mapToSource(index).row()]
             if mod.enabled:
-                asyncio.create_task(self.modmodel.disable(mod))
+                createAsyncTask(self.modmodel.disable(mod), self.tasks)
             else:
-                asyncio.create_task(self.modmodel.enable(mod))
+                createAsyncTask(self.modmodel.enable(mod), self.tasks)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -284,18 +286,18 @@ class ModList(QTableView):
         menu.addSeparator()
         actionEnable = menu.addAction('&Enable')
         actionEnable.triggered.connect(lambda: [
-            asyncio.create_task(self.enableSelectedMods(True))
+            createAsyncTask(self.enableSelectedMods(True), self.tasks)
         ])
         actionEnable.setEnabled(not all(mod.enabled for mod in mods))
         actionDisable = menu.addAction('&Disable')
         actionDisable.triggered.connect(lambda: [
-            asyncio.create_task(self.enableSelectedMods(False))
+            createAsyncTask(self.enableSelectedMods(False), self.tasks)
         ])
         actionDisable.setEnabled(not all(not mod.enabled for mod in mods))
         menu.addSeparator()
         actionUninstall = menu.addAction('&Uninstall')
         actionUninstall.triggered.connect(lambda: [
-            asyncio.create_task(self.deleteSelectedMods())
+            createAsyncTask(self.deleteSelectedMods(), self.tasks)
         ])
         menu.addSeparator()
         actionOpenNexus = menu.addAction('Open &Nexus Mods page')
@@ -430,13 +432,16 @@ class ModList(QTableView):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
             self.selectionModel().clear()
-        elif event.matches(QKeySequence.Delete):
-            asyncio.create_task(self.deleteSelectedMods())
-        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_Up:
-            asyncio.create_task(self.changeSelectedModsPriority(1))
-        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_Down:
-            asyncio.create_task(self.changeSelectedModsPriority(-1))
-        elif event.modifiers() & Qt.ControlModifier == Qt.ControlModifier and event.key() == Qt.Key_P:
+        elif event.matches(QKeySequence.StandardKey.Delete):
+            createAsyncTask(self.deleteSelectedMods(), self.tasks)
+        elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
+                and event.key() == Qt.Key.Key_Up:
+            createAsyncTask(self.changeSelectedModsPriority(1), self.tasks)
+        elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
+                and event.key() == Qt.Key.Key_Down:
+            createAsyncTask(self.changeSelectedModsPriority(-1), self.tasks)
+        elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
+                and event.key() == Qt.Key.Key_P:
             index = cast(QModelIndex, self.selectionModel().selectedRows()[0])
             index = index.sibling(index.row(), 5)
             if index.flags() & Qt.ItemFlag.ItemIsEditable:
@@ -557,7 +562,7 @@ class ModList(QTableView):
                 settings = QSettings()
                 if settings.value('nexusGetInfo', 'False') == 'True':
                     logger.bind(path=str(path), dots=True).debug('Requesting details for archive')
-                    detailsrequest = asyncio.create_task(getModInformation(md5hash))
+                    detailsrequest = createAsyncTask(getModInformation(md5hash), self.tasks)
                 logger.bind(path=str(path), dots=True).debug('Unpacking archive')
                 path = await extractMod(source)
 
@@ -680,7 +685,7 @@ class ModList(QTableView):
         event.accept()
         self.setDisabled(True)
         self.repaint()
-        asyncio.create_task(self.checkInstallFromURLs(event.mimeData().urls()))
+        createAsyncTask(self.checkInstallFromURLs(event.mimeData().urls()), self.tasks)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         self.setDisabled(True)

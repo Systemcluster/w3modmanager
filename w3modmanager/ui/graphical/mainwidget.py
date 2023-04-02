@@ -2,7 +2,7 @@ from w3modmanager.core.model import Model
 from w3modmanager.ui.graphical.modlist import ModList
 from w3modmanager.ui.graphical.flowlayout import FlowLayout
 from w3modmanager.domain.bin.merger import verifyScriptMergerPath
-from w3modmanager.util.util import getRuntimePath, isValidFileUrl, isValidModDownloadUrl, \
+from w3modmanager.util.util import createAsyncTask, getRuntimePath, isValidFileUrl, isValidModDownloadUrl, \
     isValidNexusModsUrl, openExecutable
 
 import html
@@ -162,7 +162,9 @@ class MainWidget(QWidget):
             self.splitter.setSizes([self.splitter.size().height(), 0])
         model.updateCallbacks.append(self.modelUpdateEvent)
 
-        asyncio.create_task(model.loadInstalled())
+        self.tasks: set[asyncio.Task[Any]] = set()
+
+        createAsyncTask(model.loadInstalled(), self.tasks)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
@@ -183,7 +185,7 @@ class MainWidget(QWidget):
         else:
             urls = [url for url in QApplication.clipboard().text().splitlines() if len(str(url.strip()))]
             if all(isValidModDownloadUrl(url) or isValidFileUrl(url) for url in urls):
-                asyncio.create_task(self.modlist.checkInstallFromURLs(urls))
+                createAsyncTask(self.modlist.checkInstallFromURLs(urls), self.tasks)
 
     def modelUpdateEvent(self, model: Model) -> None:
         total = len(model)

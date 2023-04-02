@@ -1,5 +1,5 @@
 from w3modmanager.core.model import Model
-from w3modmanager.util.util import getRuntimePath
+from w3modmanager.util.util import createAsyncTask, getRuntimePath
 
 from functools import lru_cache
 from typing import Optional, Dict, Any, Union
@@ -13,6 +13,8 @@ from PySide6.QtWidgets import QWidget
 class ModListModel(QAbstractTableModel):
     def __init__(self, parent: Optional[QWidget], model: Model) -> None:
         super().__init__(parent)
+
+        self.tasks: set[asyncio.Task[Any]] = set()
 
         self._header = [
             ('', 'enabled'),
@@ -161,7 +163,7 @@ class ModListModel(QAbstractTableModel):
             return False
         col = self.getColumnKey(index.column())
         row = index.row()
-        asyncio.create_task(self.setDataInternal(col, row, str(value)))
+        createAsyncTask(self.setDataInternal(col, row, str(value)), self.tasks)
         return True
 
     @lru_cache(maxsize=None)

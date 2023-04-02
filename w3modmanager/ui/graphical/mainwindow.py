@@ -21,6 +21,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.model = model
+        self.tasks: set[asyncio.Task[Any]] = set()
 
         self.setWindowTitle(getTitleString('Mod Manager'))
         self.setMinimumSize(QSize(750, 500))
@@ -240,7 +241,7 @@ class MainWindow(QMainWindow):
                     <p>This will replace existing details.</p>
                 ''',
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel) == QMessageBox.StandardButton.Yes:
-            asyncio.create_task(self.mainwidget.modlist.updateSelectedModsDetails())
+            createAsyncTask(self.mainwidget.modlist.updateSelectedModsDetails(), self.tasks)
 
     def showGetUpdatesDialog(self) -> None:
         # TODO: incomplete: implement mod update download
@@ -253,8 +254,9 @@ class MainWindow(QMainWindow):
 
         dialog.setModal(True)
         dialog.open()
-        dialog.accepted.connect(lambda: asyncio.create_task(
-            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+        dialog.accepted.connect(lambda: createAsyncTask(
+            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls()),
+            self.tasks
         ))
         return dialog
 
@@ -266,8 +268,9 @@ class MainWindow(QMainWindow):
 
         dialog.setModal(True)
         dialog.open()
-        dialog.accepted.connect(lambda: asyncio.create_task(
-            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls())
+        dialog.accepted.connect(lambda: createAsyncTask(
+            self.mainwidget.modlist.checkInstallFromURLs(dialog.selectedUrls()),
+            self.tasks
         ))
         return dialog
 
@@ -280,8 +283,8 @@ class MainWindow(QMainWindow):
         dialog = DownloadWindow(self, url)
         dialog.setModal(True)
         dialog.open()
-        dialog.signals.download.connect(lambda urls: asyncio.create_task(
-            self.mainwidget.modlist.checkInstallFromURLs(urls, local=False)
+        dialog.signals.download.connect(lambda urls: createAsyncTask(
+            self.mainwidget.modlist.checkInstallFromURLs(urls, local=False), self.tasks
         ))
         return dialog
 
