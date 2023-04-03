@@ -66,6 +66,14 @@ class Mod(DataClassJsonMixin):
             return True
         return self.priority < other.priority
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Mod):
+            return False
+        return self.datatype == other.datatype and self.filename == other.filename
+
+    def __hash__(self) -> int:
+        return hash((self.datatype, self.filename))
+
 
     @property
     def contentFiles(self) -> List[ContentFile]:

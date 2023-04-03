@@ -282,6 +282,10 @@ class ModList(QTableView):
         mods = self.getSelectedMods()
         if not mods:
             return
+        packagemods = list({mod for mods in (
+            (self.modmodel[mod] for mod in self.modmodel if self.modmodel[mod].package == package)
+            for package in (mod.package for mod in mods)
+        ) for mod in mods})
         menu = QMenu(self)
         actionOpen = menu.addAction('&Open Directory')
         actionOpen.setIcon(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))))
@@ -300,6 +304,18 @@ class ModList(QTableView):
             createAsyncTask(self.enableSelectedMods(False), self.tasks)
         ])
         actionDisable.setEnabled(not all(not mod.enabled for mod in mods))
+        menu.addSeparator()
+        actionEnablePackage = menu.addAction('Enable Package')
+        actionEnablePackage.triggered.connect(lambda: [
+            createAsyncTask(self.enableSelectedMods(True, True), self.tasks)
+        ])
+        actionEnablePackage.setEnabled(len(packagemods) > len(mods) and not all(mod.enabled for mod in packagemods))
+        actionDisablePackage = menu.addAction('Disable Package')
+        actionDisablePackage.triggered.connect(lambda: [
+            createAsyncTask(self.enableSelectedMods(False, True), self.tasks)
+        ])
+        actionDisablePackage.setEnabled(len(packagemods) > len(
+            mods) and not all(not mod.enabled for mod in packagemods))
         menu.addSeparator()
         actionUninstall = menu.addAction('&Uninstall')
         actionUninstall.triggered.connect(lambda: [
@@ -335,10 +351,15 @@ class ModList(QTableView):
             return None
         return self.modmodel[row]
 
-    async def enableSelectedMods(self, enable: bool = True) -> None:
+    async def enableSelectedMods(self, enable: bool = True, package: bool = False) -> None:
         if not self.selectionModel().hasSelection():
             return
         mods = self.getSelectedMods()
+        if package:
+            mods = list({mod for mods in (
+                (self.modmodel[mod] for mod in self.modmodel if self.modmodel[mod].package == package)
+                for package in (mod.package for mod in mods)
+            ) for mod in mods})
         self.setDisabled(True)
         for mod in mods:
             try:
