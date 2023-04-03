@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication, QStyledItemDelegate, \
     QTableView, QMessageBox, QPushButton, QMenu
 from PySide6.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
     QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon, \
-    QDesktopServices, QWheelEvent
+    QDesktopServices, QWheelEvent, QCursor
 
 from w3modmanager.core.model import Model
 from w3modmanager.core.errors import ModExistsError, ModelError
@@ -217,6 +217,12 @@ class ModList(QTableView):
         return super().mouseMoveEvent(event)
 
     def wheelEvent(self, event: QWheelEvent) -> None:
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            if event.angleDelta().y() > 0:
+                createAsyncTask(self.changeHoveredModPriority(1), self.tasks)
+            elif event.angleDelta().y() < 0:
+                createAsyncTask(self.changeHoveredModPriority(-1), self.tasks)
+            return
         result = super().wheelEvent(event)
         # repaint previously hovered row on scroll avoid repaint artifacts
         index = self.model().index(self.hoverIndexRow, 0)
@@ -323,6 +329,12 @@ class ModList(QTableView):
             for index in self.selectionModel().selectedRows()
         ]
 
+    def getHoveredMod(self) -> Optional[Mod]:
+        row = self.filtermodel.mapToSource(self.indexAt(self.viewport().mapFromGlobal(QCursor.pos()))).row()
+        if row < 0 or row >= len(self.modmodel):
+            return None
+        return self.modmodel[row]
+
     async def enableSelectedMods(self, enable: bool = True) -> None:
         if not self.selectionModel().hasSelection():
             return
@@ -428,6 +440,12 @@ class ModList(QTableView):
             for mod in mods if mod.datatype in ('mod', 'udf',)
         ])
         self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
+
+    async def changeHoveredModPriority(self, delta: int) -> None:
+        mod = self.getHoveredMod()
+        if mod is not None and mod.datatype in ('mod', 'udf',):
+            await self.modmodel.setPriority(mod, max(-1, min(9999, int(mod.priority + delta))))
+            self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
