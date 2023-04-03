@@ -321,6 +321,11 @@ class ModList(QTableView):
         actionUninstall.triggered.connect(lambda: [
             createAsyncTask(self.deleteSelectedMods(), self.tasks)
         ])
+        actionUninstallPackage = menu.addAction('Uninstall Package')
+        actionUninstallPackage.triggered.connect(lambda: [
+            createAsyncTask(self.deleteSelectedMods(True), self.tasks)
+        ])
+        actionUninstallPackage.setEnabled(len(packagemods) > len(mods))
         menu.addSeparator()
         actionOpenNexus = menu.addAction('Open &Nexus Mods page')
         actionOpenNexus.setIcon(QIcon(str(getRuntimePath('resources/icons/browse.ico'))))
@@ -372,11 +377,16 @@ class ModList(QTableView):
         self.setDisabled(False)
         self.setFocus()
 
-    async def deleteSelectedMods(self) -> None:
+    async def deleteSelectedMods(self, package: bool = False) -> None:
         if not self.selectionModel().hasSelection():
             return
         self.setDisabled(True)
         mods = self.getSelectedMods()
+        if package:
+            mods = list({mod for mods in (
+                (self.modmodel[mod] for mod in self.modmodel if self.modmodel[mod].package == package)
+                for package in (mod.package for mod in mods)
+            ) for mod in mods})
         # TODO: incomplete: ask if selected mods should really be removed
         inds = self.selectedIndexes()
         self.selectionModel().clear()
