@@ -93,8 +93,6 @@ class ModListModel(QAbstractTableModel):
         self._icons['udf'] = QIcon(pixmap)
 
     def clearCache(self) -> None:
-        self.rowCount.cache_clear()
-        self.columnCount.cache_clear()
         self.data.cache_clear()
         self.flags.cache_clear()
         self.headerData.cache_clear()
@@ -166,15 +164,13 @@ class ModListModel(QAbstractTableModel):
         createAsyncTask(self.setDataInternal(col, row, str(value)), self.tasks)
         return True
 
-    @lru_cache(maxsize=None)
-    def rowCount(self, _index: Optional[QModelIndex] = None) -> int:
+    def rowCount(self, index: Optional[Union[QModelIndex, QPersistentModelIndex]] = None) -> int:
         return len(self.modmodel)
 
-    @lru_cache(maxsize=None)
-    def columnCount(self, _index: Optional[QModelIndex] = None) -> int:
+    def columnCount(self, index: Optional[Union[QModelIndex, QPersistentModelIndex]] = None) -> int:
         return len(self._header)
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)  # noqa: B019
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.ItemDataRole.EditRole
     ) -> Any:
@@ -184,7 +180,7 @@ class ModListModel(QAbstractTableModel):
             return None
         return self._header[section][0] if len(self._header) > section else '?'
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)  # noqa: B019
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
@@ -196,7 +192,7 @@ class ModListModel(QAbstractTableModel):
             return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=None)  # noqa: B019
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
