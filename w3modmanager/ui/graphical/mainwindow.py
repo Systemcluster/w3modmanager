@@ -68,6 +68,8 @@ class MainWindow(QMainWindow):
         # mods menu
 
         menuMods: QMenu = self.menuBar().addMenu('&Mods')
+        menuMods.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuMods.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
@@ -111,6 +113,8 @@ class MainWindow(QMainWindow):
         # view menu
 
         menuView: QMenu = self.menuBar().addMenu('&View')
+        menuView.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuView.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         showSummary = menuView.addAction('Show &Summary')
         showSummary.setCheckable(True)
@@ -204,6 +208,9 @@ class MainWindow(QMainWindow):
         # settings menu
 
         menuSettings: QMenu = self.menuBar().addMenu('&Tools')
+        menuSettings.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuSettings.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
         actionSettings = menuSettings.addAction('&Settings')
         actionSettings.setIcon(gearIcon)
         actionSettings.triggered.connect(self.showSettingsDialog)
@@ -219,6 +226,8 @@ class MainWindow(QMainWindow):
         # info menu
 
         menuInfo: QMenu = self.menuBar().addMenu('&Info')
+        menuInfo.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuInfo.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         actionFeedback = menuInfo.addAction('Send &Feedback')
         actionFeedback.setIcon(smilIcon)

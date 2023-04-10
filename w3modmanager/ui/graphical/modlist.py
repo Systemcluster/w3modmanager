@@ -287,6 +287,8 @@ class ModList(QTableView):
             for package in (mod.package for mod in mods)
         ) for mod in mods})
         menu = QMenu(self)
+        menu.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         actionOpen = menu.addAction('&Open Directory')
         actionOpen.setIcon(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))))
         actionOpen.triggered.connect(lambda: [

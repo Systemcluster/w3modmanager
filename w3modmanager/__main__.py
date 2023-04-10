@@ -171,14 +171,76 @@ def main(gamePath: Optional[str] = None,
         }
         QTableView {
             gridline-color: white;
+            padding: 0;
+            border: 1px solid #cacaca;
         }
         QTableView::item {
             padding: 5px;
             margin: 1px 0;
         }
         QTableView::item:!selected:hover {
-            background-color: rgb(217, 235, 249);
+            background: rgb(217, 235, 249);
             padding: 0;
+        }
+        QTableView::item:selected {
+            background: rgb(70, 145, 225);
+            padding: 0;
+        }
+        QLineEdit {
+            outline: none;
+            border: 1px solid #cacaca;
+            selection-background-color: rgb(70, 145, 225);
+        }
+        QTextEdit {
+            outline: none;
+            border: 1px solid #cacaca;
+            selection-background-color: rgb(70, 145, 225);
+        }
+        QMenu {
+            border: 1px solid #cacaca;
+            background: white;
+            padding: 3px 0;
+            border-radius: 3px;
+        }
+        QMenu::item {
+            background: transparent;
+            padding: 4px 20px 4px 15px;
+            margin: 0;
+            color: black;
+        }
+        QMenu::item:disabled {
+            color: gray;
+        }
+        QMenu::item:selected {
+            background: rgb(217, 235, 249);
+        }
+        QMenu::icon {
+            margin: 0;
+            padding: 4px 6px;
+        }
+        QMenu::icon:checked {
+            background: rgb(237, 245, 249);
+        }
+        QMenu::icon:checked:selected {
+            background: rgb(217, 235, 249);
+        }
+        QMenu::indicator {
+            margin: 0 -7px 0 0;
+            padding: 4px 6px;
+            width: 16px;
+            height: 16px;
+        }
+        QMenu::indicator:non-exclusive:checked {
+            image: url(resources/icons/check.ico);
+            background: rgb(237, 245, 249);
+        }
+        QMenu::indicator:non-exclusive:checked:selected {
+            background: rgb(217, 235, 249);
+        }
+        QMenu::separator {
+            height: 1px;
+            background: #cacaca;
+            margin: 3px 0;
         }
     ''')
 
