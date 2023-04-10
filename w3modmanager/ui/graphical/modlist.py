@@ -484,6 +484,16 @@ class ModList(QTableView):
         elif event.matches(QKeySequence.StandardKey.Delete):
             createAsyncTask(self.deleteSelectedMods(), self.tasks)
         elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
+                and event.key() == Qt.Key.Key_Return:
+            mods = self.getSelectedMods()
+            if len(mods) == 0:
+                return
+            mod = mods[0]
+            if mod.enabled:
+                createAsyncTask(self.enableSelectedMods(False), self.tasks)
+            else:
+                createAsyncTask(self.enableSelectedMods(True), self.tasks)
+        elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
                 and event.key() == Qt.Key.Key_Up:
             createAsyncTask(self.changeSelectedModsPriority(1), self.tasks)
         elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
