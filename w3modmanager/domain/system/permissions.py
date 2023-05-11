@@ -2,12 +2,14 @@
 
 from w3modmanager.util.util import getWindowsPath
 
-from pathlib import Path
-import pywintypes  # noqa
-import win32api  # noqa
-import win32security  # noqa
-import subprocess
 import shutil
+import subprocess
+
+from pathlib import Path
+
+import pywintypes  # type: ignore # noqa
+import win32api
+import win32security
 
 from loguru import logger
 
@@ -36,7 +38,7 @@ def getWritePermissions(path: Path, children: bool = True) -> bool:
             # for the current user or for authenticated users
             good = False
             for perm in expl:
-                dsid = win32security.ConvertSidToStringSid(perm['Trustee']['Identifier'])
+                dsid = win32security.ConvertSidToStringSid(perm['Trustee']['Identifier'])  # type: ignore
                 dacc = perm['AccessPermissions']
                 if dsid in (usid, 'S-1-5-11',) and dacc in (0x1f01ff, 0x1301bf,):
                     good = True
@@ -64,10 +66,10 @@ def setWritePermissions(path: Path) -> bool:
         si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         CREATE_NO_WINDOW = 0x08000000
         result = subprocess.run([  # noqa
-            f'{str(Path(powershell).resolve(strict=True))}', '-Command',
+            f'{Path(powershell).resolve(strict=True)!s}', '-Command',
             f'Start-Process \
-                -FilePath "{str(Path(icacls).resolve(strict=True))}" \
-                -ArgumentList \'"{str(path.resolve(strict=True))}" "/grant" "{user}:(OI)(CI)M" "/T"\' \
+                -FilePath "{Path(icacls).resolve(strict=True)!s}" \
+                -ArgumentList \'"{path.resolve(strict=True)!s}" "/grant" "{user}:(OI)(CI)M" "/T"\' \
                 -Verb RunAs -WindowStyle Hidden'],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             creationflags=CREATE_NO_WINDOW, startupinfo=si)

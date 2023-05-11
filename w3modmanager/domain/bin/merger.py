@@ -1,15 +1,15 @@
-from loguru import logger
-
-from typing import Optional
-from pathlib import Path
 import re
 
+from pathlib import Path
 
-def findScriptMergerPath() -> Optional[Path]:
+from loguru import logger
+
+
+def findScriptMergerPath() -> Path | None:
     try:
-        from win32.win32gui import EnumWindows, GetWindow, GetWindowText
-        from win32.win32process import GetWindowThreadProcessId, GetModuleFileNameEx
         from win32.win32api import OpenProcess
+        from win32.win32gui import EnumWindows, GetWindow, GetWindowText
+        from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId
         existingPaths = []
         windowHandles = []
         EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
@@ -35,7 +35,7 @@ def findScriptMergerPath() -> Optional[Path]:
     return None
 
 
-def verifyScriptMergerPath(path: Optional[Path]) -> Optional[Path]:
+def verifyScriptMergerPath(path: Path | None) -> Path | None:
     if not path:
         return None
     try:

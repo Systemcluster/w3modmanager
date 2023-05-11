@@ -1,18 +1,29 @@
-from w3modmanager.util.util import getTitleString, debounce
-from w3modmanager.domain.mod import fetcher
-from w3modmanager.domain.bin.merger import findScriptMergerPath, verifyScriptMergerPath
-from w3modmanager.domain.web.nexus import RequestError, ResponseError, UnauthorizedError, getUserInformation
 from w3modmanager.core.model import *
+from w3modmanager.domain.bin.merger import findScriptMergerPath, verifyScriptMergerPath
+from w3modmanager.domain.mod import fetcher
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, UnauthorizedError, getUserInformation
+from w3modmanager.util.util import debounce, getTitleString
 
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt, QSize
-from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, \
-    QSizePolicy, QPushButton, QLineEdit, QCheckBox, QFileDialog, QDialog, QWidget
+from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class SettingsWindow(QDialog):
-    def __init__(self, parent: Optional[QWidget] = None, firstStart: bool = False) -> None:
+    def __init__(self, parent: QWidget | None = None, firstStart: bool = False) -> None:
         super().__init__(parent, )
 
         if parent:
@@ -432,5 +443,5 @@ class SettingsWindow(QDialog):
         #     self.validGamePath,
         #     self.validNexusAPIKey,
         #     self.validScriptMergerPath,
-        # )))  # noqa
+        # )))
         self.save.setDisabled(False)

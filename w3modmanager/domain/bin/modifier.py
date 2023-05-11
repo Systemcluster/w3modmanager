@@ -1,9 +1,9 @@
 from w3modmanager.domain.mod.mod import Settings
 from w3modmanager.util.util import detectEncoding
 
-from typing import Sequence, Optional
-from pathlib import Path
+from collections.abc import Sequence
 from configparser import ConfigParser
+from pathlib import Path
 
 
 def addSettings(settingslist: Sequence[Settings], path: Path) -> int:
@@ -102,7 +102,7 @@ def setSettingsValue(section: str, key: str, val: str, path: Path) -> None:
         config.write(file, space_around_delimiters=False)
 
 
-def getSettingsValue(section: str, key: str, path: Path) -> Optional[str]:
+def getSettingsValue(section: str, key: str, path: Path) -> str | None:
     if not path.is_file():
         return None
     encoding = detectEncoding(path)

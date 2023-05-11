@@ -4,13 +4,13 @@ Test cases for mod detection and name formatting
 Bin file parsing not part of this test package.
 """
 
-from .framework import *
-
 from w3modmanager.core.model import *
 from w3modmanager.domain.mod.mod import *
 
+from .framework import *
 
-@pytest.mark.asyncio
+
+@pytest.mark.asyncio()
 async def test_mod_normal(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/normal')
     mods = await Mod.fromDirectory(source)
@@ -28,7 +28,7 @@ async def test_mod_normal(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_direct(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-direct')
     mods = await Mod.fromDirectory(source)
@@ -46,7 +46,7 @@ async def test_mod_direct(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_contains_no_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-without-dlc')
     mods = await Mod.fromDirectory(source)
@@ -68,7 +68,7 @@ async def test_mod_contains_no_dlc(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-dlc')
     mods = await Mod.fromDirectory(source)
@@ -97,7 +97,7 @@ async def test_mod_dlc(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_valid(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/valid')
     mods = await Mod.fromDirectory(source)
@@ -154,7 +154,7 @@ async def test_mod_valid(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_weird(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/weird')
     mods = await Mod.fromDirectory(source)
@@ -194,7 +194,7 @@ async def test_mod_weird(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_patch(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/patch')
     mods = await Mod.fromDirectory(source)
@@ -221,7 +221,7 @@ async def test_patch(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_only_dlc(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/only-dlc')
     mods = await Mod.fromDirectory(source)
@@ -238,7 +238,7 @@ async def test_only_dlc(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_with_split_bins(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-split-bins')
     mods = await Mod.fromDirectory(source)
@@ -257,7 +257,7 @@ async def test_mod_with_split_bins(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_dlc_same_name(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-dlc-same-name')
     mods = await Mod.fromDirectory(source)
@@ -286,7 +286,7 @@ async def test_mod_dlc_same_name(mockdata: Path) -> None:
     assert mod.inputs == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_with_inputs(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-inputs')
     mods = await Mod.fromDirectory(source)
@@ -310,7 +310,7 @@ async def test_mod_with_inputs(mockdata: Path) -> None:
     assert len(mod.inputs[0]) == 3
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_with_inputs_readme(mockdata: Path) -> None:
     source = mockdata.joinpath('mods/mod-with-inputs-readme')
     mods = await Mod.fromDirectory(source)

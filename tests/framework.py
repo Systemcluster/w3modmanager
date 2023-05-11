@@ -2,10 +2,11 @@
 Framework for test cases
 """
 
-from shutil import rmtree, copytree
-from pathlib import Path
-from typing import Generator
 import sys
+
+from collections.abc import Generator
+from pathlib import Path
+from shutil import copytree, rmtree
 
 import pytest
 
@@ -17,7 +18,7 @@ sys.path.append(str(_root))
 
 
 @pytest.fixture(scope='function')
-def mockdata() -> Generator:
+def mockdata() -> Generator[Path, None, None]:
     import tempfile
     tempdir = tempfile.mkdtemp()
     copytree(_mockdata, tempdir, dirs_exist_ok=True)

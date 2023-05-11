@@ -1,23 +1,27 @@
 import w3modmanager
+
 from w3modmanager.core.errors import InvalidPathError
 
-import codecs
-import re
-import hashlib
-import shutil
-import tempfile
-import ctypes
-import os
 import asyncio
+import codecs
+import contextlib
+import ctypes
+import hashlib
+import os
+import re
+import shutil
 import subprocess
+import tempfile
+
+from collections.abc import Awaitable, Callable, Coroutine, Generator
+from functools import partial, wraps
 from pathlib import Path
-from urllib.parse import urlparse, urlsplit, ParseResult
-from typing import Coroutine, Generator, Union, List, Callable, Any, Awaitable
-from functools import wraps, partial
+from typing import Any
+from urllib.parse import ParseResult, urlparse, urlsplit
 
 from charset_normalizer import detect
-from PySide6 import __version__ as PySide6Version
 from loguru import logger
+from PySide6 import __version__ as PySide6Version
 
 
 def getQtVersionString() -> str:
@@ -29,10 +33,10 @@ def getVersionString() -> str:
 
 
 def getTitleString(title: str) -> str:
-    return '%s (%s)' % (title, getVersionString())
+    return f'{title} ({getVersionString()})'
 
 
-def getSupportedExtensions() -> List[str]:
+def getSupportedExtensions() -> list[str]:
     return ['.zip', '.rar', '.7z', '.tar', '.lzma']
 
 
@@ -62,7 +66,7 @@ def getMD5Hash(path: Path) -> str:
     return hash_md5.hexdigest()
 
 
-def getRuntimePath(subpath: Union[Path, str, None]) -> Path:
+def getRuntimePath(subpath: Path | str | None) -> Path:
     if subpath:
         return Path(w3modmanager.__file__).parent.parent.joinpath(subpath).resolve()
     else:
@@ -143,7 +147,7 @@ def isArchive(path: Path) -> bool:
 
 
 def removeDirectory(path: Path) -> None:
-    def getWriteAccess(func: Callable, path: str, exc_info: Any) -> None:
+    def getWriteAccess(func: Callable[..., Any], path: str, exc_info: Any) -> None:
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
@@ -171,9 +175,9 @@ def openExecutable(path: Path, once: bool = False) -> None:
     start = True
     if once:
         try:
-            from win32.win32gui import EnumWindows, SetForegroundWindow, ShowWindow, IsIconic, GetWindow
-            from win32.win32process import GetWindowThreadProcessId, GetModuleFileNameEx
             from win32.win32api import OpenProcess
+            from win32.win32gui import EnumWindows, GetWindow, IsIconic, SetForegroundWindow, ShowWindow
+            from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId
             existingWindows = []
             windowHandles = []
             EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
@@ -187,9 +191,6 @@ def openExecutable(path: Path, once: bool = False) -> None:
                             existingWindows.append(windowHandle)
                     except Exception:  # noqa
                         continue
-                else:
-                    continue
-                break
             for existingWindow in existingWindows:
                 parentWindow = GetWindow(existingWindow, 4)
                 if not parentWindow:
@@ -200,26 +201,26 @@ def openExecutable(path: Path, once: bool = False) -> None:
         except Exception as e:
             logger.bind(path=path).debug(f'Could not get open windows: {e}')
     if start:
-        subprocess.Popen(  # noqa
-            [path], cwd=path.parent,
+        subprocess.Popen(
+            [path], cwd=path.parent,  # noqa: S603
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
 
 
-def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess:
+def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess[bytes]:
     exe = str(getRuntimePath('tools/quickbms/quickbms.exe'))
     script = str(getRuntimePath('tools/quickbms/witcher3.bms'))
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
-    return subprocess.run(  # noqa
-        [exe, '-l', script, str(bundle)],
+    return subprocess.run(
+        [exe, '-l', script, str(bundle)],  # noqa: S603
         stdin=subprocess.DEVNULL, capture_output=True,
         creationflags=CREATE_NO_WINDOW, startupinfo=si
     )
 
 
-async def scanBundle(bundle: Path) -> List[str]:
+async def scanBundle(bundle: Path) -> list[str]:
     if not os.path.isfile(bundle):
         raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
     if not bundle.suffix == '.bundle':
@@ -249,8 +250,8 @@ def extractArchive(archive: Path, target: Path) -> None:
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
-    result: subprocess.CompletedProcess = subprocess.run(  # noqa
-        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
+    result: subprocess.CompletedProcess[bytes] = subprocess.run(
+        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],  # noqa: S603
         stdin=subprocess.DEVNULL, capture_output=True,
         creationflags=CREATE_NO_WINDOW, startupinfo=si
     )
@@ -286,7 +287,9 @@ def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., A
     def decorator(fun: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
 
         @wraps(fun)
-        def debounced(*args: Any, **kwargs: Any) -> Awaitable:
+        def debounced(*args: Any, **kwargs: Any) -> Awaitable[Any]:
+            debounced.__debounced = set()  # type: ignore
+
             def deferred() -> None:
                 async def internal() -> None:
                     try:
@@ -295,18 +298,17 @@ def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., A
                         pass
                     except Exception as e:
                         logger.exception(str(e))
-                task = asyncio.create_task(internal())
+                task = createAsyncTask(internal(), debounced.__debounced)  # type: ignore
                 if cancel_running:
                     try:
                         if not debounced.task.done():  # type: ignore
                             debounced.task.cancel()  # type: ignore
                     except AttributeError:
                         pass
-                    debounced.task = task  # type: ignore
-            try:
+                debounced.task = task  # type: ignore
+            with contextlib.suppress(AttributeError):
                 debounced.timer.cancel()  # type: ignore
-            except AttributeError:
-                pass
+
             debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)  # type: ignore
             return debounced.timer  # type: ignore
 

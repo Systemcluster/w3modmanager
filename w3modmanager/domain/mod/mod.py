@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from w3modmanager.util.util import *
 from w3modmanager.domain.mod.fetcher import *
+from w3modmanager.util.util import *
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import List, Type
 from pathlib import Path
 
+from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import config as JsonConfig
 from loguru import logger
-from dataclasses_json import DataClassJsonMixin, config as JsonConfig
 
 
 @dataclass
@@ -35,11 +35,11 @@ class Mod(DataClassJsonMixin):
     uploaddate: datetime = field(default_factory=lambda: datetime.fromtimestamp(0, tz=timezone.utc))
     uploadname: str = ''
 
-    files: List[BinFile] = field(default_factory=list)
-    contents: List[ContentFile] = field(default_factory=list)
-    settings: List[UserSettings] = field(default_factory=list)
-    inputs: List[InputSettings] = field(default_factory=list)
-    bundled: List[BundledFile] = field(default_factory=list)
+    files: list[BinFile] = field(default_factory=list)
+    contents: list[ContentFile] = field(default_factory=list)
+    settings: list[UserSettings] = field(default_factory=list)
+    inputs: list[InputSettings] = field(default_factory=list)
+    bundled: list[BundledFile] = field(default_factory=list)
 
     dataversion: int = 1
 
@@ -76,19 +76,19 @@ class Mod(DataClassJsonMixin):
 
 
     @property
-    def contentFiles(self) -> List[ContentFile]:
+    def contentFiles(self) -> list[ContentFile]:
         return list(filter(
             lambda f: f.source.suffix != '.ws',
             self.contents))
 
     @property
-    def scriptFiles(self) -> List[ContentFile]:
+    def scriptFiles(self) -> list[ContentFile]:
         return list(filter(
             lambda f: f.source.suffix == '.ws',
             self.contents))
 
     @property
-    def binFiles(self) -> List[BinFile]:
+    def binFiles(self) -> list[BinFile]:
         return list(filter(
             lambda f: f.target.parent not in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
@@ -96,24 +96,24 @@ class Mod(DataClassJsonMixin):
             self.files))
 
     @property
-    def menuFiles(self) -> List[BinFile]:
+    def menuFiles(self) -> list[BinFile]:
         return list(filter(
             lambda f: f.target.parent in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
     @property
-    def bundledFiles(self) -> List[BundledFile]:
+    def bundledFiles(self) -> list[BundledFile]:
         return self.bundled
 
 
     @classmethod
     async def fromDirectory(
-        cls: Type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True
-    ) -> List[Mod]:
+        cls: type[Mod], path: Path, searchCommonRoot: bool = True, recursive: bool = True
+    ) -> list[Mod]:
         if not os.path.isdir(path):
             raise InvalidPathError(path, 'Invalid mod')
-        mods: List[Mod] = []
+        mods: list[Mod] = []
         dirs = [path]
         if len(list(path.iterdir())) == 1 \
                 and len([d for d in path.iterdir() if d.is_dir() and d.name[:3].lower() not in ('dlc', 'mod',) \
@@ -249,7 +249,7 @@ class Mod(DataClassJsonMixin):
                 for _content in contents:
                     size += path.joinpath(_content.source).stat().st_size
                     if _content.source.suffix == '.bundle':
-                        bundled.extend(await fetchBundleContents(check, path.joinpath(_content.source)))
+                        bundled.extend(await fetchBundleContents(check, path.joinpath(_content.source)))  # type: ignore
                 mods.append(cls(
                     package,
                     filename=name,

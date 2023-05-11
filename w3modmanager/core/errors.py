@@ -1,5 +1,6 @@
-from pathlib import Path
 import os
+
+from pathlib import Path
 
 
 #
@@ -9,14 +10,14 @@ import os
 
 class InvalidPathError(IOError):
     def __init__(self, path: Path, message: str = '') -> None:
-        super().__init__(f'{f"{message}: " if message else ""}{str(os.path.abspath(path))}')
+        super().__init__(f'{f"{message}: " if message else ""}{os.path.abspath(path)!s}')
         self.path = path
         self.message = message
 
 
 class UnexpectedInputError(IOError):
     def __init__(self, path: Path, message: str = '') -> None:
-        super().__init__(f'{f"{message}: " if message else ""}{str(os.path.abspath(path))}')
+        super().__init__(f'{f"{message}: " if message else ""}{os.path.abspath(path)!s}')
         self.path = path
         self.message = message
 
@@ -30,7 +31,7 @@ class ModelError(IOError):
     def __init__(self, path: Path, message: str = '') -> None:
         if message:
             self.message = message
-        super().__init__(f'{self.message}: \'{str(os.path.abspath(path))}\'')
+        super().__init__(f'{self.message}: \'{os.path.abspath(path)!s}\'')
         self.path = path
     message = 'Model Error'
 

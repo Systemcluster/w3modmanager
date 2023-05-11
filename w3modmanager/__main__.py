@@ -3,28 +3,30 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 """
 
 
-import traceback
-import sys
-import os
+import w3modmanager
+
 import asyncio
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, NoReturn, Any
+import os
+import sys
+import traceback
+
 from argparse import ArgumentParser
-from enum import Enum
 from concurrent.futures.thread import ThreadPoolExecutor
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, NoReturn
 
 import appdirs
-from loguru import logger
 
-import w3modmanager
+from loguru import logger
 
 
 # check running python version
 
 if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
-    sys.exit('error: python >= %s.%s is required for this program.'
-             % w3modmanager.MIN_PYTHON_VERSION)
+    sys.exit('error: python >= {}.{} is required for this program.'.format(
+        *w3modmanager.MIN_PYTHON_VERSION))
 
 
 # setup Qt environment
@@ -57,6 +59,7 @@ if sys.stdout.isatty():
 
 def debug_print(arg: Any) -> None:
     import builtins
+
     from inspect import currentframe, getframeinfo
     frame = currentframe()
     if frame and frame.f_back:
@@ -66,7 +69,7 @@ def debug_print(arg: Any) -> None:
         builtins.print(arg)
 
 
-print = debug_print  # noqa
+print = debug_print  # noqa: A001
 
 
 # setup exception hook
@@ -74,8 +77,8 @@ print = debug_print  # noqa
 sys._excepthook = sys.excepthook  # type: ignore
 
 
-def exception_hook(exctype, value, tb) -> None:  # noqa
-    time = datetime.now(tz=None).strftime('%Y-%m-%d-%H%M%S%z')
+def exception_hook(exctype, value, tb) -> None:  # type: ignore # noqa
+    time = datetime.now(tz=None).strftime('%Y-%m-%d-%H%M%S%z')  # noqa: DTZ005
     with open(f'crash-{time}.txt', 'w', encoding='utf8') as file:
         file.write(f'{w3modmanager.NAME} crashed.\n\n')
         file.write(f'App version: {w3modmanager.VERSION} ({w3modmanager.VERSION_HASH})\n')
@@ -99,24 +102,21 @@ class StartupMode(Enum):
     About = 2
 
 
-def main(gamePath: Optional[str] = None,
-         configPath: Optional[str] = None,
+def main(gamePath: str | None = None,
+         configPath: str | None = None,
          startupMode: StartupMode = StartupMode.Main) -> NoReturn:
 
-    from w3modmanager.util.util import getRuntimePath
+    from w3modmanager.core.errors import InvalidConfigPath, InvalidGamePath, OtherInstanceError
     from w3modmanager.core.model import Model
-    from w3modmanager.core.errors import OtherInstanceError, InvalidGamePath, InvalidConfigPath
-    from w3modmanager.ui.graphical.mainwindow import MainWindow
+    from w3modmanager.domain.system.permissions import getWritePermissions, setWritePermissions
     from w3modmanager.domain.web.nexus import closeSession
-    from w3modmanager.domain.system.permissions import \
-        getWritePermissions, setWritePermissions
+    from w3modmanager.ui.graphical.mainwindow import MainWindow
+    from w3modmanager.util.util import getRuntimePath
 
-    from PySide6.QtCore import Qt, QSettings
+    from PySide6.QtCore import QSettings, Qt
+    from PySide6.QtGui import QFont, QIcon, QPalette
     from PySide6.QtWidgets import QApplication, QMessageBox
-    from PySide6.QtGui import QIcon, QPalette, QFont
-
     from qasync import QEventLoop
-
 
     QApplication.setOrganizationName(w3modmanager.ORG_NAME)
     QApplication.setOrganizationDomain(w3modmanager.ORG_URL)
@@ -319,7 +319,7 @@ def main(gamePath: Optional[str] = None,
         window = MainWindow(model)
         app.setActiveWindow(window)
 
-        def show_exception_hook(exctype, value, tb) -> None:  # noqa
+        def show_exception_hook(exctype, value, tb) -> None:  # type: ignore # noqa
             nonlocal window
             MainWindow.showCritcalErrorDialog(window, value, ''.join(
                 traceback.format_exception(exctype, value, tb))).exec_()
@@ -333,15 +333,15 @@ def main(gamePath: Optional[str] = None,
             sys.exit(status)
 
     except OtherInstanceError as e:
-        sys.exit(f'error: {str(e)}')
+        sys.exit(f'error: {e!s}')
 
     except (InvalidGamePath, InvalidConfigPath) as e:
         MainWindow.showInvalidConfigErrorDialog(None).exec_()
-        sys.exit(f'error: {str(e)}')
+        sys.exit(f'error: {e!s}')
 
     except PermissionError as e:
         MainWindow.showInvalidPermissionsErrorDialog(None).exec_()
-        sys.exit(f'error: {str(e)}')
+        sys.exit(f'error: {e!s}')
 
     except Exception as e:
         if not exception_hook_set:

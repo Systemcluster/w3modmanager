@@ -1,31 +1,73 @@
-from pathlib import Path
-from urllib.parse import urlparse, unquote
-from typing import Sequence, Union, List, Tuple, Optional, cast
-from datetime import datetime, timezone
+from w3modmanager.core.errors import ModelError, ModExistsError
+from w3modmanager.core.model import Model
+from w3modmanager.domain.mod.fetcher import *
+from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, downloadFile, getCategoryName, getModInformation
+from w3modmanager.ui.graphical.modlistmodel import ModListModel
+from w3modmanager.util.util import *
+
 import asyncio
 import re
 
-from loguru import logger
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import cast
+from urllib.parse import unquote, urlparse
+
 import dateparser
 
-from PySide6.QtCore import Qt, QSettings, QUrl, QPoint, \
-    QItemSelectionModel, QSortFilterProxyModel, QAbstractItemModel, \
-    QAbstractTableModel, QRect, QModelIndex, QItemSelection, \
-    QObject, QEvent, QTimer, QSize, QRegularExpression, QPersistentModelIndex
-from PySide6.QtWidgets import QApplication, QStyledItemDelegate, \
-    QStyleOptionViewItem, QStyle, QAbstractItemView, QWidget, \
-    QTableView, QMessageBox, QPushButton, QMenu
-from PySide6.QtGui import QPen, QColor, QKeySequence, QKeyEvent, QMouseEvent, QPainter, QPixmap, \
-    QDropEvent, QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QResizeEvent, QPaintEvent, QIcon, \
-    QDesktopServices, QWheelEvent, QCursor
-
-from w3modmanager.core.model import Model
-from w3modmanager.core.errors import ModExistsError, ModelError
-from w3modmanager.util.util import *
-from w3modmanager.domain.mod.fetcher import *
-from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.web.nexus import RequestError, ResponseError, getCategoryName, getModInformation, downloadFile
-from w3modmanager.ui.graphical.modlistmodel import ModListModel
+from loguru import logger
+from PySide6.QtCore import (
+    QAbstractItemModel,
+    QAbstractTableModel,
+    QEvent,
+    QItemSelection,
+    QItemSelectionModel,
+    QModelIndex,
+    QObject,
+    QPersistentModelIndex,
+    QPoint,
+    QRect,
+    QRegularExpression,
+    QSettings,
+    QSize,
+    QSortFilterProxyModel,
+    Qt,
+    QTimer,
+    QUrl,
+)
+from PySide6.QtGui import (
+    QColor,
+    QCursor,
+    QDesktopServices,
+    QDragEnterEvent,
+    QDragLeaveEvent,
+    QDragMoveEvent,
+    QDropEvent,
+    QIcon,
+    QKeyEvent,
+    QKeySequence,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QPixmap,
+    QResizeEvent,
+    QWheelEvent,
+)
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTableView,
+    QWidget,
+)
 
 
 class ModListItemDelegate(QStyledItemDelegate):
@@ -34,7 +76,7 @@ class ModListItemDelegate(QStyledItemDelegate):
         self.linepen = QPen(QColor(200, 200, 200), 0, parent.gridStyle())
 
     def paint(
-        self, painter: QPainter, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
     ) -> None:
         itemOption = QStyleOptionViewItem(option)
 
@@ -58,7 +100,7 @@ class ModListItemDelegate(QStyledItemDelegate):
             painter.setPen(oldpen)
 
     def updateEditorGeometry(
-        self, editor: QWidget, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]
+        self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
     ) -> None:
         itemOption = QStyleOptionViewItem(option)
         # set size of editor to size of cell
@@ -72,7 +114,7 @@ class ModListSelectionModel(QItemSelectionModel):
         super().__init__(model, parent)
 
     def setCurrentIndex(
-        self, index: Union[QModelIndex, QPersistentModelIndex], command: QItemSelectionModel.SelectionFlag
+        self, index: QModelIndex | QPersistentModelIndex, command: QItemSelectionModel.SelectionFlag
     ) -> None:
         if not index.isValid():
             return
@@ -89,7 +131,7 @@ class ModListFilterModel(QSortFilterProxyModel):
         self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setSortRole(Qt.ItemDataRole.UserRole)
 
-    def filterAcceptsRow(self, row: int, parent: Union[QModelIndex, QPersistentModelIndex]) -> bool:
+    def filterAcceptsRow(self, row: int, parent: QModelIndex | QPersistentModelIndex) -> bool:
         filterRegExp = self.filterRegularExpression()
         if not filterRegExp.pattern() or not filterRegExp.isValid():
             return True
@@ -346,13 +388,13 @@ class ModList(QTableView):
         elif nums > 0:
             self.selectRow(nums - 1)
 
-    def getSelectedMods(self) -> List[Mod]:
+    def getSelectedMods(self) -> list[Mod]:
         return [
             self.modmodel[self.filtermodel.mapToSource(cast(QModelIndex, index)).row()]
             for index in self.selectionModel().selectedRows()
         ]
 
-    def getHoveredMod(self) -> Optional[Mod]:
+    def getHoveredMod(self) -> Mod | None:
         row = self.filtermodel.mapToSource(self.indexAt(self.viewport().mapFromGlobal(QCursor.pos()))).row()
         if row < 0 or row >= len(self.modmodel):
             return None
@@ -436,7 +478,7 @@ class ModList(QTableView):
                     f'Could not parse date {uploadtime} in mod information response')
         except KeyError as e:
             logger.bind(name=mod.filename).exception(
-                f'Could not find key "{str(e)}" in mod information response')
+                f'Could not find key "{e!s}" in mod information response')
             return False
         try:
             await self.modmodel.update(mod)
@@ -457,7 +499,7 @@ class ModList(QTableView):
         )
         successes = sum(results)
         errors = len(results) - successes
-        message = 'Updated details for {0} mods{1}'.format(successes, f' ({errors} errors)' if errors else '')
+        message = 'Updated details for {} mods{}'.format(successes, f' ({errors} errors)' if errors else '')
         if errors:
             logger.warning(message)
         else:
@@ -517,7 +559,7 @@ class ModList(QTableView):
         )
 
     async def checkInstallFromURLs(
-        self, paths: Sequence[Union[str, QUrl]], local: bool = True, web: bool = True
+        self, paths: Sequence[str | QUrl], local: bool = True, web: bool = True
     ) -> None:
         await self.installLock.acquire()
         installed = 0
@@ -540,7 +582,7 @@ class ModList(QTableView):
 
         if installed > 0 or errors > 0:
             log = logger.bind(modlist=bool(installed))
-            message = 'Installed {0} mods{1}'.format(installed, f' ({errors} errors)' if errors else '')
+            message = 'Installed {} mods{}'.format(installed, f' ({errors} errors)' if errors else '')
             if installed > 0 and errors > 0:
                 log.warning(message)
             elif installed > 0:
@@ -552,8 +594,8 @@ class ModList(QTableView):
         self.installLock.release()
 
     async def installFromURL(
-        self, path: Union[str, QUrl], local: bool = True, web: bool = True, installtime: Optional[datetime] = None
-    ) -> Tuple[int, int]:
+        self, path: str | QUrl, local: bool = True, web: bool = True, installtime: datetime | None = None
+    ) -> tuple[int, int]:
         installed = 0
         errors = 0
         if not installtime:
@@ -577,14 +619,14 @@ class ModList(QTableView):
             logger.bind(path=path).error('Could not install mods from')
         return installed, errors
 
-    async def installFromFileDownload(self, url: str, installtime: Optional[datetime] = None) -> Tuple[int, int]:
+    async def installFromFileDownload(self, url: str, installtime: datetime | None = None) -> tuple[int, int]:
         installed = 0
         errors = 0
         if not installtime:
             installtime = datetime.now(tz=timezone.utc)
         try:
             target = Path(urlparse(url).path)
-            filename = re.sub(r'[^\w\-_\. ]', '_', unquote(target.name))
+            filename = re.sub(r'[^\w\-_\. ]', r'_', unquote(target.name))
             target = Path(tempfile.gettempdir()).joinpath(
                 'w3modmanager/download').joinpath(f'{filename}')
         except ValueError:
@@ -603,7 +645,7 @@ class ModList(QTableView):
                 target.unlink()
         return installed, errors
 
-    async def installFromFile(self, path: Path, installtime: Optional[datetime] = None) -> Tuple[int, int]:
+    async def installFromFile(self, path: Path, installtime: datetime | None = None) -> tuple[int, int]:
         originalpath = path
         installed = 0
         errors = 0
@@ -611,7 +653,7 @@ class ModList(QTableView):
         source = None
         md5hash = ''
         details = None
-        detailsrequest: Optional[asyncio.Task] = None
+        detailsrequest: asyncio.Task[Any] | None = None
 
         if not installtime:
             installtime = datetime.now(tz=timezone.utc)
@@ -692,7 +734,7 @@ class ModList(QTableView):
                                     f'Could not parse date {uploadtime} in mod information response')
                         except KeyError as e:
                             logger.bind(name=mod.filename).exception(
-                                f'Could not find key "{str(e)}" in mod information response')
+                                f'Could not find key "{e!s}" in mod information response')
                     try:
                         await self.modmodel.update(mod)
                     except Exception:
@@ -717,7 +759,7 @@ class ModList(QTableView):
         finally:
             if detailsrequest and not detailsrequest.done():
                 detailsrequest.cancel()
-            if archive and not path == originalpath:
+            if archive and path != originalpath:
                 try:
                     util.removeDirectory(path)
                 except Exception:

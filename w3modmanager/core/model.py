@@ -1,29 +1,47 @@
 from __future__ import annotations
 
-from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.domain.bin.modifier import addSettings, getSettingsValue, removeSettings, \
-    removeSettingsSection, renameSettingsSection, setSettingsValue
+from w3modmanager.core.errors import (
+    InvalidCachePath,
+    InvalidConfigPath,
+    InvalidDlcsPath,
+    InvalidGamePath,
+    InvalidModsPath,
+    InvalidPathError,
+    InvalidSourcePath,
+    ModExistsError,
+    ModNotFoundError,
+    OtherInstanceError,
+)
+from w3modmanager.domain.bin.modifier import (
+    addSettings,
+    getSettingsValue,
+    removeSettings,
+    removeSettingsSection,
+    renameSettingsSection,
+    setSettingsValue,
+)
 from w3modmanager.domain.mod.fetcher import BundledFile, ContentFile
+from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce, removeDirectory
-from w3modmanager.core.errors import InvalidCachePath, InvalidConfigPath, InvalidGamePath, \
-    InvalidModsPath, InvalidDlcsPath, InvalidSourcePath, ModExistsError, ModNotFoundError, \
-    OtherInstanceError, InvalidPathError
 
-from loguru import logger
-from fasteners import InterProcessLock
-
-from pathlib import Path
-from typing import Dict, Optional, Union, Tuple, ValuesView, KeysView, Any, Iterator, List, Type
-from datetime import datetime, timezone
-from shutil import copyfile
-from functools import partial
-from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, field
 import asyncio
+import contextlib
 import re
 
+from collections.abc import Callable, Iterator, KeysView, ValuesView
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from functools import partial
+from pathlib import Path
+from shutil import copyfile
+from typing import Any
 
-class CallbackList(list):
+from fasteners import InterProcessLock
+from loguru import logger
+
+
+class CallbackList(list[Callable[..., Any]]):
     def __init__(self) -> None:
         self.fireLock = asyncio.Lock()
         super().__init__()
@@ -35,34 +53,34 @@ class CallbackList(list):
                 listener(*args, **kwargs)
 
 
-ModelIndexType = Union[Mod, Tuple[str, str], int]
+ModelIndexType = Mod | tuple[str, str] | int
 '''The type for indexing the model - options are mod, (modname, target) tuple, or index'''
 
 
 @dataclass
 class ModelConflicts:
-    bundled: Dict[str, List[BundledFile]] = field(default_factory=dict)
-    scripts: Dict[str, List[ContentFile]] = field(default_factory=dict)
+    bundled: dict[str, list[BundledFile]] = field(default_factory=dict)
+    scripts: dict[str, list[ContentFile]] = field(default_factory=dict)
     iteration: int = 0
 
     @classmethod
     def fromModList(
-        cls: Type[ModelConflicts], modList: Dict[Tuple[str, str], Mod], iteration: int
+        cls: type[ModelConflicts], modList: dict[tuple[str, str], Mod], iteration: int
     ) -> ModelConflicts:
-        existingsBundled: Dict[BundledFile, str] = {}
-        conflictsBundled: Dict[str, List[BundledFile]] = {}
-        existingsScripts: Dict[ContentFile, str] = {}
-        conflictsScripts: Dict[str, List[ContentFile]] = {}
+        existingsBundled: dict[BundledFile, str] = {}
+        conflictsBundled: dict[str, list[BundledFile]] = {}
+        existingsScripts: dict[ContentFile, str] = {}
+        conflictsScripts: dict[str, list[ContentFile]] = {}
         for mod in sorted(mod for mod in modList.values() if mod.enabled and mod.datatype in ('mod', 'udf',)):
             conflictsBundled[mod.filename] = []
             conflictsScripts[mod.filename] = []
             for bundledFile in mod.bundledFiles:
-                if bundledFile in existingsBundled.keys():
+                if bundledFile in existingsBundled:
                     conflictsBundled[mod.filename].append(bundledFile)
                 else:
                     existingsBundled[bundledFile] = mod.filename
             for scriptFile in mod.scriptFiles:
-                if scriptFile in existingsScripts.keys():
+                if scriptFile in existingsScripts:
                     conflictsScripts[mod.filename].append(scriptFile)
                 else:
                     existingsScripts[scriptFile] = mod.filename
@@ -83,7 +101,7 @@ class Model:
         self._modsPath: Path = Path()
         self._dlcsPath: Path = Path()
 
-        self._modList: Dict[Tuple[str, str], Mod] = {}
+        self._modList: dict[tuple[str, str], Mod] = {}
 
         _cachePath = verifyCachePath(cachePath)
         if not _cachePath:
@@ -187,10 +205,9 @@ class Model:
                         mod.filename, 'Priority',
                         self.configpath.joinpath('mods.settings')
                     )
-                    try:
+                    with contextlib.suppress(ValueError):
                         mod.priority = int(priority) if priority else mod.priority
-                    except ValueError:
-                        pass
+
                     if mod.enabled:
                         enabled = getSettingsValue(
                             mod.filename, 'Enabled',
@@ -213,7 +230,7 @@ class Model:
             mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
             mod.enabled = not all(file.name.endswith('.disabled')
                                   for file in path.glob('**/*') if file.is_file()
-                                  and not file.name == '.w3mm')
+                                  and file.name != '.w3mm')
             mod.filename = path.name
             self._modList[(mod.filename, mod.target)] = mod
         else:
@@ -224,7 +241,7 @@ class Model:
                     mod.datatype = 'dlc'
                     mod.enabled = not all(file.name.endswith('.disabled')
                                           for file in path.glob('**/*') if file.is_file()
-                                          and not file.name == '.w3mm')
+                                          and file.name != '.w3mm')
                     mod.filename = path.name
                     self._modList[(mod.filename, mod.target)] = mod
                     await self.update(mod)
@@ -245,13 +262,13 @@ class Model:
     def get(self, mod: ModelIndexType) -> Mod:
         return self[mod]
 
-    def keys(self) -> KeysView[Tuple[str, str]]:
+    def keys(self) -> KeysView[tuple[str, str]]:
         return self._modList.keys()
 
     def values(self) -> ValuesView[Mod]:
         return self._modList.values()
 
-    def data(self) -> Dict[Tuple[str, str], Mod]:
+    def data(self) -> dict[tuple[str, str], Mod]:
         return self._modList
 
 
@@ -272,7 +289,7 @@ class Model:
                 event_loop = asyncio.get_running_loop()
                 target.mkdir(parents=True)
                 # copy mod files
-                copies = []
+                copies = list[tuple[Path, Path]]()
                 logger.bind(name=mod.filename, path=target).debug('Copying binary files')
                 for _file in mod.files:
                     sourceFile = mod.source.joinpath(_file.source)
@@ -284,7 +301,7 @@ class Model:
                         None,
                         partial(copyfile, _copy[0], _copy[1])) for _copy in copies
                 ])
-                copies = []
+                copies = list[tuple[Path, Path]]()
                 logger.bind(name=mod.filename, path=target).debug('Copying content files')
                 for _content in mod.contents:
                     sourceFile = mod.source.joinpath(_content.source)
@@ -361,7 +378,7 @@ class Model:
             oldpath = self.getModPath(mod, True)
             renamed = False
             undo = False
-            renames = []
+            renames = list[Path]()
             settings = 0
             inputs = 0
             try:
@@ -375,8 +392,8 @@ class Model:
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
                         while file.is_file() and file.suffix == '.disabled':
-                            file = file.rename(file.with_suffix(''))
-                            renames.append(file)
+                            renamed = file.rename(file.with_suffix(''))
+                            renames.append(renamed)
                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
                 await self.update(mod)
@@ -415,7 +432,7 @@ class Model:
             oldpath = self.getModPath(mod, True)
             renamed = False
             undo = False
-            renames = []
+            renames = list[Path]()
             settings = 0
             inputs = 0
             try:
@@ -428,9 +445,9 @@ class Model:
                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
-                        if file.is_file() and not file.name == '.w3mm' and not file.suffix == '.disabled':
-                            file = file.rename(file.with_suffix(file.suffix + '.disabled'))
-                            renames.append(file)
+                        if file.is_file() and file.name != '.w3mm' and file.suffix != '.disabled':
+                            renamed = file.rename(file.with_suffix(file.suffix + '.disabled'))
+                            renames.append(renamed)
                 settings = removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
                 await self.update(mod)
@@ -561,7 +578,7 @@ class Model:
         raise IndexError(f'invalid index type {type(mod)}')
 
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
+    def __iter__(self) -> Iterator[tuple[str, str]]:
         yield from self._modList
 
     @property
@@ -589,7 +606,7 @@ class Model:
         return self._dlcsPath
 
 
-def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
+def verifyGamePath(path: Path | None) -> Path | None:
     if not path:
         return None
     try:
@@ -606,7 +623,7 @@ def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
         return None
 
 
-def verifyConfigPath(path: Optional[Path]) -> Optional[Path]:
+def verifyConfigPath(path: Path | None) -> Path | None:
     if not path:
         return None
     try:
@@ -622,7 +639,7 @@ def verifyConfigPath(path: Optional[Path]) -> Optional[Path]:
         return None
 
 
-def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
+def verifyCachePath(path: Path | None) -> Path | None:
     try:
         if not path or path.exists() and not path.is_dir():
             return None
@@ -635,7 +652,7 @@ def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
         return None
 
 
-def verifyModsPath(path: Optional[Path]) -> Optional[Path]:
+def verifyModsPath(path: Path | None) -> Path | None:
     try:
         if not path or path.exists() and not path.is_dir():
             return None
@@ -648,7 +665,7 @@ def verifyModsPath(path: Optional[Path]) -> Optional[Path]:
         return None
 
 
-def verifyDlcsPath(path: Optional[Path]) -> Optional[Path]:
+def verifyDlcsPath(path: Path | None) -> Path | None:
     try:
         if not path or path.exists() and not path.is_dir():
             return None

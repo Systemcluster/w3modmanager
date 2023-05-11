@@ -1,17 +1,18 @@
 from w3modmanager.core.model import Model
 from w3modmanager.util.util import createAsyncTask, getRuntimePath
 
-from functools import lru_cache
-from typing import Optional, Dict, Any, Union
 import asyncio
 
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings
-from PySide6.QtGui import QFontDatabase, QColor, QIcon, QPixmap, QPainter
+from functools import cache
+from typing import Any
+
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings, Qt
+from PySide6.QtGui import QColor, QFontDatabase, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
 
 class ModListModel(QAbstractTableModel):
-    def __init__(self, parent: Optional[QWidget], model: Model) -> None:
+    def __init__(self, parent: QWidget | None, model: Model) -> None:
         super().__init__(parent)
 
         self.tasks: set[asyncio.Task[Any]] = set()
@@ -36,7 +37,7 @@ class ModListModel(QAbstractTableModel):
             ('Source', 'source')
         ]
 
-        self._datatypes: Dict[str, str] = {}
+        self._datatypes: dict[str, str] = {}
         self._datatypes['mod'] = 'Mod'
         self._datatypes['dlc'] = 'DLC'
         self._datatypes['bin'] = 'Binary Files'
@@ -55,7 +56,7 @@ class ModListModel(QAbstractTableModel):
         settings = QSettings()
         colored = str(settings.value('iconColors', 'True')) == 'True'
 
-        self._icons: Dict[str, QIcon] = {}
+        self._icons: dict[str, QIcon] = {}
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/dia.ico')))
         painter = QPainter(pixmap)
@@ -156,7 +157,7 @@ class ModListModel(QAbstractTableModel):
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
 
-    def setData(self, index: Union[QModelIndex, QPersistentModelIndex], value: Any, _role: int = 0) -> bool:
+    def setData(self, index: QModelIndex | QPersistentModelIndex, value: Any, _role: int = 0) -> bool:
         if not index.isValid():
             return False
         col = self.getColumnKey(index.column())
@@ -164,13 +165,13 @@ class ModListModel(QAbstractTableModel):
         createAsyncTask(self.setDataInternal(col, row, str(value)), self.tasks)
         return True
 
-    def rowCount(self, index: Optional[Union[QModelIndex, QPersistentModelIndex]] = None) -> int:
+    def rowCount(self, index: QModelIndex | QPersistentModelIndex | None = None) -> int:
         return len(self.modmodel)
 
-    def columnCount(self, index: Optional[Union[QModelIndex, QPersistentModelIndex]] = None) -> int:
+    def columnCount(self, index: QModelIndex | QPersistentModelIndex | None = None) -> int:
         return len(self._header)
 
-    @lru_cache(maxsize=None)  # noqa: B019
+    @cache  # noqa: B019
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.ItemDataRole.EditRole
     ) -> Any:
@@ -180,7 +181,7 @@ class ModListModel(QAbstractTableModel):
             return None
         return self._header[section][0] if len(self._header) > section else '?'
 
-    @lru_cache(maxsize=None)  # noqa: B019
+    @cache  # noqa: B019
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
@@ -192,7 +193,7 @@ class ModListModel(QAbstractTableModel):
             return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
-    @lru_cache(maxsize=None)  # noqa: B019
+    @cache  # noqa: B019
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
@@ -310,7 +311,7 @@ class ModListModel(QAbstractTableModel):
                 if val // 1024:
                     val /= 1024
                     frm = 'M'
-                return '%.1f %s' % (val, frm)
+                return f'{val:.1f} {frm}'
             if col in ('inputs', 'settings',):
                 val = 0
                 for s in mod[col]:

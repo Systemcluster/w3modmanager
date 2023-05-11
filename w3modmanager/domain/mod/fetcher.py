@@ -1,15 +1,16 @@
 from w3modmanager.util import util
 
+import itertools
+import os
+import re
+
+from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple, Union
-from configparser import ConfigParser
-import itertools
-import re
-import os
 
+from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import config as JsonConfig
 from loguru import logger
-from dataclasses_json import DataClassJsonMixin, config as JsonConfig
 
 
 #
@@ -19,7 +20,7 @@ from dataclasses_json import DataClassJsonMixin, config as JsonConfig
 def formatPackageName(name: str) -> str:
     original = name
     # remove file extension
-    extensions = '|'.join(map(lambda e: e[1:], util.getSupportedExtensions()))
+    extensions = '|'.join(e[1:] for e in util.getSupportedExtensions())
     name = re.sub(rf'.*(\.({extensions}))$', '', name, re.IGNORECASE)
     # remove nexusmods version suffix
     length = len(name)
@@ -102,7 +103,7 @@ def formatDlcName(name: str) -> str:
 # mod validation
 #
 
-def containsValidMod(path: Path, searchlimit: int = 0) -> Tuple[bool, bool]:
+def containsValidMod(path: Path, searchlimit: int = 0) -> tuple[bool, bool]:
     # valid if contains a valid mod or dlc dir
     dirs = [path]
     for check in dirs:
@@ -162,17 +163,14 @@ def containsContentDirectory(path: Path) -> bool:
 
 def containsScripts(path: Path) -> bool:
     # check if path contains .ws scripts inside content/scripts/
-    for f in path.glob('content/**/*.ws'):
-        if f.is_file():
-            return True
-    return False
+    return any(f.is_file() for f in path.glob('content/**/*.ws'))
 
 
 #
 # mod directory extraction
 #
 
-def fetchModDirectories(path: Path) -> List[Path]:
+def fetchModDirectories(path: Path) -> list[Path]:
     bins = []
     dirs = [path]
     for check in dirs:
@@ -183,7 +181,7 @@ def fetchModDirectories(path: Path) -> List[Path]:
     return bins
 
 
-def fetchDlcDirectories(path: Path) -> List[Path]:
+def fetchDlcDirectories(path: Path) -> list[Path]:
     bins = []
     dirs = [path]
     for check in dirs:
@@ -194,7 +192,7 @@ def fetchDlcDirectories(path: Path) -> List[Path]:
     return bins
 
 
-def fetchUnsureDirectories(path: Path) -> List[Path]:
+def fetchUnsureDirectories(path: Path) -> list[Path]:
     bins = []
     dirs = [path]
     for check in dirs:
@@ -220,7 +218,7 @@ class BinFile:
         if self.source == self.target:
             return '\'%s\'' % str(self.source)
         else:
-            return '\'%s (%s)\'' % (str(self.source), str(self.target))
+            return f'\'{self.source!s} ({self.target!s})\''
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BinFile):
@@ -273,7 +271,7 @@ class BundledFile(DataClassJsonMixin):
     bundled: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
 
     def __repr__(self) -> str:
-        return '\'%s\' (\'%s\')' % (str(self.source), str(self.bundled))
+        return f'\'{self.source!s}\' (\'{self.bundled!s}\')'
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BundledFile):
@@ -304,10 +302,10 @@ class Settings(DataClassJsonMixin):
         # remove any instructional content or comments
         cleanContent = []
         for line in content.splitlines():
-            line = line.strip()
-            if re.match(r'^([a-zA-Z0-9_]+[ ]?=|\[[a-zA-Z0-9_/]+\]$)', line):
-                cleanContent.append(line)
-            if match := re.match(r'^[=]+.*(\[[a-zA-Z0-9_/]+\])', line):
+            stripped = line.strip()
+            if re.match(r'^([a-zA-Z0-9_]+[ ]?=|\[[a-zA-Z0-9_/]+\]$)', stripped):
+                cleanContent.append(stripped)
+            if match := re.match(r'^[=]+.*(\[[a-zA-Z0-9_/]+\])', stripped):
                 cleanContent.append(match[1])
         self.content = '\n'.join(cleanContent)
 
@@ -317,7 +315,7 @@ class Settings(DataClassJsonMixin):
         self.config = config
 
     def __repr__(self) -> str:
-        return '\'%s\': %s' % (
+        return '\'{}\': {}'.format(
             str(self.source),
             str({section: dict(self.config[section]) for section in self.config.sections()}))
 
@@ -337,7 +335,7 @@ class InputSettings(Settings):
 
 
 def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
-        Tuple[List[BinFile], List[UserSettings], List[InputSettings]]:
+        tuple[list[BinFile], list[UserSettings], list[InputSettings]]:
     bins = []
     user = []
     inpu = []
@@ -418,7 +416,7 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
     return (bins, user, inpu)
 
 
-def fetchContentFiles(path: Path) -> List[ContentFile]:
+def fetchContentFiles(path: Path) -> list[ContentFile]:
     contents = []
     dirs = [path]
     for check in dirs:
@@ -432,7 +430,7 @@ def fetchContentFiles(path: Path) -> List[ContentFile]:
     return contents
 
 
-def fetchPatchFiles(path: Path) -> List[ContentFile]:
+def fetchPatchFiles(path: Path) -> list[ContentFile]:
     contents = []
     for check in sorted(d for d in path.iterdir() if d.is_dir() and d.name == 'content'):
         contents.extend([
@@ -442,7 +440,7 @@ def fetchPatchFiles(path: Path) -> List[ContentFile]:
     return contents
 
 
-def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
+def resolveCommonBinRoot(root: Path, files: list[BinFile]) -> Path:
     # find the innermost common root path for bin files
     if not files:
         return root
@@ -463,7 +461,7 @@ def resolveCommonBinRoot(root: Path, files: List[BinFile]) -> Path:
     return root.joinpath(common)
 
 
-async def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
+async def fetchBundleContents(root: Path, path: Path) -> list[BundledFile]:
     logger.bind(path=path).debug('Scanning bundle')
     try:
         return [
@@ -479,9 +477,9 @@ async def fetchBundleContents(root: Path, path: Path) -> List[BundledFile]:
 # path detection
 #
 
-def findGamePath() -> Union[Path, None]:
+def findGamePath() -> Path | None:
     # Try to find the game path through registry entries and library files
-    from w3modmanager.core.model import verifyGamePath
+    from w3modmanager.core.model import verifyGamePath  # noqa: I001
     import winreg
     import vdf
 
@@ -532,7 +530,7 @@ def findGamePath() -> Union[Path, None]:
     return None
 
 
-def findConfigPath() -> Union[Path, None]:
+def findConfigPath() -> Path | None:
     from w3modmanager.core.model import verifyConfigPath
 
     path = util.getUserDocumentsPath().joinpath('The Witcher 3')

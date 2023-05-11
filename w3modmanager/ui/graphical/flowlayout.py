@@ -1,16 +1,15 @@
-from typing import List, Optional, Tuple
 from math import floor
 
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout, QSizePolicy, QStyle, QLayoutItem, QWidget
+from PySide6.QtWidgets import QLayout, QLayoutItem, QSizePolicy, QStyle, QWidget
 
 
 class FlowLayout(QLayout):
-    def __init__(self, parent: Optional[QWidget] = None, spacing: Optional[QSize] = None) -> None:
+    def __init__(self, parent: QWidget | None = None, spacing: QSize | None = None) -> None:
         super().__init__(parent)
 
         self._spacing = spacing if spacing else QSize(-1, -1)
-        self._items: List[QLayoutItem] = []
+        self._items: list[QLayoutItem] = []
 
     def __del__(self) -> None:
         del self._items[:]
@@ -74,20 +73,20 @@ class FlowLayout(QLayout):
         size = QSize()
         for item in self._items:
             size = size.expandedTo(item.minimumSize())
-        margins: Tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
+        margins: tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
         left, top, right, bottom = margins
         size += QSize(left + right, top + bottom)
         return size
 
     def doLayout(self, rect: QRect, testonly: bool) -> int:
-        margins: Tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
+        margins: tuple[int, int, int, int] = self.getContentsMargins()  # type: ignore
         left, top, right, bottom = margins
         effective = rect.adjusted(+left, +top, -right, -bottom)
         x = effective.x()
         y = effective.y()
         hspace = self.horizontalSpacing()
 
-        lines: List[Tuple[int, List[Tuple[QLayoutItem, QPoint]]]] = []
+        lines: list[tuple[int, list[tuple[QLayoutItem, QPoint]]]] = []
         line = 0
         lineheight = 0
         for item in self._items:

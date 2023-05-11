@@ -1,17 +1,30 @@
-from typing import cast
-from w3modmanager.util.util import getTitleString, debounce
-from w3modmanager.ui.graphical.modlist import ModListItemDelegate
-from w3modmanager.domain.web.nexus import RequestError, ResponseError, getModId, getModFileUrls, getModFiles
 from w3modmanager.core.model import *
+from w3modmanager.domain.web.nexus import RequestError, ResponseError, getModFiles, getModFileUrls, getModId
+from w3modmanager.ui.graphical.modlist import ModListItemDelegate
+from w3modmanager.util.util import debounce, getTitleString
 
 import html
 
+from typing import cast
+
 import dateparser
 
-from PySide6.QtCore import QModelIndex, Qt, QSize, Signal, QObject
-from PySide6.QtWidgets import QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QPushButton, \
-    QLineEdit, QDialog, QWidget, QTableWidget, QTableWidgetItem, QAbstractItemView
+from PySide6.QtCore import QModelIndex, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QMouseEvent, QWheelEvent
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class DownloadWindowEvents(QObject):
@@ -19,7 +32,7 @@ class DownloadWindowEvents(QObject):
 
 
 class DownloadWindow(QDialog):
-    def __init__(self, parent: Optional[QWidget] = None, url: str = '') -> None:
+    def __init__(self, parent: QWidget | None = None, url: str = '') -> None:
         super().__init__(parent, )
 
         if parent:
@@ -214,9 +227,9 @@ class DownloadWindow(QDialog):
                 self.files.setItem(i, 3, descriptionItem)
         except KeyError as e:
             logger.exception(
-                f'Could not find key "{str(e)}" in mod files response')
+                f'Could not find key "{e!s}" in mod files response')
             self.urlInfo.setText(f'''
-                <font color="#888">Could not find key "{str(e)}" in mod files response.</font>
+                <font color="#888">Could not find key {e!s}" in mod files response.</font>
                 ''')
             return False
 
@@ -264,9 +277,9 @@ class DownloadWindow(QDialog):
             self.signals.download.emit([url[0]['URI'] for url in urls])
         except KeyError as e:
             logger.exception(
-                f'Could not find key "{str(e)}" in file download response')
+                f'Could not find key "{e!s}" in file download response')
             self.urlInfo.setText(f'''
-                <font color="#888">Could not find key "{str(e)}" in file download response.</font>
+                <font color="#888">Could not find key {e!s}" in file download response.</font>
                 ''')
             return
         self.close()

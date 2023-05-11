@@ -1,20 +1,37 @@
 from w3modmanager.core.model import Model
-from w3modmanager.ui.graphical.modlist import ModList
-from w3modmanager.ui.graphical.flowlayout import FlowLayout
 from w3modmanager.domain.bin.merger import verifyScriptMergerPath
-from w3modmanager.util.util import createAsyncTask, getRuntimePath, isValidFileUrl, isValidModDownloadUrl, \
-    isValidNexusModsUrl, openExecutable
+from w3modmanager.ui.graphical.flowlayout import FlowLayout
+from w3modmanager.ui.graphical.modlist import ModList
+from w3modmanager.util.util import (
+    createAsyncTask,
+    getRuntimePath,
+    isValidFileUrl,
+    isValidModDownloadUrl,
+    isValidNexusModsUrl,
+    openExecutable,
+)
 
-import html
-from typing import Any
 import asyncio
+import html
+
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSplitter, \
-    QStackedWidget, QTextEdit, QVBoxLayout, QWidget
 from PySide6.QtGui import QIcon, QKeyEvent, QKeySequence
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSplitter,
+    QStackedWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class MainWidget(QWidget):

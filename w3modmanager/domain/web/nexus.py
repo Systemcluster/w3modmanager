@@ -1,30 +1,33 @@
 from __future__ import annotations
 
 import w3modmanager
+
 from w3modmanager.util.util import isValidNexusModsUrl, normalizeUrl
 
-from typing import Optional
-from urllib.parse import urlsplit
+import asyncio
 import platform
 import re
-from pathlib import Path
-import asyncio
-from functools import partial
 
-from httpx import AsyncClient, HTTPError, HTTPStatusError, RequestError as HTTPXRequestError, Response, Request, stream
-from PySide6.QtCore import QSettings
+from functools import partial
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit
+
+from httpx import AsyncClient, HTTPError, HTTPStatusError, Request, Response, stream
+from httpx import RequestError as HTTPXRequestError
 from loguru import logger
+from PySide6.QtCore import QSettings
 
 
 __baseUrl = 'https://api.nexusmods.com'
 __userUrl = '/v1/users'
 __modsUrl = '/v1/games/witcher3/mods'
 
-__session: Optional[AsyncClient] = None
+__session: AsyncClient | None = None
 
 
 class RequestError(HTTPXRequestError):
-    def __init__(self, kind: str, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
+    def __init__(self, kind: str, request: Request | None = None, response: Response | None = None) -> None:
         super().__init__(request=request, message=kind)
 
         self.response = response
@@ -70,13 +73,12 @@ class ResponseContentError(ResponseError):
 
 
 async def closeSession() -> None:
-    global __session
     if __session:
         await __session.aclose()
 
 
 def getSession() -> AsyncClient:
-    global __session
+    global __session  # noqa: PLW0603
     if not __session:
         useragent = f'{w3modmanager.NAME}/{w3modmanager.VERSION} ' \
             f'({platform.system()} {platform.version()}; {platform.machine()})'
@@ -101,7 +103,7 @@ def getModId(url: str) -> int:
     return int(match.group(1))
 
 
-async def getUserInformation(apikey: str) -> dict:
+async def getUserInformation(apikey: str) -> dict[Any, Any]:
     if not apikey:
         raise NoAPIKeyError()
     try:
@@ -111,11 +113,11 @@ async def getUserInformation(apikey: str) -> dict:
             timeout=5.0
         )
     except HTTPStatusError as e:
-        raise RequestError(request=e.request, response=e.response, kind=str(e))
+        raise RequestError(request=e.request, response=e.response, kind=str(e)) from e
     except HTTPXRequestError as e:
-        raise RequestError(request=e.request, response=None, kind=str(e))
+        raise RequestError(request=e.request, response=None, kind=str(e)) from e
     except HTTPError as e:
-        raise RequestError(request=None, response=None, kind=str(e))
+        raise RequestError(request=None, response=None, kind=str(e)) from e
     if user.status_code == 429:
         raise RequestLimitReachedError()
     if user.status_code == 404:
@@ -127,10 +129,10 @@ async def getUserInformation(apikey: str) -> dict:
     json = user.json()
     if not isinstance(json, dict):
         raise ResponseContentError(f'Unexpected response: expected dict, got {type(json).__name__}')
-    return json
+    return json  # type: ignore
 
 
-async def getModInformation(md5hash: str) -> list:
+async def getModInformation(md5hash: str) -> list[Any]:
     settings = QSettings()
     apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
@@ -143,11 +145,11 @@ async def getModInformation(md5hash: str) -> list:
             timeout=5.0
         )
     except HTTPStatusError as e:
-        raise RequestError(request=e.request, response=e.response, kind=str(e))
+        raise RequestError(request=e.request, response=e.response, kind=str(e)) from e
     except HTTPXRequestError as e:
-        raise RequestError(request=e.request, response=None, kind=str(e))
+        raise RequestError(request=e.request, response=None, kind=str(e)) from e
     except HTTPError as e:
-        raise RequestError(request=None, response=None, kind=str(e))
+        raise RequestError(request=None, response=None, kind=str(e)) from e
     if info.status_code == 429:
         raise RequestLimitReachedError()
     if info.status_code == 404:
@@ -159,10 +161,10 @@ async def getModInformation(md5hash: str) -> list:
     json = info.json()
     if not isinstance(json, list):
         raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
-    return json
+    return json  # type: ignore
 
 
-async def getModFiles(modid: int) -> dict:
+async def getModFiles(modid: int) -> dict[Any, Any]:
     settings = QSettings()
     apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
@@ -175,11 +177,11 @@ async def getModFiles(modid: int) -> dict:
             timeout=5.0
         )
     except HTTPStatusError as e:
-        raise RequestError(request=e.request, response=e.response, kind=str(e))
+        raise RequestError(request=e.request, response=e.response, kind=str(e)) from e
     except HTTPXRequestError as e:
-        raise RequestError(request=e.request, response=None, kind=str(e))
+        raise RequestError(request=e.request, response=None, kind=str(e)) from e
     except HTTPError as e:
-        raise RequestError(request=None, response=None, kind=str(e))
+        raise RequestError(request=None, response=None, kind=str(e)) from e
     if files.status_code == 429:
         raise RequestLimitReachedError()
     if files.status_code == 404:
@@ -192,11 +194,11 @@ async def getModFiles(modid: int) -> dict:
         raise ResponseError(f'Unexpected response: Status {files.status_code}')
     json = files.json()
     if not isinstance(json, dict):
-        raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
-    return json
+        raise ResponseContentError(f'Unexpected response: expected dict, got {type(json).__name__}')
+    return json  # type: ignore
 
 
-async def getModFileUrls(modid: int, fileid: int) -> list:
+async def getModFileUrls(modid: int, fileid: int) -> list[Any]:
     settings = QSettings()
     apikey = str(settings.value('nexusAPIKey', ''))
     if not apikey:
@@ -209,11 +211,11 @@ async def getModFileUrls(modid: int, fileid: int) -> list:
             timeout=5.0
         )
     except HTTPStatusError as e:
-        raise RequestError(request=e.request, response=e.response, kind=str(e))
+        raise RequestError(request=e.request, response=e.response, kind=str(e)) from e
     except HTTPXRequestError as e:
-        raise RequestError(request=e.request, response=None, kind=str(e))
+        raise RequestError(request=e.request, response=None, kind=str(e)) from e
     except HTTPError as e:
-        raise RequestError(request=None, response=None, kind=str(e))
+        raise RequestError(request=None, response=None, kind=str(e)) from e
     if files.status_code == 429:
         raise RequestLimitReachedError()
     if files.status_code == 404:
@@ -227,7 +229,7 @@ async def getModFileUrls(modid: int, fileid: int) -> list:
     json = files.json()
     if not isinstance(json, list):
         raise ResponseContentError(f'Unexpected response: expected list, got {type(json).__name__}')
-    return json
+    return json  # type: ignore
 
 
 async def downloadFile(url: str, target: Path) -> None:
@@ -243,39 +245,38 @@ async def downloadFile(url: str, target: Path) -> None:
 
 def downloadFileSync(url: str, target: Path, apikey: str) -> None:
     try:
-        with target.open('wb') as file:
-            with stream(
-                'GET',
-                url,
-                headers={
-                'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
-                timeout=250.0
-            ) as download:
-                if download.status_code == 429:
-                    raise RequestLimitReachedError()
-                if download.status_code == 404:
-                    raise NotFoundError(f'No file with URL {url} found')
-                if download.status_code == 403:
-                    raise NoPremiumMembershipException()
-                if download.status_code == 401:
-                    raise UnauthorizedError()
-                if download.status_code != 200:
-                    raise ResponseError(f'Unexpected response: Status {download.status_code}')
-                for data in download.iter_bytes():
-                    file.write(data)
+        with target.open('wb') as file, stream(
+            'GET',
+            url,
+            headers={
+            'apikey'.encode('ascii'): apikey.strip().encode('ascii', 'backslashreplace')},
+            timeout=250.0
+        ) as download:
+            if download.status_code == 429:
+                raise RequestLimitReachedError()
+            if download.status_code == 404:
+                raise NotFoundError(f'No file with URL {url} found')
+            if download.status_code == 403:
+                raise NoPremiumMembershipException()
+            if download.status_code == 401:
+                raise UnauthorizedError()
+            if download.status_code != 200:
+                raise ResponseError(f'Unexpected response: Status {download.status_code}')
+            for data in download.iter_bytes():
+                file.write(data)
     except HTTPStatusError as e:
-        raise RequestError(request=e.request, response=e.response, kind=str(e))
+        raise RequestError(request=e.request, response=e.response, kind=str(e)) from e
     except HTTPXRequestError as e:
-        raise RequestError(request=e.request, response=None, kind=str(e))
+        raise RequestError(request=e.request, response=None, kind=str(e)) from e
     except HTTPError as e:
-        raise RequestError(request=None, response=None, kind=str(e))
+        raise RequestError(request=None, response=None, kind=str(e)) from e
 
 
 def getCategoryName(categoryid: int) -> str:
     try:
         return __modCategories[categoryid]
     except KeyError as e:
-        logger.debug(f'Unknown category: {str(e)}')
+        logger.debug(f'Unknown category: {e!s}')
     return ''
 
 

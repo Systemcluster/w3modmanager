@@ -1,19 +1,18 @@
 import w3modmanager
+
 from w3modmanager.core.model import Model
-from w3modmanager.util.util import *
-from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.bin.merger import verifyScriptMergerPath
+from w3modmanager.domain.mod.fetcher import *
+from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 from w3modmanager.ui.graphical.mainwidget import MainWidget
 from w3modmanager.ui.graphical.settingswindow import SettingsWindow
-from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
+from w3modmanager.util.util import *
 
 from typing import Any
 
-from PySide6.QtCore import QSize, QSettings, Qt, QUrl
-from PySide6.QtWidgets import QMainWindow, QMenuBar, \
-    QFileDialog, QMessageBox, QMenu, QApplication
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QPainter, \
-    QBrush, QColor, QDesktopServices
+from PySide6.QtCore import QSettings, QSize, Qt, QUrl
+from PySide6.QtGui import QBrush, QCloseEvent, QColor, QDesktopServices, QIcon, QPainter, QPixmap
+from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow, QMenu, QMenuBar, QMessageBox
 
 
 class MainWindow(QMainWindow):
@@ -270,7 +269,7 @@ class MainWindow(QMainWindow):
         return dialog
 
     def showAddModFromFileDialog(self) -> QFileDialog:
-        extensions = ' '.join(map(lambda e: f'*{e}', util.getSupportedExtensions()))
+        extensions = ' '.join(f'*{e}' for e in util.getSupportedExtensions())
         dialog: QFileDialog = QFileDialog(self, 'Select Mod(s) to install', '', f'Archives ({extensions})')
         dialog.setOptions(QFileDialog.Option.ReadOnly)
         dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)

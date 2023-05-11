@@ -2,14 +2,14 @@
 Test cases for mod extraction
 """
 
-from .framework import *
-
 from w3modmanager.core.model import *
 from w3modmanager.domain.mod.mod import *
 from w3modmanager.util.util import *
 
+from .framework import *
 
-@pytest.mark.asyncio
+
+@pytest.mark.asyncio()
 async def test_mod_extract_normal(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-normal.zip')
     source = await extractMod(archive)
@@ -21,7 +21,7 @@ async def test_mod_extract_normal(mockdata: Path) -> None:
     assert mod.contentFiles == ['content/blob0.bundle', 'content/metadata.store']
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_mod_extract_long_name(mockdata: Path) -> None:
     archive = mockdata.joinpath('mods/mod-with-long-name.zip')
     source = await extractMod(archive)
