@@ -96,11 +96,14 @@ ENV/
 # mkdocs documentation
 /site
 
-# mypy
-.mypy_cache/
-
 # pytest
 .pytest_cache/
+
+# ruff
+.ruff_cache/
+
+# pdm
+.pdm-python
 
 # editor and project files
 .idea/

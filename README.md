@@ -27,6 +27,7 @@ This list is preliminary and may change before release.
 - Allows enabling and disabling individual mods with proper handling of xml and ini additions
 - Downloads and checks for updates from Nexus Mods
 - Detects mod conflicts and notifies when script merging is required
+- Allows management of manually installed mods
 
 ### Mod Installation
 
@@ -50,9 +51,10 @@ This list is preliminary and may change before release.
 - Automatically detects the game installation path
 - Extracts and installs multiple mods in parallel
 - Requests mod information from Nexus Mods for manually installed mods
+- Imports the configuration from previous mod manager versions
 
 ## Source and Development
 
-Download the source and install the requirements with `pipenv install --python 3`. Python 3.8+ and Pipenv have to be installed.
+Download the source and install the requirements with `pdm install`. Python 3.11+ and `pdm` have to be installed.
 
-Afterwards run with `pipenv run invoke start`. To show the available build and test tasks run `pipenv run invoke --list`.
+Afterwards run with `pdm run invoke start`. To show the available build and test tasks run `pdm run invoke --list`.

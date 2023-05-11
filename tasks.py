@@ -3,25 +3,30 @@ simple invoke task collection
 """
 
 
-from pathlib import Path
-from shutil import rmtree, which
-from distutils.dir_util import copy_tree
-from datetime import datetime, timezone
 import subprocess
 
-from invoke import task
+from datetime import datetime, timezone
+from distutils.dir_util import copy_tree
+from os import environ
+from pathlib import Path
+from shutil import rmtree, which
+from typing import Any
+
+from invoke.tasks import task
 
 
 @task
-def start(ctx, mock=False, clean=False):
+def start(ctx: Any, mock=False, clean=False, configured=True):
     """start the w3modmanager application"""
-    from tests.framework import _mockdata, _root
     import w3modmanager
     import w3modmanager.__main__
-    _testdata = _root.joinpath('testdata')
+
+    from tests.framework import _mockdata, _root  # type: ignore
+
+    testdata = _root.joinpath('testdata')
     if clean:
         print('cleaning up testdata...')
-        rmtree(_testdata, ignore_errors=True)
+        rmtree(testdata, ignore_errors=True)
     git = which('git')
     if git:
         hash = subprocess.run([git, 'rev-parse', '--short=7', 'HEAD'], capture_output=True).stdout
@@ -35,16 +40,19 @@ def start(ctx, mock=False, clean=False):
     if mock:
         from PySide6.QtCore import QSettings
         print('setting up testdata...')
-        copy_tree(str(_mockdata), str(_testdata))
-        QSettings.setDefaultFormat(QSettings.IniFormat)
-        QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(_testdata.joinpath('settings')))
-        w3modmanager.__main__.main(_testdata.joinpath('programs'), _testdata.joinpath('documents'))
+        copy_tree(str(_mockdata), str(testdata))
+        QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+        QSettings.setPath(QSettings.Format.IniFormat, QSettings.Scope.UserScope, str(testdata.joinpath('settings')))
+        if configured:
+            w3modmanager.__main__.main(str(testdata.joinpath('programs')), str(testdata.joinpath('documents')))
+        else:
+            w3modmanager.__main__.main()
     else:
         w3modmanager.__main__.main()
 
 
 @task
-def clean(ctx,):
+def clean(ctx: Any):
     """delete the test and build files"""
     rmtree(Path(__file__).parent.joinpath('build'), ignore_errors=True)
     rmtree(Path(__file__).parent.joinpath('dist'), ignore_errors=True)
@@ -52,7 +60,7 @@ def clean(ctx,):
 
 
 @task
-def build(ctx, clean=False, spec='w3modmanager.spec', version=''):
+def build(ctx: Any, clean=False, spec='w3modmanager.spec', version=''):
     """build the binary distribution"""
     runtime = Path(__file__).parent.joinpath('runtime.py')
     with open(runtime, 'w', encoding='utf-8') as rt:
@@ -72,31 +80,41 @@ def build(ctx, clean=False, spec='w3modmanager.spec', version=''):
                     date = date[:10].replace('-', '.')
                     hook.append(f'w3modmanager.VERSION = \'{date}\'')
         rt.write('\n'.join(hook))
+    dist = Path(__file__).parent.joinpath('dist/w3modmanager')
+    if dist.is_dir():
+        rmtree(dist)
     if clean:
-        result = ctx.run(f'python -m PyInstaller --clean {spec}', env={'PYTHONOPTIMIZE': '2'}).exited
+        result = subprocess.run(
+            f'python -m PyInstaller --clean {spec}', env={**environ.copy(), 'PYTHONOPTIMIZE': '2'}, shell=True
+        ).returncode
     else:
-        result = ctx.run(f'python -m PyInstaller {spec}', env={'PYTHONOPTIMIZE': '2'}).exited
+        result = subprocess.run(
+            f'python -m PyInstaller {spec}', env={**environ.copy(), 'PYTHONOPTIMIZE': '2'}, shell=True
+        ).returncode
     if runtime.is_file():
         runtime.unlink()
     return result
 
 
 @task
-def mypy(ctx,):
-    """check the project files for correctness with mypy"""
-    return ctx.run('python -m mypy -p w3modmanager').exited
+def pyright(ctx: Any):
+    """check the project files for correctness with pyright"""
+    return subprocess.run('python -m pyright -p pyproject.toml', shell=True).returncode
 
 
 @task
-def flake8(ctx, noerror=False):
-    """check the project files for correctness with flake8"""
-    return ctx.run(f'python -m flake8 w3modmanager{" --exit-zero" if noerror else ""}').exited
+def flake8(ctx: Any):
+    """check the project files for correctness with ruff"""
+    return subprocess.run('python -m ruff w3modmanager', shell=True).returncode
 
 
 @task
-def check(ctx,):
+def check(ctx: Any):
     """check the project files for correctness"""
-    results = [flake8(ctx), mypy(ctx)]
+    results = [
+        subprocess.run('python -m pyright -p pyproject.toml', shell=True).returncode,
+        subprocess.run('python -m ruff w3modmanager', shell=True).returncode
+    ]
     successes = results.count(0)
     result = not any(results)
     if result:
@@ -107,6 +125,6 @@ def check(ctx,):
 
 
 @task
-def test(ctx,):
+def test(ctx: Any, changes=False):
     """runs the test suite"""
-    return ctx.run('python -m pytest')
+    return subprocess.run(f'python -m pytest --verbose {"--picked --mode=branch" if changes else ""}', shell=True).returncode

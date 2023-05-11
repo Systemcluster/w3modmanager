@@ -1,0 +1,137 @@
+[project]
+name = "w3modmanager"
+description = "Mod manager for The Witcher 3"
+version = "0.0.0"
+requires-python = ">=3.11,<3.12"
+license = { text = "BSD-2-Clause" }
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [{ name = "Christian Sdunek", email = "me@systemcluster.me" }]
+keywords = ["witcher-3", "mod-manager", "modding", "games", "w3mm"]
+urls = { repository = "https://github.com/Systemcluster/w3modmanager" }
+
+dependencies = [
+    "fasteners>=0.18",
+    "PySide6>=6.5",
+    "loguru>=0.7",
+    "vdf>=3.4",
+    "appdirs>=1.4",
+    "pywin32>=306",
+    "charset-normalizer>=3.1",
+    "httpx>=0.24",
+    "qasync>=0.24",
+    "dateparser>=1.1",
+    "dataclasses-json>=0.5",
+]
+
+[tool.pdm]
+allow_prereleases = true
+
+[tool.pdm.dev-dependencies]
+lint = [
+    "ruff>=0.0.269",
+    "pyright>=1.1",
+    "types-dateparser>=1.1",
+    "autopep8>=2.0",
+]
+test = [
+    "pytest>=7.3",
+    "pytest-asyncio>=0.21",
+]
+build = [
+    "pyinstaller>=5.11",
+    "invoke>=2.1",
+]
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pyright]
+include = ["w3modmanager", "tests", "tasks.py"]
+typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
+reportMissingTypeStubs = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnnecessaryIsInstance = "none"
+reportUnnecessaryCast = "none"
+reportUnnecessaryComparison = "none"
+reportUnknownVariableType = "none"
+reportIncompatibleMethodOverride = "none"
+reportMissingParameterType = "none"
+
+[tool.ruff]
+select = [
+    "E",
+    "F",
+    "W",
+    "ANN",
+    "ASYNC",
+    "SIM",
+    "PIE",
+    "S",
+    "B",
+    "A",
+    "C4",
+    "ERA",
+    "T20",
+    "PT",
+    "PLC",
+    "PLE",
+    "PLW",
+    "Q",
+    "I",
+    "UP",
+    "DTZ",
+    "RUF",
+]
+ignore = [
+    "F403",
+    "F405",
+    "F541",
+    "S101",
+    "S303",
+    "PT003",
+    "ANN101",
+    "ANN401",
+    "SIM102",
+    "SIM108",
+    "UP017",
+]
+unfixable = ["ERA001"]
+format = "pylint"
+exclude = ["tasks.py"]
+line-length = 120
+show-source = false
+
+[tool.ruff.flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "single"
+docstring-quotes = "double"
+avoid-escape = false
+
+[tool.ruff.isort]
+section-order = [
+    "future",
+    "first-party",
+    "local-folder",
+    "standard-library",
+    "third-party",
+]
+lines-after-imports = 2
+lines-between-types = 1
+
+[tool.autopep8]
+max_line_length = 120
+ignore = [
+    "E122",
+    "E303",
+    "E502",
+    "W503",
+]
