@@ -459,6 +459,9 @@ class ModList(QTableView):
             logger.bind(name=mod.filename).warning(f'{e}')
             return False
         try:
+            details = [d for d in details if bool(d['mod']['available']) is True]
+            details.sort(key=lambda d: d['mod']['updated_timestamp'], reverse=True)
+
             package = str(details[0]['mod']['name'])
             summary = str(details[0]['mod']['summary'])
             modid = int(details[0]['mod']['mod_id'])
@@ -715,6 +718,9 @@ class ModList(QTableView):
                     if details:
                         # set additional details if requested and available
                         try:
+                            details = [d for d in details if bool(d['mod']['available']) is True]
+                            details.sort(key=lambda d: d['mod']['updated_timestamp'], reverse=True)
+
                             package = str(details[0]['mod']['name'])
                             summary = str(details[0]['mod']['summary'])
                             modid = int(details[0]['mod']['mod_id'])
