@@ -189,8 +189,10 @@ class ModList(QTableView):
         if len(model):
             self.modCountLastUpdate = len(model)
             self.resizeColumnsToContents()
+        elif settings.value('modlistLastUpdate') is not None:
+            self.modCountLastUpdate = cast(int, settings.value('modlistLastUpdate', 0, int))
         else:
-            self.modCountLastUpdate = -1
+            self.modCountLastUpdate = 0
 
         if settings.value('modlistHorizontalHeaderState'):
             self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
@@ -253,6 +255,8 @@ class ModList(QTableView):
             # if list was empty before, auto resize columns
             self.resizeColumnsToContents()
         self.modCountLastUpdate = len(self.modmodel)
+        settings = QSettings()
+        settings.setValue('modlistLastUpdate', self.modCountLastUpdate)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.hoverIndexRow = self.indexAt(event.pos()).row()
