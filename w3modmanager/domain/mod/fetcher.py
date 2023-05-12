@@ -220,6 +220,12 @@ class BinFile:
         else:
             return f'\'{self.source!s} ({self.target!s})\''
 
+    def __str__(self) -> str:
+        if self.source == self.target:
+            return '%s' % str(self.source)
+        else:
+            return f'{self.source!s} ({self.target!s})'
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BinFile):
             return self.source == other.source and self.target == other.target
@@ -249,6 +255,9 @@ class ContentFile(DataClassJsonMixin):
     def __repr__(self) -> str:
         return '\'%s\'' % str(self.source)
 
+    def __str__(self) -> str:
+        return str(self.source)
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, ContentFile):
             return self.source == other.source
@@ -272,6 +281,9 @@ class BundledFile(DataClassJsonMixin):
 
     def __repr__(self) -> str:
         return f'\'{self.source!s}\' (\'{self.bundled!s}\')'
+
+    def __str__(self) -> str:
+        return f'{self.source!s} ({self.bundled!s})'
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BundledFile):
@@ -316,6 +328,11 @@ class Settings(DataClassJsonMixin):
 
     def __repr__(self) -> str:
         return '\'{}\': {}'.format(
+            str(self.source),
+            str({section: dict(self.config[section]) for section in self.config.sections()}))
+
+    def __str__(self) -> str:
+        return '{}: {}'.format(
             str(self.source),
             str({section: dict(self.config[section]) for section in self.config.sections()}))
 

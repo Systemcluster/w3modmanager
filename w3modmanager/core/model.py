@@ -59,8 +59,8 @@ ModelIndexType = Mod | tuple[str, str] | int
 
 @dataclass
 class ModelConflicts:
-    bundled: dict[str, list[BundledFile]] = field(default_factory=dict)
-    scripts: dict[str, list[ContentFile]] = field(default_factory=dict)
+    bundled: dict[str, dict[BundledFile, str]] = field(default_factory=dict)
+    scripts: dict[str, dict[ContentFile, str]] = field(default_factory=dict)
     iteration: int = 0
 
     @classmethod
@@ -68,20 +68,20 @@ class ModelConflicts:
         cls: type[ModelConflicts], modList: dict[tuple[str, str], Mod], iteration: int
     ) -> ModelConflicts:
         existingsBundled: dict[BundledFile, str] = {}
-        conflictsBundled: dict[str, list[BundledFile]] = {}
+        conflictsBundled: dict[str, dict[BundledFile, str]] = {}
         existingsScripts: dict[ContentFile, str] = {}
-        conflictsScripts: dict[str, list[ContentFile]] = {}
+        conflictsScripts: dict[str, dict[ContentFile, str]] = {}
         for mod in sorted(mod for mod in modList.values() if mod.enabled and mod.datatype in ('mod', 'udf',)):
-            conflictsBundled[mod.filename] = []
-            conflictsScripts[mod.filename] = []
+            conflictsBundled[mod.filename] = {}
+            conflictsScripts[mod.filename] = {}
             for bundledFile in mod.bundledFiles:
                 if bundledFile in existingsBundled:
-                    conflictsBundled[mod.filename].append(bundledFile)
+                    conflictsBundled[mod.filename][bundledFile] = existingsBundled[bundledFile]
                 else:
                     existingsBundled[bundledFile] = mod.filename
             for scriptFile in mod.scriptFiles:
                 if scriptFile in existingsScripts:
-                    conflictsScripts[mod.filename].append(scriptFile)
+                    conflictsScripts[mod.filename][scriptFile] = existingsScripts[scriptFile]
                 else:
                     existingsScripts[scriptFile] = mod.filename
         return cls(

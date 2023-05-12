@@ -3,6 +3,7 @@ from w3modmanager.core.model import Model
 from w3modmanager.domain.mod.fetcher import *
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.domain.web.nexus import RequestError, ResponseError, downloadFile, getCategoryName, getModInformation
+from w3modmanager.ui.graphical.detailswindow import DetailsWindow
 from w3modmanager.ui.graphical.modlistmodel import ModListModel
 from w3modmanager.util.util import *
 
@@ -335,6 +336,11 @@ class ModList(QTableView):
         menu = QMenu(self)
         menu.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
         menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        actionDetails = menu.addAction('&Show Details')
+        actionDetails.triggered.connect(lambda: [
+            self.showSelectedModsDetails()
+        ])
+        menu.addSeparator()
         actionOpen = menu.addAction('&Open Directory')
         actionOpen.setIcon(QIcon(str(getRuntimePath('resources/icons/open-folder.ico'))))
         actionOpen.triggered.connect(lambda: [
@@ -528,6 +534,12 @@ class ModList(QTableView):
         if mod is not None and mod.datatype in ('mod', 'udf',):
             await self.modmodel.setPriority(mod, max(-1, min(9999, int(mod.priority + delta))))
             self.modmodel.setLastUpdateTime(datetime.now(tz=timezone.utc))
+
+    def showSelectedModsDetails(self) -> None:
+        mods = self.getSelectedMods()
+        for mod in mods:
+            details = DetailsWindow(self, mod, self.modmodel)
+            details.open()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
