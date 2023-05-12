@@ -533,6 +533,15 @@ class Model:
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
 
+    def writeModsSettings(self) -> None:
+        for mod in self._modList.values():
+            if mod.target == 'mods':
+                setSettingsValue(mod.filename, 'Priority', str(mod.priority) if mod.priority >= 0 else '',
+                                 self.configpath.joinpath('mods.settings'))
+                setSettingsValue(mod.filename, 'Enabled', '1' if mod.enabled else '0',
+                                 self.configpath.joinpath('mods.settings'))
+
+
     def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks: bool = True) -> None:
         self.lastUpdate = time
         if fireUpdateCallbacks:

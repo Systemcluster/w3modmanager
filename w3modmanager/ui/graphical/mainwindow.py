@@ -93,6 +93,10 @@ class MainWindow(QMainWindow):
         actionGetUpdates.triggered.connect(self.showGetUpdatesDialog)
 
         menuMods.addSeparator()
+        actionWritePriorities = menuMods.addAction('&Write Mod settings')
+        actionWritePriorities.triggered.connect(lambda: self.model.writeModsSettings())
+
+        menuMods.addSeparator()
         actionExport = menuMods.addAction('&Export Modlist')
         actionExport.triggered.connect(self.showExportDialog)
 
