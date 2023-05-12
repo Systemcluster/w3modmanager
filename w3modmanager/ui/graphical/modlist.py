@@ -523,6 +523,8 @@ class ModList(QTableView):
 
     async def changeSelectedModsPriority(self, delta: int) -> None:
         mods = self.getSelectedMods()
+        if len(mods) == 0:
+            return
         await asyncio.gather(*[
             self.modmodel.setPriority(mod, max(-1, min(9999, int(mod.priority + delta))))
             for mod in mods if mod.datatype in ('mod', 'udf',)
@@ -564,7 +566,10 @@ class ModList(QTableView):
             createAsyncTask(self.changeSelectedModsPriority(-1), self.tasks)
         elif event.modifiers() & Qt.KeyboardModifier.ControlModifier == Qt.KeyboardModifier.ControlModifier \
                 and event.key() == Qt.Key.Key_P:
-            index = cast(QModelIndex, self.selectionModel().selectedRows()[0])
+            rows = self.selectionModel().selectedRows()
+            if len(rows) == 0:
+                return
+            index = cast(QModelIndex, rows[0])
             index = index.sibling(index.row(), 5)
             if index.flags() & Qt.ItemFlag.ItemIsEditable:
                 self.setCurrentIndex(index)
