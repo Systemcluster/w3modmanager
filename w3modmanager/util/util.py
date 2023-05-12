@@ -208,8 +208,8 @@ def openExecutable(path: Path, once: bool = False) -> None:
 
 
 def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess[bytes]:
-    exe = str(getRuntimePath('tools/quickbms/quickbms.exe'))
-    script = str(getRuntimePath('tools/quickbms/witcher3.bms'))
+    exe = str(getRuntimePath('resources/tools/quickbms/quickbms.exe'))
+    script = str(getRuntimePath('resources/tools/quickbms/witcher3.bms'))
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
@@ -246,7 +246,7 @@ def extractArchive(archive: Path, target: Path) -> None:
     if os.path.exists(target):
         removeDirectory(target)
     target.mkdir(parents=True)
-    exe = str(getRuntimePath('tools/7zip/7z.exe'))
+    exe = str(getRuntimePath('resources/tools/7zip/7z.exe'))
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
