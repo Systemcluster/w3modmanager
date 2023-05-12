@@ -391,6 +391,12 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                         Path('bin/config/r4game/user_config_matrix/pc').joinpath(relpath.name)))
                     continue
 
+            # detect loose ini files
+            if re.match(r'.+\.ini', relpath.name, re.IGNORECASE):
+                bins.append(BinFile(
+                    relpath,
+                    Path('bin/config/platform/pc').joinpath(relpath.name)))
+
             # detect dll and asi files
             if re.match(r'.+(\.dll|\.asi)$', relpath.name, re.IGNORECASE):
                 bins.append(BinFile(
