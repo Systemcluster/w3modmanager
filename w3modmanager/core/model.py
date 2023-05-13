@@ -86,11 +86,15 @@ class Model:
         self._dlcsPath: Path = Path()
 
         self._modList: dict[tuple[str, str], Mod] = {}
+        self._lock = None
+        self._pool = None
 
         _cachePath = verifyCachePath(cachePath)
         if not _cachePath:
             raise InvalidCachePath(cachePath)
         self._cachePath = _cachePath
+
+        self.setPaths(gamePath, configPath)
 
         self.updateCallbacks = CallbackList()
         self.updateLock = asyncio.Lock()
@@ -103,8 +107,6 @@ class Model:
             self._lock = InterProcessLock(self.lockfile)
             if not self._lock.acquire(False):
                 raise OtherInstanceError(self.lockfile)
-
-        self.setPaths(gamePath, configPath)
 
         self._modsSettings = WatchedConfigFile(self.configpath.joinpath('mods.settings'))
         self._modsSettings.watcher.callbacks.append(lambda _: self.readModsSettings())
@@ -593,6 +595,12 @@ class Model:
 
     def __iter__(self) -> Iterator[tuple[str, str]]:
         yield from self._modList
+
+    def __del__(self) -> None:
+        if self._lock is not None and self._lock.acquired:
+            self._lock.release()
+        if self._pool is not None:
+            self._pool.shutdown(wait=False)
 
     @property
     def lockfile(self) -> Path:
