@@ -66,6 +66,15 @@ def getMD5Hash(path: Path) -> str:
     return hash_md5.hexdigest()
 
 
+def getXXHash(path: Path) -> str:
+    import xxhash
+    hash_xx = xxhash.xxh32(seed=0)
+    with path.open('rb') as file:
+        for chunk in iter(lambda: file.read(4096), b''):
+            hash_xx.update(chunk)
+    return hash_xx.hexdigest()
+
+
 def getRuntimePath(subpath: Path | str | None) -> Path:
     if subpath:
         return Path(w3modmanager.__file__).parent.parent.joinpath(subpath).resolve()

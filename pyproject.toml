@@ -22,6 +22,7 @@ dependencies = [
     "dateparser>=1.1",
     "dataclasses-json>=0.5",
     "watchdog>=3.0",
+    "xxhash>=3.2",
 ]
 
 [tool.pdm]

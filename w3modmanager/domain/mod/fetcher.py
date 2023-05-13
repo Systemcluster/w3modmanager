@@ -251,6 +251,7 @@ class BinFile:
 @dataclass
 class ContentFile(DataClassJsonMixin):
     source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
+    hash: str = ''  # noqa: A003
 
     def __repr__(self) -> str:
         return '\'%s\'' % str(self.source)
@@ -490,7 +491,7 @@ def fetchContentFiles(path: Path) -> list[ContentFile]:
     for check in dirs:
         if check.is_dir() and check.name == 'content':
             contents.extend([
-                ContentFile(x.relative_to(path))
+                ContentFile(x.relative_to(path), util.getXXHash(x))
                 for x in check.glob('**/*') if x.is_file()
             ])
         else:
@@ -502,7 +503,7 @@ def fetchPatchFiles(path: Path) -> list[ContentFile]:
     contents = []
     for check in sorted(d for d in path.iterdir() if d.is_dir() and d.name == 'content'):
         contents.extend([
-            ContentFile(x.relative_to(path))
+            ContentFile(x.relative_to(path), util.getXXHash(x))
             for x in sorted(check.glob('**/*')) if x.is_file()
         ])
     return contents
