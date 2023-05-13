@@ -14,12 +14,9 @@ from w3modmanager.core.errors import (
 )
 from w3modmanager.domain.bin.modifier import (
     addSettings,
-    getSettingsValue,
     removeSettings,
-    removeSettingsSection,
-    renameSettingsSection,
-    setSettingsValue,
 )
+from w3modmanager.domain.bin.watcher import CallbackList, WatchedConfigFile
 from w3modmanager.domain.mod.fetcher import BundledFile, ContentFile
 from w3modmanager.domain.mod.mod import Mod
 from w3modmanager.util.util import debounce, removeDirectory
@@ -28,29 +25,16 @@ import asyncio
 import contextlib
 import re
 
-from collections.abc import Callable, Iterator, KeysView, ValuesView
+from collections.abc import Iterator, KeysView, ValuesView
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from shutil import copyfile
-from typing import Any
 
 from fasteners import InterProcessLock
 from loguru import logger
-
-
-class CallbackList(list[Callable[..., Any]]):
-    def __init__(self) -> None:
-        self.fireLock = asyncio.Lock()
-        super().__init__()
-
-    @debounce(25)
-    async def fire(self, *args: Any, **kwargs: Any) -> None:
-        async with self.fireLock:
-            for listener in self:
-                listener(*args, **kwargs)
 
 
 ModelIndexType = Mod | tuple[str, str] | int
@@ -122,6 +106,9 @@ class Model:
 
         self.setPaths(gamePath, configPath)
 
+        self._modsSettings = WatchedConfigFile(self.configpath.joinpath('mods.settings'))
+        self._modsSettings.watcher.callbacks.append(lambda _: self.readModsSettings())
+
         # TODO: enhancement: watch mod directory for changes
 
         logger.debug('Initialized model')
@@ -184,9 +171,13 @@ class Model:
             mod.enabled = not path.name.startswith('~')
             mod.filename = re.sub(r'^(~)', r'', path.name)
             if mod.enabled:
-                enabled = getSettingsValue(mod.filename, 'Enabled', self.configpath.joinpath('mods.settings'))
+                enabled = self._modsSettings.getValue(mod.filename, 'Enabled', '1')
                 if enabled == '0':
                     mod.enabled = False
+                priority = self._modsSettings.getValue(mod.filename, 'Priority', fallback=mod.priority)
+                with contextlib.suppress(ValueError):
+                    mod.priority = int(priority)
+
             if (mod.filename, mod.target) in self._modList:
                 logger.bind(path=path).error('Ignoring duplicate MOD')
                 if not self._modList[(mod.filename, mod.target)].enabled:
@@ -201,18 +192,12 @@ class Model:
                     mod.target = 'mods'
                     mod.enabled = not path.name.startswith('~')
                     mod.filename = re.sub(r'^(~)', r'', path.name)
-                    priority = getSettingsValue(
-                        mod.filename, 'Priority',
-                        self.configpath.joinpath('mods.settings')
-                    )
+                    priority = self._modsSettings.getValue(mod.filename, 'Priority', mod.priority)
                     with contextlib.suppress(ValueError):
-                        mod.priority = int(priority) if priority else mod.priority
+                        mod.priority = int(priority)
 
                     if mod.enabled:
-                        enabled = getSettingsValue(
-                            mod.filename, 'Enabled',
-                            self.configpath.joinpath('mods.settings')
-                        )
+                        enabled = self._modsSettings.getValue(mod.filename, 'Enabled', '1')
                         if enabled == '0':
                             mod.enabled = False
                     if (mod.filename, mod.target) in self._modList:
@@ -318,7 +303,7 @@ class Model:
                 logger.bind(name=mod.filename, path=target).debug('Updating settings')
                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 inputs = addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-                setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
+                self._modsSettings.setValue(mod.filename, 'Enabled', '1')
                 await self.update(mod)
             except Exception as e:
                 removeDirectory(target)
@@ -326,9 +311,10 @@ class Model:
                     removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-                removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
+                self._modsSettings.removeSection(mod.filename)
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
+        self._modsSettings.write()
         self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -363,11 +349,9 @@ class Model:
                     removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
                 except Exception as e:
                     logger.bind(name=mod.filename).warning(f'Could not remove settings from input.settings: {e}')
-                try:
-                    removeSettingsSection(mod.filename, self.configpath.joinpath('mods.settings'))
-                except Exception as e:
-                    logger.bind(name=mod.filename).warning(f'Could not remove settings from mods.settings: {e}')
+                self._modsSettings.removeSection(mod.filename)
                 del self._modList[(mod.filename, mod.target)]
+            self._modsSettings.write()
             self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -388,7 +372,7 @@ class Model:
                     if oldpath != newpath:
                         oldpath.rename(newpath)
                         renamed = True
-                    setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
+                    self._modsSettings.setValue(mod.filename, 'Enabled', '1')
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
                         while file.is_file() and file.suffix == '.disabled':
@@ -416,10 +400,11 @@ class Model:
                     removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     removeSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-                if mod.target == 'mods':
-                    setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
+                if mod.datatype in ('mod', 'udf',):
+                    self._modsSettings.setValue(mod.filename, 'Enabled', '0')
         # TODO: incomplete: handle xml and ini changes
         if not undo:
+            self._modsSettings.write()
             self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
             return True
@@ -442,7 +427,8 @@ class Model:
                     if oldpath != newpath:
                         oldpath.rename(newpath)
                         renamed = True
-                    setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
+                    if mod.datatype in ('mod', 'udf',):
+                        self._modsSettings.setValue(mod.filename, 'Enabled', '0')
                 if mod.target == 'dlc':
                     for file in oldpath.glob('**/*'):
                         if file.is_file() and file.name != '.w3mm' and file.suffix != '.disabled':
@@ -469,10 +455,11 @@ class Model:
                     addSettings(mod.settings, self.configpath.joinpath('user.settings'))
                 if inputs:
                     addSettings(mod.inputs, self.configpath.joinpath('input.settings'))
-                if mod.target == 'mods':
-                    setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
+                if mod.target == 'mods' and mod.datatype in ('mod', 'udf',):
+                    self._modsSettings.setValue(mod.filename, 'Enabled', '1')
         # TODO: incomplete: handle xml and ini changes
         if not undo:
+            self._modsSettings.write()
             self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
             return True
@@ -491,7 +478,7 @@ class Model:
                 if oldpath != newpath:
                     oldpath.rename(newpath)
                     renamed = True
-                renameSettingsSection(oldname, filename, self.configpath.joinpath('mods.settings'))
+                self._modsSettings.renameSection(oldname, filename)
                 await self.update(mod)
             except PermissionError:
                 logger.bind(path=oldpath).exception(
@@ -504,6 +491,8 @@ class Model:
                 mod.filename = oldname
                 if renamed:
                     newpath.rename(oldpath)
+                self._modsSettings.renameSection(filename, oldname)
+        self.writeModsSettings()
         self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
@@ -526,20 +515,35 @@ class Model:
             mod = self[mod]
             mod.priority = priority
             if mod.target == 'mods':
-                setSettingsValue(mod.filename, 'Priority', str(priority) if priority >= 0 else '',
-                                 self.configpath.joinpath('mods.settings'))
+                self._modsSettings.setValue(mod.filename, 'Priority', str(priority) if priority >= 0 else '')
             await self.update(mod)
+        self._modsSettings.write()
         self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc), False)
 
 
+    def readModsSettings(self) -> None:
+        if len(self._modList) == 0:
+            return
+        for mod in self._modList.values():
+            if mod.datatype not in ('mod', 'udf',):
+                continue
+            enabled = self._modsSettings.getValue(mod.filename, 'Enabled', fallback='1' if mod.enabled else '0')
+            priority = self._modsSettings.getValue(mod.filename, 'Priority', fallback=mod.priority)
+            mod.enabled = enabled == '1'
+            with contextlib.suppress(ValueError):
+                mod.priority = int(priority)
+
+        self.updateBundledContentsConflicts()
+        self.setLastUpdateTime(datetime.now(tz=timezone.utc))
+
     def writeModsSettings(self) -> None:
         for mod in self._modList.values():
-            if mod.target == 'mods':
-                setSettingsValue(mod.filename, 'Priority', str(mod.priority) if mod.priority >= 0 else '',
-                                 self.configpath.joinpath('mods.settings'))
-                setSettingsValue(mod.filename, 'Enabled', '1' if mod.enabled else '0',
-                                 self.configpath.joinpath('mods.settings'))
+            if mod.datatype not in ('mod', 'udf',):
+                continue
+            self._modsSettings.setValue(mod.filename, 'Enabled', '1' if mod.enabled else '0')
+            self._modsSettings.setValue(mod.filename, 'Priority', str(mod.priority) if mod.priority >= 0 else '')
+        self._modsSettings.write()
 
 
     def setLastUpdateTime(self, time: datetime, fireUpdateCallbacks: bool = True) -> None:
