@@ -275,6 +275,33 @@ class ContentFile(DataClassJsonMixin):
 
 
 @dataclass
+class ReadmeFile(DataClassJsonMixin):
+    source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
+    content: str
+
+    def __repr__(self) -> str:
+        return '\'%s\'' % str(self.source)
+
+    def __str__(self) -> str:
+        return str(self.source)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ReadmeFile):
+            return self.source == other.source
+        if isinstance(other, str):
+            return self.source == Path(other)
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self.source)
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ReadmeFile):
+            return self.source < other.source
+        return False
+
+
+@dataclass
 class BundledFile(DataClassJsonMixin):
     source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
     bundled: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
@@ -437,6 +464,24 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
             )
         )
     return (bins, user, inpu)
+
+
+def fetchReadmeFiles(path: Path, onlyUngrouped: bool = False) -> list[ReadmeFile]:
+    contents = []
+    dirs = [path]
+    for check in dirs:
+        for file in sorted(
+            f for f in check.iterdir()
+            if f.is_file() and f.suffix.lower() in ('.txt', '.md')
+        ):
+            relpath: Path = file.relative_to(path)
+            if re.match(r'^(.*readme.*)\.(txt|md)', file.name, re.IGNORECASE):
+                contents.append(ReadmeFile(relpath, util.readText(file)))
+            dirs += sorted(
+                d for d in check.iterdir()
+                if d.is_dir() and not onlyUngrouped
+            )
+    return contents
 
 
 def fetchContentFiles(path: Path) -> list[ContentFile]:

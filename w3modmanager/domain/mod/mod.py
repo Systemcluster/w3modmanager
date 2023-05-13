@@ -40,6 +40,7 @@ class Mod(DataClassJsonMixin):
     settings: list[UserSettings] = field(default_factory=list)
     inputs: list[InputSettings] = field(default_factory=list)
     bundled: list[BundledFile] = field(default_factory=list)
+    readmes: list[ReadmeFile] = field(default_factory=list)
 
     dataversion: int = 1
 
@@ -106,6 +107,10 @@ class Mod(DataClassJsonMixin):
     def bundledFiles(self) -> list[BundledFile]:
         return self.bundled
 
+    @property
+    def readmeFiles(self) -> list[ReadmeFile]:
+        return self.readmes
+
 
     @classmethod
     async def fromDirectory(
@@ -132,6 +137,7 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    readmes = fetchReadmeFiles(check)
                     bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
@@ -151,7 +157,8 @@ class Mod(DataClassJsonMixin):
                         settings=settings,
                         inputs=inputs,
                         contents=contents,
-                        bundled=bundled
+                        bundled=bundled,
+                        readmes=readmes
                     ))
                     continue
                 # fetch dlc dirs
@@ -161,6 +168,7 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    readmes = fetchReadmeFiles(check)
                     bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
@@ -180,7 +188,8 @@ class Mod(DataClassJsonMixin):
                         settings=settings,
                         inputs=inputs,
                         contents=contents,
-                        bundled=bundled
+                        bundled=bundled,
+                        readmes=readmes
                     ))
                     continue
                 # fetch unspecified mod or doc dirs
@@ -190,6 +199,7 @@ class Mod(DataClassJsonMixin):
                     size = 0
                     files, settings, inputs = fetchBinFiles(check)
                     contents = fetchContentFiles(check)
+                    readmes = fetchReadmeFiles(check)
                     bundled = []
                     for _file in files:
                         size += check.joinpath(_file.source).stat().st_size
@@ -209,7 +219,8 @@ class Mod(DataClassJsonMixin):
                         settings=settings,
                         inputs=inputs,
                         contents=contents,
-                        bundled=bundled
+                        bundled=bundled,
+                        readmes=readmes
                     ))
                     continue
                 if recursive:
@@ -226,6 +237,7 @@ class Mod(DataClassJsonMixin):
             size = 0
             for file in files:
                 size += commonroot.joinpath(file.source).stat().st_size
+            readmes = fetchReadmeFiles(commonroot, onlyUngrouped=True)
             mods.append(cls(
                 package,
                 filename=name,
@@ -236,7 +248,8 @@ class Mod(DataClassJsonMixin):
                 size=size,
                 files=files,
                 settings=settings,
-                inputs=inputs
+                inputs=inputs,
+                readmes=readmes
             ))
         # fetch patch files
         if len(mods) == 1 and mods[0].filename == 'mod0000____CompilationTrigger':

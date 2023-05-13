@@ -40,7 +40,7 @@ class DetailsWindow(QDialog):
         self.info.setReadOnly(True)
         self.info.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         for field in fields(mod):
-            if field.name in ['files', 'contents', 'settings', 'inputs', 'bundled']:
+            if field.name in ['files', 'contents', 'settings', 'inputs', 'bundled', 'readmes']:
                 continue
             self.info.append(f'<strong>{field.name}</strong>: {getattr(mod, field.name)}')
         self.info.moveCursor(QTextCursor.MoveOperation.Start)
@@ -205,6 +205,25 @@ class DetailsWindow(QDialog):
             self.bundled.setSizeAdjustPolicy(QTextEdit.SizeAdjustPolicy.AdjustToContents)
             self.bundled.verticalScrollBar().setValue(self.bundled.verticalScrollBar().minimum())
             gbBundledLayout.addWidget(self.bundled)
+
+        readmes = mod.readmeFiles
+        if readmes:
+            gbReadmes = QGroupBox('Readmes')
+            gbReadmes.setMinimumHeight(160)
+            innerLayout.addWidget(gbReadmes)
+            innerLayout.setStretchFactor(gbReadmes, 2)
+            gbReadmesLayout = QVBoxLayout(gbReadmes)
+
+            self.readmes = QTextEdit(gbReadmes)
+            self.readmes.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+            self.readmes.setReadOnly(True)
+            self.readmes.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+            for readmeFile in readmes:
+                self.readmes.append(f'<p><pre>{readmeFile.content}</pre></p>')
+            self.readmes.moveCursor(QTextCursor.MoveOperation.Start)
+            self.readmes.setSizeAdjustPolicy(QTextEdit.SizeAdjustPolicy.AdjustToContents)
+            self.readmes.verticalScrollBar().setValue(self.readmes.verticalScrollBar().minimum())
+            gbReadmesLayout.addWidget(self.readmes)
 
         # Setup
 
