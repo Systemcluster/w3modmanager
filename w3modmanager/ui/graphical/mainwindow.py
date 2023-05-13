@@ -324,17 +324,20 @@ class MainWindow(QMainWindow):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('About' if self else getTitleString('About'))
         messagebox.setText(f'''
-            <p style="margin:0 15px 0 0;">
-            <b>{w3modmanager.TITLE} {w3modmanager.VERSION}</b>
-            <small>{f'({w3modmanager.VERSION_HASH})' if w3modmanager.VERSION_HASH else ''}</small><br>
-            {w3modmanager.SUBTITLE}<br>
-            <br>
-            For updates and information visit <br>
-            <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">\
-                {removeUrlScheme(w3modmanager.URL_WEB)}\
-            </a><br>
-            <br>
-            Thank you for using {w3modmanager.TITLE}!
+            <p style="margin:10px 15px 10px 5px;">
+                <b>{w3modmanager.TITLE} {w3modmanager.VERSION}</b>
+                <small>{f'({w3modmanager.VERSION_HASH})' if w3modmanager.VERSION_HASH else ''}</small>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                {w3modmanager.SUBTITLE}
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
+                For updates and information visit <br>
+                <a href="{w3modmanager.URL_WEB}" style="text-decoration:none;">\
+                    {removeUrlScheme(w3modmanager.URL_WEB)}\
+                </a><br>
+                <br>
+                Thank you for using {w3modmanager.TITLE}!
             </p>
             ''')
         # TODO: enhancement: check if new version is available
@@ -355,7 +358,10 @@ class MainWindow(QMainWindow):
         messagebox = QMessageBox(self)
         messagebox.setWindowTitle('Invalid game path' if self else getTitleString('Invalid game path'))
         messagebox.setText(f'''
-            <p style="margin:10px 15px 10px 5px;"><b>Invalid game or config path.</b><br>
+            <p style="margin:10px 15px 10px 5px;">
+                <b>Invalid game or config path.</b>
+            </p>
+            <p style="margin:10px 15px 10px 5px;">
                 Please restart w3modmanager and enter the paths of<br>
                 your The Witcher 3 installation and the game config folder<br>
                 (usually <code>User/Documents/The Witcher 3</code>).
