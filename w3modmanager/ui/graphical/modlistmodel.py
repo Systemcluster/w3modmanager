@@ -7,7 +7,7 @@ from functools import cache
 from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings, Qt
-from PySide6.QtGui import QColor, QFontDatabase, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
 
@@ -75,14 +75,14 @@ class ModListModel(QAbstractTableModel):
         pixmap = QPixmap(str(getRuntimePath('resources/icons/folder.ico')))
         painter = QPainter(pixmap)
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(pixmap.rect(), QColor('#E55934') if colored else QColor('#333333'))
+        painter.fillRect(pixmap.rect(), QColor('#e94600') if colored else QColor('#333333'))
         painter.end()
         self._icons['bin'] = QIcon(pixmap)
 
         pixmap = QPixmap(str(getRuntimePath('resources/icons/patch.ico')))
         painter = QPainter(pixmap)
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        painter.fillRect(pixmap.rect(), QColor('#b08968') if colored else QColor('#333333'))
+        painter.fillRect(pixmap.rect(), QColor('#9a6700') if colored else QColor('#333333'))
         painter.end()
         self._icons['pat'] = QIcon(pixmap)
 
@@ -204,6 +204,13 @@ class ModListModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.FontRole:
             if col in ('datatype', 'size',):
                 return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+            elif col in ('scriptFiles',):
+                mod = self.modmodel[index.row()]
+                if mod.filename in self.modmodel.conflicts.scripts \
+                and self.modmodel.conflicts.scripts[mod.filename]:
+                    font = QFont()
+                    font.setBold(True)
+                    return font
             return None
 
         if role == Qt.ItemDataRole.CheckStateRole:
@@ -234,11 +241,11 @@ class ModListModel(QAbstractTableModel):
             elif col in ('scriptFiles',):
                 if mod.filename in self.modmodel.conflicts.scripts \
                 and self.modmodel.conflicts.scripts[mod.filename]:
-                    return QColor('#E55934')
+                    return QColor('#e94600')
             elif col in ('bundledFiles',):
                 if mod.filename in self.modmodel.conflicts.bundled \
                 and self.modmodel.conflicts.bundled[mod.filename]:
-                    return QColor('#b08968')
+                    return QColor('#9a6700')
             return None
 
         if role == Qt.ItemDataRole.DecorationRole:
@@ -257,8 +264,8 @@ class ModListModel(QAbstractTableModel):
                 val = mod[col]
                 return 'Enabled' if val else 'Disabled'
             tip = str(mod[col])
-            if len(tip) > 4000:
-                return tip[:4000] + ' ...'
+            if len(tip) > 2000:
+                return tip[:2000] + ' ...'
             return tip
 
         if role == Qt.ItemDataRole.TextAlignmentRole:

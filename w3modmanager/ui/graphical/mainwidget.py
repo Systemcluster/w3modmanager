@@ -218,11 +218,11 @@ class MainWidget(QWidget):
                 <font color="#888">Enabled Mod{"" if enabled == 1 else "s"}</font>'
         )
         self.overridden.setText(
-            f'<font color="{"#b08968" if overridden > 0 else "#84C318"}" size="4">{overridden}</font> \
+            f'<font color="{"#9a6700" if overridden > 0 else "#84C318"}" size="4">{overridden}</font> \
                 <font color="#888">Overridden File{"" if overridden == 1 else "s"}</font> '
         )
         self.conflicts.setText(
-            f'<font color="{"#E55934" if conflicts > 0 else "#aad576"}" size="4">{conflicts}</font> \
+            f'<font color="{"#e94600" if conflicts > 0 else "#aad576"}" size="4">{conflicts}</font> \
                 <font color="#888">Unresolved Conflict{"" if conflicts == 1 else "s"}</font> '
         )
 

@@ -85,7 +85,7 @@ class DetailsWindow(QDialog):
             for scriptFile in scriptFiles:
                 if conflicting and scriptFile in model.conflicts.scripts[mod.filename]:
                     conflict = model.conflicts.scripts[mod.filename][scriptFile]
-                    self.scripts.append(f'{scriptFile} <span style="color: #E55934;">conflicting with \
+                    self.scripts.append(f'{scriptFile} <span style="color: #e94600;">conflicting with \
                                         <strong>{conflict}</strong></span>')
                 else:
                     self.scripts.append(f'{scriptFile}')
@@ -197,7 +197,7 @@ class DetailsWindow(QDialog):
                 if conflicting and bundledFile in model.conflicts.bundled[mod.filename]:
                     conflict = model.conflicts.bundled[mod.filename][bundledFile]
                     self.bundled.append(f'<span style="color: #888">{bundledFile.source}:</span> {bundledFile.bundled}\
-                        </span> <span style="color: #b08968;">overridden by <strong>{conflict}</strong></span>')
+                        </span> <span style="color: #9a6700;">overridden by <strong>{conflict}</strong></span>')
                 else:
                     self.bundled.append(f'<span style="color: #888">{bundledFile.source}:</span> \
                         <span>{bundledFile.bundled}</span>')
