@@ -471,6 +471,11 @@ class Model:
         async with self.updateLock:
             mod = self[mod]
             oldname = mod.filename
+            oldenabled = mod.enabled
+            if filename.startswith('~'):
+                filename = re.sub(r'^~', r'', filename)
+                mod.enabled = False
+                # TODO: incomplete: handle xml and ini changes
             oldpath = self.getModPath(mod, True)
             mod.filename = filename
             newpath = self.getModPath(mod)
@@ -491,6 +496,7 @@ class Model:
                 undo = True
             if undo:
                 mod.filename = oldname
+                mod.enabled = oldenabled
                 if renamed:
                     newpath.rename(oldpath)
                 self._modsSettings.renameSection(filename, oldname)
