@@ -169,24 +169,27 @@ class Model:
 
     async def loadInstalledMod(self, path: Path) -> None:
         if path.joinpath('.w3mm').is_file():
-            mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
-            mod.enabled = not path.name.startswith('~')
-            mod.filename = re.sub(r'^(~)', r'', path.name)
-            if mod.enabled:
-                enabled = self._modsSettings.getValue(mod.filename, 'Enabled', '1')
-                if enabled == '0':
-                    mod.enabled = False
-                priority = self._modsSettings.getValue(mod.filename, 'Priority', fallback=mod.priority)
-                with contextlib.suppress(ValueError):
-                    mod.priority = int(priority)
+            try:
+                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                mod.enabled = not path.name.startswith('~')
+                mod.filename = re.sub(r'^(~)', r'', path.name)
+                if mod.enabled:
+                    enabled = self._modsSettings.getValue(mod.filename, 'Enabled', '1')
+                    if enabled == '0':
+                        mod.enabled = False
+                    priority = self._modsSettings.getValue(mod.filename, 'Priority', fallback=mod.priority)
+                    with contextlib.suppress(ValueError):
+                        mod.priority = int(priority)
 
-            if (mod.filename, mod.target) in self._modList:
-                logger.bind(path=path).error('Ignoring duplicate MOD')
-                if not self._modList[(mod.filename, mod.target)].enabled:
+                if (mod.filename, mod.target) in self._modList:
+                    logger.bind(path=path).error('Ignoring duplicate MOD')
+                    if not self._modList[(mod.filename, mod.target)].enabled:
+                        self._modList[(mod.filename, mod.target)] = mod
+                else:
                     self._modList[(mod.filename, mod.target)] = mod
-            else:
-                self._modList[(mod.filename, mod.target)] = mod
-            # TODO: incomplete: detect changed files
+                # TODO: incomplete: detect changed files
+            except Exception as e:
+                logger.bind(path=path).exception(f'Could not load MOD: {e}')
         else:
             try:
                 for mod in await Mod.fromDirectory(path, recursive=False):
@@ -214,12 +217,15 @@ class Model:
 
     async def loadInstalledDlc(self, path: Path) -> None:
         if path.joinpath('.w3mm').is_file():
-            mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
-            mod.enabled = not all(file.name.endswith('.disabled')
-                                  for file in path.glob('**/*') if file.is_file()
-                                  and file.name != '.w3mm')
-            mod.filename = path.name
-            self._modList[(mod.filename, mod.target)] = mod
+            try:
+                mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+                mod.enabled = not all(file.name.endswith('.disabled')
+                                      for file in path.glob('**/*') if file.is_file()
+                                      and file.name != '.w3mm')
+                mod.filename = path.name
+                self._modList[(mod.filename, mod.target)] = mod
+            except Exception as e:
+                logger.bind(path=path).exception(f'Could not load DLC: {e}')
         else:
             try:
                 for mod in await Mod.fromDirectory(path, recursive=False):
