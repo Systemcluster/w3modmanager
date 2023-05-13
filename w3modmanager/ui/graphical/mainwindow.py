@@ -308,15 +308,16 @@ class MainWindow(QMainWindow):
 
         settingswindow.setModal(True)
         settingswindow.open()
-        settingswindow.finished.connect(lambda: [
-            self.model.setPaths(
-                Path(str(settings.value('gamePath'))),
-                Path(str(settings.value('configPath')))
-            ),
-            self.mainwidget.startscriptmerger.setEnabled(
-                verifyScriptMergerPath(Path(str(settings.value('scriptMergerPath')))) is not None
-            )
-        ])
+        if self:
+            settingswindow.finished.connect(lambda: [
+                self.model.setPaths(
+                    Path(str(settings.value('gamePath'))),
+                    Path(str(settings.value('configPath')))
+                ),
+                self.mainwidget.startscriptmerger.setEnabled(
+                    verifyScriptMergerPath(Path(str(settings.value('scriptMergerPath')))) is not None
+                )
+            ])
         return settingswindow
 
     def showAboutDialog(self: Any) -> QMessageBox:
