@@ -38,8 +38,8 @@ os.environ['QT_API'] = 'pyside6'
 
 # setup logger if tty is attached
 
-logger.remove(0)
-if sys.stdout.isatty():
+if sys.stdout is not None and sys.stdout.isatty():
+    logger.remove(0)
     logger.add(
         sys.stderr,
         level='TRACE',
