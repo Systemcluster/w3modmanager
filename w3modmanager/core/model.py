@@ -103,9 +103,11 @@ class Model:
         self._pool = ProcessPoolExecutor()
         self._iteration = 0
 
-        if not ignorelock:
-            self._lock = InterProcessLock(self.lockfile)
-            if not self._lock.acquire(False):
+        self._lock = InterProcessLock(self.lockfile)
+        if not self._lock.acquire(False):
+            if ignorelock:
+                self._lock = None
+            else:
                 raise OtherInstanceError(self.lockfile)
 
         self._modsSettings = WatchedConfigFile(self.configpath.joinpath('mods.settings'))
