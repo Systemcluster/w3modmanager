@@ -6,6 +6,7 @@ w3modmanager - Mod Manager for The Witcher 3 - main module
 import w3modmanager
 
 import asyncio
+import multiprocessing
 import os
 import sys
 import traceback
@@ -352,6 +353,7 @@ def main(gamePath: str | None = None,
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     argp = ArgumentParser(
         prog=w3modmanager.NAME,
         description=w3modmanager.SUBTITLE,
