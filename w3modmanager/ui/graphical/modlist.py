@@ -32,7 +32,6 @@ from PySide6.QtCore import (
     QRect,
     QRegularExpression,
     QSettings,
-    QSize,
     QSortFilterProxyModel,
     Qt,
     QTimer,
@@ -53,13 +52,13 @@ from PySide6.QtGui import (
     QPainter,
     QPaintEvent,
     QPen,
-    QPixmap,
     QResizeEvent,
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QHeaderView,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -165,20 +164,23 @@ class ModList(QTableView):
         self.setAcceptDrops(True)
         self.setEditTriggers(QTableView.EditTrigger.EditKeyPressed | QTableView.EditTrigger.DoubleClicked)
         self.setShowGrid(False)
+        self.setAutoScroll(False)
+        self.setCornerButtonEnabled(False)
 
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
 
-        self.verticalHeader().hide()
-        self.verticalHeader().setVisible(False)
-        self.setSectionSize(settings.value('compactMode', 'False') == 'True')
-
-        self.setCornerButtonEnabled(False)
-        self.horizontalHeader().setHighlightSections(False)
-        self.horizontalHeader().setStretchLastSection(True)
-        self.horizontalHeader().setSectionsMovable(True)
+        # setup viewport caching to counter slow resizing with many table elements
+        self.resizeTimer = QTimer(self)
+        self.resizeTimer.setSingleShot(True)
+        self.resizeTimer.setInterval(225)
+        self.resizeTimer.timeout.connect(lambda: [
+            self.resizeTimer.stop(),
+            self.viewport().repaint(),
+        ])
+        self.viewportCache = None
 
         self.listmodel = ModListModel(self, model)
         self.filtermodel = ModListFilterModel(self, self.listmodel)
@@ -186,6 +188,24 @@ class ModList(QTableView):
 
         self.setItemDelegate(ModListItemDelegate(self))
         self.setSelectionModel(ModListSelectionModel(self, self.filtermodel))
+
+        self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
+        self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
+
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setSectionsMovable(True)
+        self.horizontalHeader().setResizeContentsPrecision(100)
+        for section in range(self.horizontalHeader().count() - 1):
+            self.horizontalHeader().setSectionResizeMode(section, QHeaderView.ResizeMode.Interactive)
+        self.horizontalHeader().setStretchLastSection(True)
+
+        self.verticalHeader().hide()
+        self.verticalHeader().setVisible(False)
+        self.setSectionSize(settings.value('compactMode', 'False') == 'True')
+        self.verticalHeader().setResizeContentsPrecision(100)
+        for section in range(self.verticalHeader().count()):
+            self.verticalHeader().setSectionResizeMode(section, QHeaderView.ResizeMode.Fixed)
+        self.verticalHeader().setStretchLastSection(False)
 
         if len(model):
             self.modCountLastUpdate = len(model)
@@ -197,9 +217,6 @@ class ModList(QTableView):
 
         if settings.value('modlistHorizontalHeaderState'):
             self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
-
-        self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
-        self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
 
         self.setFocus()
 
@@ -222,18 +239,12 @@ class ModList(QTableView):
         self.doubleClicked.connect(self.doubleClickEvent)
         model.updateCallbacks.append(self.modelUpdateEvent)
 
-        # setup viewport caching to counter slow resizing with many table elements
-        self.resizeTimer = QTimer(self)
-        self.resizeTimer.setSingleShot(True)
-        self.resizeTimer.setInterval(250)
-        self.resizeTimer.timeout.connect(lambda: [
-            self.resizeTimer.stop(),
-            self.viewport().repaint(),
-        ])
-        self.viewportCache = QPixmap()
-        self.viewportCacheSize = QSize(0, 0)
-
         # TODO: enhancement: offer option to read readme and other additional text files
+
+    def sizeHintForRow(self, row: int) -> int:
+        if row < 0 or row >= self.model().rowCount():
+            return -1
+        return self.verticalHeader().defaultSectionSize()
 
     def setSectionSize(self, compact: bool) -> None:
         if compact:
@@ -300,16 +311,20 @@ class ModList(QTableView):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
-        if not self.resizeTimer.isActive() and event.size() != self.viewportCacheSize:
-            self.viewportCacheSize = event.size()
-            self.viewportCache = self.viewport().grab()
-            self.resizeTimer.start()
+        if self.width() > 1200:
+            if not self.resizeTimer.isActive():
+                self.resizeTimer.start()
+                self.viewportCache = self.viewport().grab()
+        else:
+            self.resizeTimer.stop()
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        if self.resizeTimer.isActive():
+        if self.resizeTimer.isActive() and self.viewportCache is not None:
             painter = QPainter(self.viewport())
             painter.drawPixmap(0, 0, self.viewportCache)
         else:
+            if self.viewportCache is not None:
+                self.viewportCache = None
             super().paintEvent(event)
 
     def selectionChanged(self, selected: QItemSelection, deselected: QItemSelection) -> None:
