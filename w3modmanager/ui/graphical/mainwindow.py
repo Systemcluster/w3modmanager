@@ -173,6 +173,21 @@ class MainWindow(QMainWindow):
         toggleHighlightUnmanaged.setIcon(QIcon(iconHighlightUnmanaged))
         painter.end()
 
+        toggleHighlightSpecial = menuView.addAction('Highlight &Special')
+        toggleHighlightSpecial.setCheckable(True)
+        toggleHighlightSpecial.setChecked(settings.value('highlightSpecial', 'True') == 'True')
+        toggleHighlightSpecial.triggered.connect(lambda checked: [
+            settings.setValue('highlightSpecial', str(checked)),
+            self.model.updateCallbacks.fire(self.model)
+        ])
+        iconHighlightSpecial = QPixmap(256, 256)
+        iconHighlightSpecial.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(iconHighlightSpecial)
+        painter.setBrush(QBrush(QColor(255, 250, 220)))
+        painter.drawEllipse(10, 10, 236, 236)
+        toggleHighlightSpecial.setIcon(QIcon(iconHighlightSpecial))
+        painter.end()
+
         toggleHighlightDisabled = menuView.addAction('Highlight &Disabled')
         toggleHighlightDisabled.setCheckable(True)
         toggleHighlightDisabled.setChecked(settings.value('highlightDisabled', 'True') == 'True')

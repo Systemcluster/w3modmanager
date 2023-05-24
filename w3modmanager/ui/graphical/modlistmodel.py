@@ -93,6 +93,13 @@ class ModListModel(QAbstractTableModel):
         painter.end()
         self._icons['udf'] = QIcon(pixmap)
 
+        pixmap = QPixmap(str(getRuntimePath('resources/icons/sparkles.ico')))
+        painter = QPainter(pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+        painter.fillRect(pixmap.rect(), QColor('#ffcf40') if colored else QColor('#333333'))
+        painter.end()
+        self._icons['spe'] = QIcon(pixmap)
+
     def clearCache(self) -> None:
         self.data.cache_clear()
         self.flags.cache_clear()
@@ -107,6 +114,8 @@ class ModListModel(QAbstractTableModel):
             if settings.value('highlightRecent', 'True') == 'True' else None
         self._colorUnmanaged = QColor(250, 240, 240) \
             if settings.value('highlightUnmanaged', 'True') == 'True' else None
+        self._colorSpecial = QColor(255, 250, 220) \
+            if settings.value('highlightSpecial', 'True') == 'True' else None
         self._colorDisabled = QColor(240, 240, 240) \
             if settings.value('highlightDisabled', 'True') == 'True' else None
         self._colorUnavailable = QColor(240, 240, 240)
@@ -121,7 +130,6 @@ class ModListModel(QAbstractTableModel):
 
     def getColumnKey(self, column: int) -> str:
         return self._header[column][1]
-
 
     async def setDataInternal(self, col: str, row: int, value: str) -> None:
         if col in ('filename',):
@@ -188,6 +196,7 @@ class ModListModel(QAbstractTableModel):
         col = self.getColumnKey(index.column())
         if col in ('package', 'filename', 'category', 'priority',):
             mod = self.modmodel[index.row()]
+            # TODO: disallow editing for special 0000 mods
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
                 return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
             return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
@@ -230,6 +239,8 @@ class ModListModel(QAbstractTableModel):
                 return self._colorNewest
             if mod.installdate > self._lastInitialization:
                 return self._colorRecent
+            if mod.filename.startswith('mod0000'):
+                return self._colorSpecial
             if not mod.installed:
                 return self._colorUnmanaged
             return None
@@ -251,6 +262,8 @@ class ModListModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DecorationRole:
             if col in ('datatype',):
                 mod = self.modmodel[index.row()]
+                if mod.filename.startswith('mod0000'):
+                    return self._icons['spe']
                 val = mod[col]
                 return self._icons[val] if val in self._icons else self._icons['udf']
             return None
