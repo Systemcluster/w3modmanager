@@ -89,7 +89,7 @@ class Model:
         self._lock = None
         self._pool = None
 
-        _cachePath = verifyCachePath(cachePath)
+        _cachePath = verifyInternalPath(cachePath)
         if not _cachePath:
             raise InvalidCachePath(cachePath)
         self._cachePath = _cachePath
@@ -137,9 +137,9 @@ class Model:
             raise InvalidConfigPath(configPath)
 
         modsPath = _gamePath.joinpath('Mods')
-        _modsPath = verifyModsPath(modsPath)
+        _modsPath = verifyInternalPath(modsPath)
         dlcsPath = _gamePath.joinpath('DLC')
-        _dlcsPath = verifyDlcsPath(dlcsPath)
+        _dlcsPath = verifyInternalPath(dlcsPath)
 
         if not _modsPath:
             raise InvalidModsPath(modsPath)
@@ -674,40 +674,29 @@ def verifyConfigPath(path: Path | None) -> Path | None:
         return None
 
 
-def verifyCachePath(path: Path | None) -> Path | None:
-    try:
-        if not path or path.exists() and not path.is_dir():
-            return None
-        if not path.exists():
-            path.mkdir(parents=True)
-        return path.resolve()
-    except OSError:
-        # check for errors here since this method is used with user input
-        logger.bind(path=path).debug('Illegal path')
+def verifyInternalPath(path: Path | None) -> Path | None:
+    if not path:
         return None
-
-
-def verifyModsPath(path: Path | None) -> Path | None:
     try:
-        if not path or path.exists() and not path.is_dir():
+        parent = path.parent
+        if not parent.is_dir():
+            return None
+        potentials = [d for d in parent.glob(f'{path.name.lower()}', case_sensitive=False) if d.is_dir()]
+        if not potentials:
+            path.mkdir(parents=True, exist_ok=True)
+            return path.resolve()
+        if len(potentials) > 1:
+            logger.bind(path=path).warning(f'Ambiguous {path.name} path, multiple directories found')
+            for potential in potentials:
+                if potential == path:
+                    return path.resolve()
+        path = potentials[0]
+        if path.exists() and not path.is_dir():
             return None
         if not path.exists():
-            path.mkdir(parents=True)
+            path.mkdir(parents=True, exist_ok=True)
         return path.resolve()
     except OSError:
         # check for errors here since this method is used with user input
-        logger.bind(path=path).debug('Illegal path')
-        return None
-
-
-def verifyDlcsPath(path: Path | None) -> Path | None:
-    try:
-        if not path or path.exists() and not path.is_dir():
-            return None
-        if not path.exists():
-            path.mkdir(parents=True)
-        return path.resolve()
-    except OSError:
-        # check for errors here since this method is used with user input
-        logger.bind(path=path).debug('Illegal path')
+        logger.bind(path=path).debug(f'Illegal {path.name} path')
         return None
