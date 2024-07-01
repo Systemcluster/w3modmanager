@@ -2,7 +2,7 @@
 name = "w3modmanager"
 description = "Mod manager for The Witcher 3"
 version = "0.0.0"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 license = { text = "BSD-2-Clause" }
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "Christian Sdunek", email = "me@systemcluster.me" }]
@@ -10,38 +10,38 @@ keywords = ["witcher-3", "mod-manager", "modding", "games", "w3mm"]
 urls = { repository = "https://github.com/Systemcluster/w3modmanager" }
 
 dependencies = [
-    "fasteners>=0.18",
-    "PySide6>=6.5",
+    "fasteners>=0.19",
+    "PySide6>=6.6,<6.7",
     "loguru>=0.7",
     "vdf>=3.4",
     "appdirs>=1.4",
     "pywin32>=306",
-    "charset-normalizer>=3.1",
-    "httpx>=0.24",
-    "qasync>=0.24",
-    "dateparser>=1.1",
-    "dataclasses-json>=0.5",
-    "watchdog>=3.0",
-    "xxhash>=3.2",
+    "charset-normalizer>=3.3",
+    "httpx>=0.27",
+    "qasync>=0.27",
+    "dateparser>=1.2",
+    "dataclasses-json>=0.6",
+    "watchdog>=4.0",
+    "xxhash>=3.4",
 ]
 
-[tool.pdm]
-allow_prereleases = true
+[tool.pdm.resolution]
+allow-prereleases = false
 
 [tool.pdm.dev-dependencies]
 lint = [
-    "ruff>=0.0.269",
+    "ruff>=0.5",
     "pyright>=1.1",
-    "types-dateparser>=1.1",
-    "autopep8>=2.0",
+    "types-dateparser>=1.2",
+    "autopep8>=2.3",
 ]
 test = [
-    "pytest>=7.3",
-    "pytest-asyncio>=0.21",
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
 ]
 build = [
-    "pyinstaller>=5.11",
-    "invoke>=2.1",
+    "pyinstaller>=6.8",
+    "invoke>=2.2",
 ]
 
 [[tool.pdm.source]]
@@ -69,6 +69,11 @@ reportIncompatibleMethodOverride = "none"
 reportMissingParameterType = "none"
 
 [tool.ruff]
+output-format = "pylint"
+exclude = ["tasks.py"]
+line-length = 120
+
+[tool.ruff.lint]
 select = [
     "E",
     "F",
@@ -106,19 +111,17 @@ ignore = [
     "SIM108",
     "UP017",
 ]
-unfixable = ["ERA001"]
-format = "pylint"
-exclude = ["tasks.py"]
-line-length = 120
-show-source = false
+unfixable = [
+    "ERA001",
+]
 
-[tool.ruff.flake8-quotes]
+[tool.ruff.lint.flake8-quotes]
 inline-quotes = "single"
 multiline-quotes = "single"
 docstring-quotes = "double"
 avoid-escape = false
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 section-order = [
     "future",
     "first-party",
@@ -129,6 +132,10 @@ section-order = [
 lines-after-imports = 2
 lines-between-types = 1
 
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
 [tool.autopep8]
 max_line_length = 120
 ignore = [
@@ -137,3 +144,6 @@ ignore = [
     "E502",
     "W503",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

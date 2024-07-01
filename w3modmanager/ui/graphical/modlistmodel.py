@@ -215,8 +215,7 @@ class ModListModel(QAbstractTableModel):
                 return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
             elif col in ('scriptFiles',):
                 mod = self.modmodel[index.row()]
-                if mod.filename in self.modmodel.conflicts.scripts \
-                and self.modmodel.conflicts.scripts[mod.filename]:
+                if self.modmodel.conflicts.scripts.get(mod.filename):
                     font = QFont()
                     font.setBold(True)
                     return font
@@ -250,12 +249,10 @@ class ModListModel(QAbstractTableModel):
             if not mod.enabled:
                 return QColor(60, 60, 60)
             elif col in ('scriptFiles',):
-                if mod.filename in self.modmodel.conflicts.scripts \
-                and self.modmodel.conflicts.scripts[mod.filename]:
+                if self.modmodel.conflicts.scripts.get(mod.filename):
                     return QColor('#e94600')
             elif col in ('bundledFiles',):
-                if mod.filename in self.modmodel.conflicts.bundled \
-                and self.modmodel.conflicts.bundled[mod.filename]:
+                if self.modmodel.conflicts.bundled.get(mod.filename):
                     return QColor('#9a6700')
             return None
 
@@ -265,14 +262,14 @@ class ModListModel(QAbstractTableModel):
                 if mod.filename.startswith('mod0000'):
                     return self._icons['spe']
                 val = mod[col]
-                return self._icons[val] if val in self._icons else self._icons['udf']
+                return self._icons.get(val, self._icons['udf'])
             return None
 
         if role == Qt.ItemDataRole.ToolTipRole:
             mod = self.modmodel[index.row()]
             if col in ('datatype',):
                 val = mod[col]
-                return self._datatypes[val] if val in self._datatypes else self._datatypes['udf']
+                return self._datatypes.get(val, self._datatypes['udf'])
             if col in ('enabled',):
                 val = mod[col]
                 return 'Enabled' if val else 'Disabled'

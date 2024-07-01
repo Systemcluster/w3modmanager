@@ -104,6 +104,7 @@ ENV/
 
 # pdm
 .pdm-python
+.pdm-build
 
 # editor and project files
 .idea/

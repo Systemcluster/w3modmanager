@@ -525,7 +525,7 @@ class ModList(QTableView):
         results = await asyncio.gather(
             *[self.updateModDetails(mod) for mod in mods], return_exceptions=True
         )
-        successes = sum(results)
+        successes = sum([bool(result) for result in results if result is True])
         errors = len(results) - successes
         message = 'Updated details for {} mods{}'.format(successes, f' ({errors} errors)' if errors else '')
         if errors:

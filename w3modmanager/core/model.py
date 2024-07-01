@@ -195,7 +195,7 @@ class Model:
         else:
             try:
                 for mod in await Mod.fromDirectory(path, recursive=False):
-                    mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                    mod.installdate = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
                     mod.target = 'mods'
                     mod.enabled = not path.name.startswith('~')
                     mod.filename = re.sub(r'^(~)', r'', path.name)
@@ -231,7 +231,7 @@ class Model:
         else:
             try:
                 for mod in await Mod.fromDirectory(path, recursive=False):
-                    mod.installdate = datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+                    mod.installdate = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
                     mod.target = 'dlc'
                     mod.datatype = 'dlc'
                     mod.enabled = not all(file.name.endswith('.disabled')
@@ -598,7 +598,7 @@ class Model:
             return list(self._modList.values())[mod]
         if isinstance(mod, tuple) and len(mod) == 2:
             if mod not in self._modList:
-                raise ModNotFoundError(tuple(mod)[0], tuple(mod)[1])
+                raise ModNotFoundError(mod[0], mod[1])
             return self._modList[mod]
         if isinstance(mod, Mod):
             if mod not in self.values():

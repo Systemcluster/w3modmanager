@@ -55,6 +55,6 @@ This list is preliminary and may change before release.
 
 ## Source and Development
 
-Download the source and install the requirements with `pdm install`. Python 3.11+ and `pdm` have to be installed.
+Download the source and install the requirements with `pdm install`. Python 3.12+ and `pdm` have to be installed.
 
 Afterwards run with `pdm run invoke start`. To show the available build and test tasks run `pdm run invoke --list`.

@@ -125,7 +125,7 @@ class Mod(DataClassJsonMixin):
                          and d.name not in ('content',) and len(d.name) > 3]) == 1:
             # if directory contains only one subdirectory and it's not the mod, dlc or content dir,
             # use it for the package name
-            package = formatPackageName(list(path.iterdir())[0].name)
+            package = formatPackageName(next(iter(path.iterdir())).name)
         else:
             package = formatPackageName(path.name)
         for check in dirs:

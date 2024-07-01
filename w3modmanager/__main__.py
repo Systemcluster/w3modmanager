@@ -65,9 +65,9 @@ def debug_print(arg: Any) -> None:
     frame = currentframe()
     if frame and frame.f_back:
         frameinfo = getframeinfo(frame.f_back)
-        builtins.print(frameinfo.filename + ':' + str(frameinfo.lineno), arg)
+        builtins.print(frameinfo.filename + ':' + str(frameinfo.lineno), arg)  # noqa: T201
     else:
-        builtins.print(arg)
+        builtins.print(arg)  # noqa: T201
 
 
 print = debug_print  # noqa: A001
@@ -246,6 +246,8 @@ def main(gamePath: str | None = None,
     ''')
 
     eventloop = QEventLoop(app)
+    pool = ThreadPoolExecutor()
+    eventloop.set_default_executor(pool)
     asyncio.set_event_loop(eventloop)
 
     palette = QPalette(QApplication.palette())
@@ -269,91 +271,100 @@ def main(gamePath: str | None = None,
     logging.basicConfig()
     logging.getLogger().setLevel(logging.WARNING)
 
-    pool = ThreadPoolExecutor()
-    asyncio.get_running_loop().set_default_executor(pool)
-
     # configure startup overrides
     settings = QSettings()
     if gamePath:
         settings.setValue('gamePath', gamePath)
     if configPath:
         settings.setValue('configPath', configPath)
-    if startupMode == StartupMode.About:
-        MainWindow.showAboutDialog(None).exec_()
-        sys.exit()
-    if startupMode == StartupMode.Settings:
-        MainWindow.showSettingsDialog(None).exec_()
-        sys.exit()
 
     exception_hook_set = False
+    window: MainWindow | None = None
 
-    def createModel(ignorelock: bool = False) -> Model:
-        nonlocal settings
-        return Model(
-            Path(str(settings.value('gamePath'))),
-            Path(str(settings.value('configPath'))),
-            Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)),
-            ignorelock)
-    try:
-        # try to initialize the mod management model
-        try:
-            model = createModel()
-        # if another instance is already open, inform and ask to open anyway
-        except OtherInstanceError as e:
-            if MainWindow.showOtherInstanceDialog(None).exec_() == QMessageBox.StandardButton.Yes:
-                model = createModel(True)
-            else:
-                raise e
-        # if game path or config path is invalid or not set,
-        # show a special settings dialog and retry
-        except (InvalidGamePath, InvalidConfigPath):
-            MainWindow.showSettingsDialog(None, True).exec_()
-            model = createModel()
+    def start() -> None:
+        nonlocal startupMode
 
-        # check for write access to the game and config directories
-        for path in (model.gamepath, model.configpath, model.cachepath,):
-            if not getWritePermissions(path):
-                if MainWindow.showInvalidPermissionsDialog(None, path).exec_() != QMessageBox.StandardButton.Yes \
-                or not setWritePermissions(path):
-                    raise PermissionError(f'Not enough permissions for {path}')
+        if startupMode == StartupMode.About:
+            MainWindow.showAboutDialog(None).exec()
+            sys.exit()
+        if startupMode == StartupMode.Settings:
+            MainWindow.showSettingsDialog(None).exec()
+            sys.exit()
 
-        window = MainWindow(model)
-        app.setActiveWindow(window)
+        def createModel(ignorelock: bool = False) -> Model:
+            nonlocal settings
+            return Model(
+                Path(str(settings.value('gamePath'))),
+                Path(str(settings.value('configPath'))),
+                Path(appdirs.user_data_dir(w3modmanager.NAME, w3modmanager.ORG_NAME)),
+                ignorelock)
 
         def show_exception_hook(exctype, value, tb) -> None:  # type: ignore # noqa
             nonlocal window
             MainWindow.showCritcalErrorDialog(window, value, ''.join(
-                traceback.format_exception(exctype, value, tb))).exec_()
+                traceback.format_exception(exctype, value, tb))).exec()
             exception_hook(exctype, value, tb)
-        sys.excepthook = show_exception_hook
-        exception_hook_set = True
 
-        with eventloop:
-            status = eventloop.run_forever()
-            eventloop.run_until_complete(closeSession())
-            sys.exit(status)
+        def createWindow() -> None:
+            nonlocal exception_hook_set
+            nonlocal window
+            window = MainWindow(model)
+            app.setActiveWindow(window)
+            sys.excepthook = show_exception_hook
+            exception_hook_set = True
 
-    except OtherInstanceError as e:
-        sys.exit(f'error: {e!s}')
+        try:
+            # try to initialize the mod management model
+            try:
+                model = createModel()
+            # if another instance is already open, inform and ask to open anyway
+            except OtherInstanceError as e:
+                if MainWindow.showOtherInstanceDialog(None).exec() == QMessageBox.StandardButton.Yes:
+                    model = createModel(True)
+                else:
+                    raise e
+            # if game path or config path is invalid or not set,
+            # show a special settings dialog and retry
+            except (InvalidGamePath, InvalidConfigPath):
+                MainWindow.showSettingsDialog(None, True).exec()
+                model = createModel()
 
-    except (InvalidGamePath, InvalidConfigPath) as e:
-        MainWindow.showInvalidConfigErrorDialog(None).exec_()
-        sys.exit(f'error: {e!s}')
+            # check for write access to the game and config directories
+            for path in (model.gamepath, model.configpath, model.cachepath,):
+                if not getWritePermissions(path):
+                    if MainWindow.showInvalidPermissionsDialog(None, path).exec() != QMessageBox.StandardButton.Yes \
+                    or not setWritePermissions(path):
+                        raise PermissionError(f'Not enough permissions for {path}')
 
-    except PermissionError as e:
-        MainWindow.showInvalidPermissionsErrorDialog(None).exec_()
-        sys.exit(f'error: {e!s}')
+            createWindow()
 
-    except Exception as e:
-        if not exception_hook_set:
-            MainWindow.showCritcalErrorDialog(None, str(e)).exec_()
-        raise e
+        except OtherInstanceError as e:
+            sys.exit(f'error: {e!s}')
 
-    sys.exit()
+        except (InvalidGamePath, InvalidConfigPath) as e:
+            MainWindow.showInvalidConfigErrorDialog(None).exec()
+            sys.exit(f'error: {e!s}')
+
+        except PermissionError as e:
+            MainWindow.showInvalidPermissionsErrorDialog(None).exec()
+            sys.exit(f'error: {e!s}')
+
+        except Exception as e:
+            if not exception_hook_set:
+                MainWindow.showCritcalErrorDialog(None, str(e)).exec()
+            raise e
+
+    with eventloop:
+        eventloop.call_soon(start)
+        status = eventloop.run_forever()
+        eventloop.run_until_complete(closeSession())
+        sys.exit(status)
 
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
+    multiprocessing.set_start_method('spawn')
+
     argp = ArgumentParser(
         prog=w3modmanager.NAME,
         description=w3modmanager.SUBTITLE,

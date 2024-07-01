@@ -21,7 +21,7 @@ def formatPackageName(name: str) -> str:
     original = name
     # remove file extension
     extensions = '|'.join(e[1:] for e in util.getSupportedExtensions())
-    name = re.sub(rf'.*(\.({extensions}))$', '', name, re.IGNORECASE)
+    name = re.sub(rf'.*(\.({extensions}))$', '', name, flags=re.IGNORECASE)
     # remove nexusmods version suffix
     length = len(name)
     for match in re.finditer(r'-[0-9]+-.*', name):
@@ -30,7 +30,7 @@ def formatPackageName(name: str) -> str:
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
     # remove mod prefix if package name is long enough
-    if re.match(r'^mod.*', name, re.IGNORECASE) and len(name) > 4:
+    if re.match(r'^mod.*', name, flags=re.IGNORECASE) and len(name) > 4:
         name = name[3:]
     # remove leading and trailing non-alphanumeric characters
     name = re.sub(r'^[^a-zA-Z0-9]*(.*)[^a-zA-Z0-9]*$', r'\1', name)
@@ -126,9 +126,8 @@ def isValidModDirectory(path: Path) -> bool:
     # and is not contained in a dlc dir
     if path.is_dir() \
     and re.match('^((~)?mod).*', path.name, re.IGNORECASE) \
-    and not re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE) \
-    and containsContentDirectory(path):
-        return True
+    and not re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE):
+        return containsContentDirectory(path)
     return False
 
 
@@ -216,13 +215,13 @@ class BinFile:
 
     def __repr__(self) -> str:
         if self.source == self.target:
-            return '\'%s\'' % str(self.source)
+            return f'\'{self.source!s}\''
         else:
             return f'\'{self.source!s} ({self.target!s})\''
 
     def __str__(self) -> str:
         if self.source == self.target:
-            return '%s' % str(self.source)
+            return f'{self.source!s}'
         else:
             return f'{self.source!s} ({self.target!s})'
 
@@ -251,10 +250,10 @@ class BinFile:
 @dataclass
 class ContentFile(DataClassJsonMixin):
     source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path))
-    hash: str = ''  # noqa: A003
+    hash: str = ''
 
     def __repr__(self) -> str:
-        return '\'%s\'' % str(self.source)
+        return f'\'{self.source!s}\''
 
     def __str__(self) -> str:
         return str(self.source)
@@ -281,7 +280,7 @@ class ReadmeFile(DataClassJsonMixin):
     content: str
 
     def __repr__(self) -> str:
-        return '\'%s\'' % str(self.source)
+        return f'\'{self.source!s}\''
 
     def __str__(self) -> str:
         return str(self.source)
@@ -355,14 +354,12 @@ class Settings(DataClassJsonMixin):
         self.config = config
 
     def __repr__(self) -> str:
-        return '\'{}\': {}'.format(
-            str(self.source),
-            str({section: dict(self.config[section]) for section in self.config.sections()}))
+        return f'\'{self.source!s}\': \
+            {str({section: dict(self.config[section]) for section in self.config.sections()})}'
 
     def __str__(self) -> str:
-        return '{}: {}'.format(
-            str(self.source),
-            str({section: dict(self.config[section]) for section in self.config.sections()}))
+        return f'{self.source!s}: \
+            {str({section: dict(self.config[section]) for section in self.config.sections()})}'
 
     def __len__(self) -> int:
         val = 0

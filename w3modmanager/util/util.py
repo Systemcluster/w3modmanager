@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import tempfile
 
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import Awaitable, Callable, Coroutine
 from functools import partial, wraps
 from pathlib import Path
 from typing import Any
@@ -162,7 +162,7 @@ def removeDirectory(path: Path) -> None:
         func(path)
     if os.path.isdir(path):
         try:
-            shutil.rmtree(path, onerror=getWriteAccess)
+            shutil.rmtree(path, onexc=getWriteAccess)
         except OSError:
             logger.bind(path=path).error('Illegal path, could not delete')
     else:
@@ -210,8 +210,8 @@ def openExecutable(path: Path, once: bool = False) -> None:
         except Exception as e:
             logger.bind(path=path).debug(f'Could not get open windows: {e}')
     if start:
-        subprocess.Popen(
-            [path], cwd=path.parent,  # noqa: S603
+        subprocess.Popen(  # noqa: S603
+            [path], cwd=path.parent,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
 
@@ -222,10 +222,11 @@ def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess[bytes]:
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
-    return subprocess.run(
-        [exe, '-l', script, str(bundle)],  # noqa: S603
+    return subprocess.run(  # noqa: S603
+        [exe, '-l', script, str(bundle)],
         stdin=subprocess.DEVNULL, capture_output=True,
-        creationflags=CREATE_NO_WINDOW, startupinfo=si
+        creationflags=CREATE_NO_WINDOW, startupinfo=si,
+        check=False
     )
 
 
@@ -259,10 +260,11 @@ def extractArchive(archive: Path, target: Path) -> None:
     si = subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     CREATE_NO_WINDOW = 0x08000000
-    result: subprocess.CompletedProcess[bytes] = subprocess.run(
-        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],  # noqa: S603
+    result: subprocess.CompletedProcess[bytes] = subprocess.run(  # noqa: S603
+        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
         stdin=subprocess.DEVNULL, capture_output=True,
-        creationflags=CREATE_NO_WINDOW, startupinfo=si
+        creationflags=CREATE_NO_WINDOW, startupinfo=si,
+        check=False
     )
     if result.returncode != 0:
         raise InvalidPathError(
@@ -283,7 +285,7 @@ async def extractMod(archive: Path) -> Path:
     return target
 
 
-def createAsyncTask(coro: Generator[Any, Any, Any] | Coroutine[Any, Any, Any], refset: set[Any]) -> asyncio.Task[Any]:
+def createAsyncTask(coro: Coroutine[Any, Any, Any], refset: set[Any]) -> asyncio.Task[Any]:
     """Create an async task and add it to a reference set to prevent it from being garbage collected"""
     task = asyncio.create_task(coro)
     refset.add(task)

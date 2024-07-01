@@ -119,7 +119,7 @@ class WatchedConfigFile:
         try:
             if not self.path.parent.is_dir():
                 self.path.parent.mkdir(parents=True)
-            with open(self.path, 'w', encoding=self.encoding) as file:  # noqa: ASYNC101
+            with open(self.path, 'w', encoding=self.encoding) as file:  # noqa: ASYNC230
                 self.config.write(file, space_around_delimiters=False)
         except Exception as e:
             logger.bind(path=self.path).exception(f'Could not write settings file: {e}')

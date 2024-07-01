@@ -6,10 +6,9 @@ simple invoke task collection
 import subprocess
 
 from datetime import datetime, timezone
-from distutils.dir_util import copy_tree
 from os import environ
 from pathlib import Path
-from shutil import rmtree, which
+from shutil import rmtree, which, copytree
 from typing import Any
 
 from invoke.tasks import task
@@ -40,7 +39,7 @@ def start(ctx: Any, mock=False, clean=False, configured=True):
     if mock:
         from PySide6.QtCore import QSettings
         print('setting up testdata...')
-        copy_tree(str(_mockdata), str(testdata))
+        copytree(str(_mockdata), str(testdata), dirs_exist_ok=True)
         QSettings.setDefaultFormat(QSettings.Format.IniFormat)
         QSettings.setPath(QSettings.Format.IniFormat, QSettings.Scope.UserScope, str(testdata.joinpath('settings')))
         if configured:
@@ -103,9 +102,9 @@ def pyright(ctx: Any):
 
 
 @task
-def flake8(ctx: Any):
+def ruff(ctx: Any):
     """check the project files for correctness with ruff"""
-    return subprocess.run('python -m ruff w3modmanager', shell=True).returncode
+    return subprocess.run('python -m ruff check w3modmanager', shell=True).returncode
 
 
 @task
@@ -113,7 +112,7 @@ def check(ctx: Any):
     """check the project files for correctness"""
     results = [
         subprocess.run('python -m pyright -p pyproject.toml', shell=True).returncode,
-        subprocess.run('python -m ruff w3modmanager', shell=True).returncode
+        subprocess.run('python -m ruff check w3modmanager', shell=True).returncode
     ]
     successes = results.count(0)
     result = not any(results)
