@@ -4,9 +4,10 @@ simple invoke task collection
 
 
 import subprocess
+import sys
 
 from datetime import datetime, timezone
-from os import environ
+from os import environ, getcwd
 from pathlib import Path
 from shutil import rmtree, which, copytree
 from typing import Any
@@ -14,13 +15,16 @@ from typing import Any
 from invoke.tasks import task
 
 
+sys.path.insert(0, getcwd())
+
+
 @task
 def start(ctx: Any, mock=False, clean=False, configured=True):
     """start the w3modmanager application"""
+    from tests.framework import _mockdata, _root  # type: ignore
+
     import w3modmanager
     import w3modmanager.__main__
-
-    from tests.framework import _mockdata, _root  # type: ignore
 
     testdata = _root.joinpath('testdata')
     if clean:

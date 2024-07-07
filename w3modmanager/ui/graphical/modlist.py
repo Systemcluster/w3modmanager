@@ -23,10 +23,8 @@ from PySide6.QtCore import (
     QAbstractItemModel,
     QAbstractTableModel,
     QEvent,
-    QItemSelection,
     QItemSelectionModel,
     QModelIndex,
-    QObject,
     QPersistentModelIndex,
     QPoint,
     QRect,
@@ -34,7 +32,6 @@ from PySide6.QtCore import (
     QSettings,
     QSortFilterProxyModel,
     Qt,
-    QTimer,
     QUrl,
 )
 from PySide6.QtGui import (
@@ -50,9 +47,7 @@ from PySide6.QtGui import (
     QKeySequence,
     QMouseEvent,
     QPainter,
-    QPaintEvent,
     QPen,
-    QResizeEvent,
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
@@ -122,6 +117,9 @@ class ModListSelectionModel(QItemSelectionModel):
         index = self.model().index(index.row(), 3)
         super().setCurrentIndex(index, command)
 
+    def isColumnSelected(self, column: int, parent: QModelIndex | QPersistentModelIndex) -> bool:
+        return super().isSelected(self.model().index(0, column, parent))
+
 
 class ModListFilterModel(QSortFilterProxyModel):
     def __init__(self, parent: QWidget, source: QAbstractTableModel) -> None:
@@ -130,6 +128,7 @@ class ModListFilterModel(QSortFilterProxyModel):
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setSortRole(Qt.ItemDataRole.UserRole)
+        self.setAutoAcceptChildRows(True)
 
     def filterAcceptsRow(self, row: int, parent: QModelIndex | QPersistentModelIndex) -> bool:
         filterRegExp = self.filterRegularExpression()
@@ -141,6 +140,16 @@ class ModListFilterModel(QSortFilterProxyModel):
         ).hasMatch() or filterRegExp.match(
             sourceModel.data(sourceModel.index(row, 2, parent))
         ).hasMatch()
+
+    def rowCount(self, parent: QModelIndex | QPersistentModelIndex) -> int:
+        if parent.isValid():
+            return 0
+        return super().rowCount(parent)
+
+    def columnCount(self, parent: QModelIndex | QPersistentModelIndex) -> int:
+        if parent.isValid():
+            return 0
+        return super().columnCount(parent)
 
 
 class ModList(QTableView):
@@ -166,21 +175,19 @@ class ModList(QTableView):
         self.setShowGrid(False)
         self.setAutoScroll(False)
         self.setCornerButtonEnabled(False)
+        self.setAutoFillBackground(True)
 
-        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
 
-        # setup viewport caching to counter slow resizing with many table elements
-        self.resizeTimer = QTimer(self)
-        self.resizeTimer.setSingleShot(True)
-        self.resizeTimer.setInterval(225)
-        self.resizeTimer.timeout.connect(lambda: [
-            self.resizeTimer.stop(),
-            self.viewport().repaint(),
-        ])
-        self.viewportCache = None
+        self.setAttribute(Qt.WidgetAttribute.WA_NoChildEventsForParent)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+
+        self.viewport().setAttribute(Qt.WidgetAttribute.WA_NoChildEventsForParent)
+        self.viewport().setAttribute(Qt.WidgetAttribute.WA_StaticContents)
 
         self.listmodel = ModListModel(self, model)
         self.filtermodel = ModListFilterModel(self, self.listmodel)
@@ -188,16 +195,6 @@ class ModList(QTableView):
 
         self.setItemDelegate(ModListItemDelegate(self))
         self.setSelectionModel(ModListSelectionModel(self, self.filtermodel))
-
-        self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
-        self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
-
-        self.horizontalHeader().setHighlightSections(False)
-        self.horizontalHeader().setSectionsMovable(True)
-        self.horizontalHeader().setResizeContentsPrecision(100)
-        for section in range(self.horizontalHeader().count() - 1):
-            self.horizontalHeader().setSectionResizeMode(section, QHeaderView.ResizeMode.Interactive)
-        self.horizontalHeader().setStretchLastSection(True)
 
         self.verticalHeader().hide()
         self.verticalHeader().setVisible(False)
@@ -207,6 +204,16 @@ class ModList(QTableView):
             self.verticalHeader().setSectionResizeMode(section, QHeaderView.ResizeMode.Fixed)
         self.verticalHeader().setStretchLastSection(False)
 
+        if settings.value('modlistHorizontalHeaderState'):
+            self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
+
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setSectionsMovable(True)
+        self.horizontalHeader().setResizeContentsPrecision(100)
+        for section in range(self.horizontalHeader().count()):
+            self.horizontalHeader().setSectionResizeMode(section, QHeaderView.ResizeMode.Interactive)
+        self.horizontalHeader().setStretchLastSection(False)
+
         if len(model):
             self.modCountLastUpdate = len(model)
             self.resizeColumnsToContents()
@@ -215,8 +222,8 @@ class ModList(QTableView):
         else:
             self.modCountLastUpdate = 0
 
-        if settings.value('modlistHorizontalHeaderState'):
-            self.horizontalHeader().restoreState(settings.value('modlistHorizontalHeaderState'))  # type: ignore
+        self.horizontalHeader().sectionMoved.connect(lambda: self.headerChangedEvent())
+        self.horizontalHeader().sectionResized.connect(lambda: self.headerChangedEvent())
 
         self.setFocus()
 
@@ -238,8 +245,6 @@ class ModList(QTableView):
 
         self.doubleClicked.connect(self.doubleClickEvent)
         model.updateCallbacks.append(self.modelUpdateEvent)
-
-        # TODO: enhancement: offer option to read readme and other additional text files
 
     def sizeHintForRow(self, row: int) -> int:
         if row < 0 or row >= self.model().rowCount():
@@ -309,30 +314,6 @@ class ModList(QTableView):
             else:
                 createAsyncTask(self.modmodel.enable(mod), self.tasks)
 
-    def resizeEvent(self, event: QResizeEvent) -> None:
-        super().resizeEvent(event)
-        if self.width() > 1200:
-            if not self.resizeTimer.isActive():
-                self.resizeTimer.start()
-                self.viewportCache = self.viewport().grab()
-        else:
-            self.resizeTimer.stop()
-
-    def paintEvent(self, event: QPaintEvent) -> None:
-        if self.resizeTimer.isActive() and self.viewportCache is not None:
-            painter = QPainter(self.viewport())
-            painter.drawPixmap(0, 0, self.viewportCache)
-        else:
-            if self.viewportCache is not None:
-                self.viewportCache = None
-            super().paintEvent(event)
-
-    def selectionChanged(self, selected: QItemSelection, deselected: QItemSelection) -> None:
-        super().selectionChanged(selected, deselected)
-
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        return super().eventFilter(obj, event)
-
     def sortByColumn(self, col: int, order: Qt.SortOrder, save: bool = True) -> None:  # type: ignore
         if save and col is not None and order is not None:
             settings = QSettings()
@@ -349,8 +330,12 @@ class ModList(QTableView):
             for package in (mod.package for mod in mods)
         ) for mod in mods})
         menu = QMenu(self)
-        menu.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menu.setWindowFlags(Qt.WindowType.Popup
+                            | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menu.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        menu.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+        menu.setAutoFillBackground(False)
         actionDetails = menu.addAction('&Show Details')
         actionDetails.triggered.connect(lambda: [
             self.showSelectedModsDetails()
@@ -407,7 +392,7 @@ class ModList(QTableView):
         menu.popup(self.viewport().mapToGlobal(pos))
 
     def selectRowChecked(self, row: int) -> None:
-        nums: int = self.filtermodel.rowCount()
+        nums: int = self.filtermodel.rowCount(QModelIndex())
         if row < nums and row >= 0:
             self.selectRow(row)
         elif nums > 0:

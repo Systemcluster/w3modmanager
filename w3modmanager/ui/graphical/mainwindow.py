@@ -67,8 +67,12 @@ class MainWindow(QMainWindow):
         # mods menu
 
         menuMods: QMenu = self.menuBar().addMenu('&Mods')
-        menuMods.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuMods.setWindowFlags(Qt.WindowType.Popup
+                                | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         menuMods.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menuMods.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        menuMods.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+        menuMods.setAutoFillBackground(False)
 
         downIcon = QIcon(str(getRuntimePath('resources/icons/down.ico')))
         gearIcon = QIcon(str(getRuntimePath('resources/icons/gear.ico')))
@@ -116,8 +120,12 @@ class MainWindow(QMainWindow):
         # view menu
 
         menuView: QMenu = self.menuBar().addMenu('&View')
-        menuView.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuView.setWindowFlags(Qt.WindowType.Popup
+                                | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         menuView.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menuView.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        menuView.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+        menuView.setAutoFillBackground(False)
 
         showSummary = menuView.addAction('Show &Summary')
         showSummary.setCheckable(True)
@@ -226,8 +234,12 @@ class MainWindow(QMainWindow):
         # settings menu
 
         menuSettings: QMenu = self.menuBar().addMenu('&Tools')
-        menuSettings.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuSettings.setWindowFlags(Qt.WindowType.Popup
+                                    | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         menuSettings.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menuSettings.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        menuSettings.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+        menuSettings.setAutoFillBackground(False)
 
         actionSettings = menuSettings.addAction('&Settings')
         actionSettings.setIcon(gearIcon)
@@ -244,8 +256,12 @@ class MainWindow(QMainWindow):
         # info menu
 
         menuInfo: QMenu = self.menuBar().addMenu('&Info')
-        menuInfo.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        menuInfo.setWindowFlags(Qt.WindowType.Popup
+                                | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         menuInfo.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        menuInfo.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop)
+        menuInfo.setAttribute(Qt.WidgetAttribute.WA_StaticContents)
+        menuInfo.setAutoFillBackground(False)
 
         actionFeedback = menuInfo.addAction('Send &Feedback')
         actionFeedback.setIcon(smilIcon)

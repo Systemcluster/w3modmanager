@@ -7,7 +7,7 @@ from functools import cache
 from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings, Qt
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QPainter, QPalette, QPixmap
 from PySide6.QtWidgets import QWidget
 
 
@@ -173,10 +173,14 @@ class ModListModel(QAbstractTableModel):
         createAsyncTask(self.setDataInternal(col, row, str(value)), self.tasks)
         return True
 
-    def rowCount(self, index: QModelIndex | QPersistentModelIndex | None = None) -> int:
+    def rowCount(self, parent: QModelIndex | QPersistentModelIndex | None = None) -> int:
+        if parent and parent.isValid():
+            return 0
         return len(self.modmodel)
 
-    def columnCount(self, index: QModelIndex | QPersistentModelIndex | None = None) -> int:
+    def columnCount(self, parent: QModelIndex | QPersistentModelIndex | None = None) -> int:
+        if parent and parent.isValid():
+            return 0
         return len(self._header)
 
     @cache  # noqa: B019
@@ -242,7 +246,7 @@ class ModListModel(QAbstractTableModel):
                 return self._colorSpecial
             if not mod.installed:
                 return self._colorUnmanaged
-            return None
+            return QPalette().base()
 
         if role == Qt.ItemDataRole.ForegroundRole:
             mod = self.modmodel[index.row()]
@@ -254,7 +258,7 @@ class ModListModel(QAbstractTableModel):
             elif col in ('bundledFiles',):
                 if self.modmodel.conflicts.bundled.get(mod.filename):
                     return QColor('#9a6700')
-            return None
+            return QPalette().text()
 
         if role == Qt.ItemDataRole.DecorationRole:
             if col in ('datatype',):

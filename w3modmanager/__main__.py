@@ -8,11 +8,11 @@ import w3modmanager
 import asyncio
 import multiprocessing
 import os
+import platform
 import sys
 import traceback
 
 from argparse import ArgumentParser
-from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -35,6 +35,8 @@ if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
 if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
     del os.environ['QT_DEVICE_PIXEL_RATIO']
 os.environ['QT_API'] = 'pyside6'
+if platform.system() == 'Windows':
+    os.environ['QT_QPA_PLATFORM'] = 'windows:darkmode=0'
 
 
 # setup logger if tty is attached
@@ -115,21 +117,28 @@ def main(gamePath: str | None = None,
     from w3modmanager.util.util import getRuntimePath
 
     from PySide6.QtCore import QSettings, Qt
-    from PySide6.QtGui import QFont, QIcon, QPalette
+    from PySide6.QtGui import QColor, QFont, QIcon, QPalette
     from PySide6.QtWidgets import QApplication, QMessageBox
-    from qasync import QEventLoop
+    from qasync import QEventLoop, QThreadExecutor
 
     QApplication.setOrganizationName(w3modmanager.ORG_NAME)
     QApplication.setOrganizationDomain(w3modmanager.ORG_URL)
     QApplication.setApplicationName(w3modmanager.TITLE)
     QApplication.setApplicationVersion(w3modmanager.VERSION)
     QApplication.setApplicationDisplayName('')
+    QApplication.setDesktopFileName(w3modmanager.NAME)
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_CompressHighFrequencyEvents)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_DisableSessionManager)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QApplication.setQuitOnLastWindowClosed(True)
 
     app = QApplication(sys.argv)
+    app.setStyle('windowsvista')
     app.setStyleSheet('''
         Link {
             text-decoration: none;
@@ -141,13 +150,16 @@ def main(gamePath: str | None = None,
         }
         QScrollBar:horizontal {
             border: 0;
-            background: #eee;
+            background: #f6f6f6;
             height: 10px;
         }
         QScrollBar:vertical {
             border: 0;
-            background: #eee;
+            background: #f6f6f6;
             width: 10px;
+        }
+        QAbstractScrollArea::corner {
+            background: #f6f6f6;
         }
         QScrollBar::handle:horizontal {
             background: lightblue;
@@ -160,6 +172,12 @@ def main(gamePath: str | None = None,
         QScrollBar::handle:vertical:hover,
         QScrollBar::handle:horizontal:hover {
             background: #82c8df;
+        }
+        QScrollBar::sub-page:horizontal,
+        QScrollBar::add-page:horizontal,
+        QScrollBar::sub-page:vertical,
+        QScrollBar::add-page:vertical {
+            background: transparent;
         }
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical,
@@ -184,33 +202,51 @@ def main(gamePath: str | None = None,
             padding: 0;
         }
         QTableView::item:selected {
-            background: rgb(70, 145, 225);
+            background: rgb(90, 155, 235);
+            color: white;
             padding: 0;
         }
         QLineEdit {
             outline: none;
             border: 1px solid #cacaca;
-            selection-background-color: rgb(70, 145, 225);
+            padding: 1px 0px;
+            selection-background-color: rgb(90, 155, 235);
         }
         QTextEdit {
             outline: none;
             border: 1px solid #cacaca;
-            selection-background-color: rgb(70, 145, 225);
+            selection-background-color: rgb(90, 155, 235);
+        }
+        QMenuBar {
+            padding: 0;
+        }
+        QMenuBar::item {
+            padding: 3px 5px;
+            background: white;
+            color: black;
+        }
+        QMenuBar::item:selected {
+            background: rgb(217, 235, 249);
+        }
+        QMenuBar::item:disabled {
+            color: #cacaca;
         }
         QMenu {
             border: 1px solid #cacaca;
             background: white;
             padding: 3px 0;
             border-radius: 3px;
+            outline: none;
         }
         QMenu::item {
             background: transparent;
             padding: 4px 20px 4px 15px;
             margin: 0;
             color: black;
+            outline: none;
         }
         QMenu::item:disabled {
-            color: gray;
+            color: #cacaca;
         }
         QMenu::item:selected {
             background: rgb(217, 235, 249);
@@ -240,20 +276,24 @@ def main(gamePath: str | None = None,
         }
         QMenu::separator {
             height: 1px;
-            background: #cacaca;
-            margin: 3px 0;
+            background: #f2f2f2;
+            margin: 2px 0;
         }
     ''')
 
     eventloop = QEventLoop(app)
-    pool = ThreadPoolExecutor()
+    pool = QThreadExecutor(max_workers=8, stack_size=2**24)
     eventloop.set_default_executor(pool)
     asyncio.set_event_loop(eventloop)
 
     palette = QPalette(QApplication.palette())
+    palette.setColor(QPalette.ColorRole.Base, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Window, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
     palette.setColor(QPalette.ColorRole.Link, Qt.GlobalColor.red)
     palette.setColor(QPalette.ColorRole.LinkVisited, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.PlaceholderText, Qt.GlobalColor.gray)
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(90, 155, 235))
+    palette.setColor(QPalette.ColorRole.Accent, QColor(100, 165, 235))
     app.setPalette(palette)
 
     font = QFont('Segoe UI')
