@@ -560,9 +560,9 @@ def findGamePath() -> Path | None:
         game = Path(str(winreg.QueryValueEx(subkey, 'exe')[0]))
         if verifyGamePath(game):
             return game
-    except Exception:  # noqa
+    except Exception as e:
         # probably not found
-        pass
+        logger.debug(f'Could not find GOG installation path: {e}')
 
     try:
         # try to read Steam installation path
@@ -578,9 +578,16 @@ def findGamePath() -> Path | None:
             # found Steam installation, now read library folders manifest
             # and iterate libraries
             libdict = vdf.loads(util.readText(libs), mapper=vdf.VDFDict)
-            libvals = libdict['LibraryFolders']
+            libvals = libdict.get('LibraryFolders', None) or libdict.get('libraryfolders', None) or {}
             for key in libvals:
-                checkpath = Path(libvals[key])
+                if not libvals[key]:
+                    continue
+                elif type(libvals[key]) is str:
+                    checkpath = Path(libvals[key])
+                elif libvals[key].get('path', None):
+                    checkpath = Path(libvals[key]['path'])
+                else:
+                    continue
                 if os.path.isdir(checkpath) and os.path.isdir(checkpath.joinpath('steamapps')):
                     # Steam library path found, now check for Witcher 3 installation
                     steamapps = checkpath.joinpath('steamapps')
@@ -589,9 +596,9 @@ def findGamePath() -> Path | None:
                         return game
         else:
             pass
-    except Exception:  # noqa
+    except Exception as e:
         # probably not found
-        pass
+        logger.debug(f'Could not find Steam installation path: {e}')
 
     return None
 
