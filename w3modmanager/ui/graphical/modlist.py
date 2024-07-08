@@ -258,7 +258,7 @@ class ModList(QTableView):
             self.verticalHeader().setDefaultSectionSize(30)
 
     @debounce(200)
-    async def headerChangedEvent(self) -> None:
+    def headerChangedEvent(self) -> None:
         settings = QSettings()
         state = self.horizontalHeader().saveState()
         # call later to work around pyqt5 StopIteration exception

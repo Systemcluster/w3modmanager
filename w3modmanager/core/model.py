@@ -26,7 +26,7 @@ import contextlib
 import re
 
 from collections.abc import Iterator, KeysView, ValuesView
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import CancelledError, Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
@@ -96,7 +96,7 @@ class Model:
 
         self.setPaths(gamePath, configPath)
 
-        self.updateCallbacks = CallbackList()
+        self.updateCallbacks = CallbackList[Model]()
         self.updateLock = asyncio.Lock()
 
         self.conflicts = ModelConflicts()
@@ -158,15 +158,29 @@ class Model:
 
 
     @debounce(25)
-    async def updateBundledContentsConflicts(self) -> None:
+    def updateBundledContentsConflicts(self) -> None:
+        if not self._pool:
+            return None
+
         self._iteration += 1
-        conflicts = await asyncio.get_running_loop().run_in_executor(
-            self._pool,
-            partial(ModelConflicts.fromModList, self._modList, self._iteration)
-        )
-        if conflicts.iteration == self._iteration:
-            self.conflicts = conflicts
-            self.updateCallbacks.fire(self)
+        conflicts = self._pool.submit(partial(ModelConflicts.fromModList, self._modList, self._iteration))
+        loop = asyncio.get_running_loop()
+
+        def update(f: ModelConflicts) -> None:
+            if f.iteration == self._iteration:
+                self.conflicts = f
+                self.updateCallbacks.fire(self)
+
+        def done(f: Future[ModelConflicts]) -> None:
+            try:
+                conflicts = f.result()
+                loop.call_soon_threadsafe(update, conflicts)
+            except CancelledError:
+                pass
+            except Exception as e:
+                logger.exception(f'Could not update conflicts: {e}')
+
+        conflicts.add_done_callback(done)
 
 
     async def loadInstalledMod(self, path: Path) -> None:

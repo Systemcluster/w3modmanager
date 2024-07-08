@@ -13,7 +13,7 @@ from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 
-class CallbackList(list[Callable[..., Any]]):
+class CallbackList[**Param](list[Callable[Param, Any]]):
     def __init__(self) -> None:
         self.fireLock = asyncio.Lock()
         self._skip = 0
@@ -23,7 +23,7 @@ class CallbackList(list[Callable[..., Any]]):
         self._skip += count
 
     @debounce(25)
-    async def fire(self, *args: Any, **kwargs: Any) -> None:
+    async def fire(self, *args: Param.args, **kwargs: Param.kwargs) -> None:
         async with self.fireLock:
             if self._skip == 0:
                 for listener in self:
@@ -39,7 +39,7 @@ class FileWatcher(QObject):
         super().__init__()
 
         self.path = path
-        self.callbacks = CallbackList()
+        self.callbacks = CallbackList[Path]()
 
         self._signal.connect(self._callback)
         self._paused = False
@@ -113,13 +113,13 @@ class WatchedConfigFile:
             self.config.clear()
 
     @debounce(25)
-    async def write(self) -> None:
+    def write(self) -> None:
         # skip callbacks for the next modification event
         self.watcher.callbacks.skip(1)
         try:
             if not self.path.parent.is_dir():
                 self.path.parent.mkdir(parents=True)
-            with open(self.path, 'w', encoding=self.encoding) as file:  # noqa: ASYNC230
+            with open(self.path, 'w', encoding=self.encoding) as file:
                 self.config.write(file, space_around_delimiters=False)
         except Exception as e:
             logger.bind(path=self.path).exception(f'Could not write settings file: {e}')

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import tempfile
 
+from asyncio import Task, TimerHandle
 from collections.abc import Awaitable, Callable, Coroutine
 from functools import partial, wraps
 from pathlib import Path
@@ -285,7 +286,7 @@ async def extractMod(archive: Path) -> Path:
     return target
 
 
-def createAsyncTask(coro: Coroutine[Any, Any, Any], refset: set[Any]) -> asyncio.Task[Any]:
+def createAsyncTask[Return](coro: Coroutine[Any, Any, Return], refset: set[Task[Any]]) -> Task[Return]:
     """Create an async task and add it to a reference set to prevent it from being garbage collected"""
     task = asyncio.create_task(coro)
     refset.add(task)
@@ -293,22 +294,28 @@ def createAsyncTask(coro: Coroutine[Any, Any, Any], refset: set[Any]) -> asyncio
     return task
 
 
-def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Any]]:
+def debounce[**Param](ms: int, cancel_running: bool = False) -> Callable[
+    [Callable[Param, Any]], Callable[Param, TimerHandle]
+]:
     """Debounce a functions execution by {ms} milliseconds"""
-    def decorator(fun: Callable[..., Awaitable[Any]]) -> Callable[..., Any]:
-
+    def decorator(fun: Callable[Param, Any]) -> Callable[Param, TimerHandle]:
         @wraps(fun)
-        def debounced(*args: Any, **kwargs: Any) -> Awaitable[Any]:
+        def debounced(*args: Param.args, **kwargs: Param.kwargs) -> TimerHandle:
             debounced.__debounced = set()  # type: ignore
 
-            def deferred() -> None:
-                async def internal() -> None:
+            def deferred() -> Task[Any]:
+                async def internal() -> Any:
                     try:
-                        await fun(*args, **kwargs)
+                        result = fun(*args, **kwargs)
+                        if type(result) is Awaitable or asyncio.iscoroutine(result):
+                            return await result
+                        else:
+                            return result
                     except asyncio.CancelledError:
                         pass
                     except Exception as e:
                         logger.exception(str(e))
+                    return None
                 task = createAsyncTask(internal(), debounced.__debounced)  # type: ignore
                 if cancel_running:
                     try:
@@ -317,6 +324,8 @@ def debounce(ms: int, cancel_running: bool = False) -> Callable[[Callable[..., A
                     except AttributeError:
                         pass
                 debounced.task = task  # type: ignore
+                return debounced.task  # type: ignore
+
             with contextlib.suppress(AttributeError):
                 debounced.timer.cancel()  # type: ignore
 
