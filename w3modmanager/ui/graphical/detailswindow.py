@@ -39,8 +39,14 @@ class DetailsWindow(QDialog):
         self.info.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.info.setReadOnly(True)
         self.info.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        order = ['package', 'filename', 'summary', 'version', 'author', 'category',]
+        for field in order:
+            if hasattr(mod, field):
+                self.info.append(f'<strong>{field}</strong>: {getattr(mod, field)}')
         for field in fields(mod):
             if field.name in ['files', 'contents', 'settings', 'inputs', 'bundled', 'readmes']:
+                continue
+            if field.name in order:
                 continue
             self.info.append(f'<strong>{field.name}</strong>: {getattr(mod, field.name)}')
         self.info.moveCursor(QTextCursor.MoveOperation.Start)
