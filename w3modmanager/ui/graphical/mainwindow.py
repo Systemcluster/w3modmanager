@@ -3,11 +3,14 @@ import w3modmanager
 from w3modmanager.core.model import Model
 from w3modmanager.domain.bin.merger import verifyScriptMergerPath
 from w3modmanager.domain.mod.fetcher import *
+from w3modmanager.domain.mod.mod import Mod
+from w3modmanager.ui.graphical.detailswindow import DetailsWindow
 from w3modmanager.ui.graphical.downloadwindow import DownloadWindow
 from w3modmanager.ui.graphical.mainwidget import MainWidget
 from w3modmanager.ui.graphical.settingswindow import SettingsWindow
 from w3modmanager.util.util import *
 
+from datetime import datetime, timezone
 from typing import Any
 
 from PySide6.QtCore import QSettings, QSize, Qt, QUrl
@@ -253,6 +256,10 @@ class MainWindow(QMainWindow):
         actionOpenConfigDirectory.setIcon(dirsIcon)
         actionOpenConfigDirectory.triggered.connect(lambda: util.openDirectory(self.model.configpath))
 
+        menuSettings.addSeparator()
+        actionInspectMod = menuSettings.addAction('Inspect &Mod')
+        actionInspectMod.triggered.connect(self.showInspectDialog)
+
         # info menu
 
         menuInfo: QMenu = self.menuBar().addMenu('&Info')
@@ -350,6 +357,55 @@ class MainWindow(QMainWindow):
                 )
             ])
         return settingswindow
+
+    def showInspectDialog(self: Any) -> QFileDialog:
+        extensions = ' '.join(f'*{e}' for e in util.getSupportedExtensions())
+        dialog: QFileDialog = QFileDialog(self, 'Select Mod to inspect', '', f'Archives ({extensions})')
+        dialog.setOptions(QFileDialog.Option.ReadOnly)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+
+        async def inspectMod(path: Path) -> None:
+            md5hash = ''
+            source = path
+            archive = path.is_file()
+            if archive:
+                try:
+                    md5hash = getMD5Hash(path)
+                    source = path
+                    logger.bind(path=str(path), dots=True).debug('Unpacking archive')
+                    path = await extractMod(source)
+                except Exception as e:
+                    logger.bind(path=str(path)).exception(e)
+                    return
+            valid = containsValidMod(path, searchlimit=8)
+            if not valid:
+                logger.bind(path=str(path)).error('No valid mod found')
+                return
+            mods = await Mod.fromDirectory(path, searchCommonRoot=not archive)
+            windows = set()
+            for mod in mods:
+                mod.md5hash = md5hash
+                mod.source = source
+                mod.installdate = datetime.fromtimestamp(0, tz=timezone.utc)
+                details = DetailsWindow(None, mod, self.model if isinstance(self, MainWindow) else None)
+                details.open()
+                windows.add(details)
+                details.finished.connect(lambda _, d=details: dialog.__windows.remove(d)  # type: ignore \
+                                         if d in dialog.__windows else None)  # type: ignore
+            dialog.__windows = windows  # type: ignore
+
+        async def inspectMods(paths: list[QUrl]) -> None:
+            await asyncio.gather(
+                *[inspectMod(Path(path.toLocalFile())) for path in paths if path.isLocalFile()]
+            )
+
+        dialog.setModal(True)
+        dialog.open()
+        dialog.accepted.connect(lambda: createAsyncTask(
+            inspectMods(dialog.selectedUrls()),
+            self.tasks
+        ))
+        return dialog
 
     def showAboutDialog(self: Any) -> QMessageBox:
         messagebox = QMessageBox(self)

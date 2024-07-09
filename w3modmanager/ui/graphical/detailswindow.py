@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QDialog, QFrame, QGroupBox, QScrollArea, QSizePoli
 
 
 class DetailsWindow(QDialog):
-    def __init__(self, parent: QWidget, mod: Mod, model: Model) -> None:
+    def __init__(self, parent: QWidget | None, mod: Mod, model: Model | None) -> None:
         super().__init__(parent,)
 
         self.setWindowTitle(f'Details: {mod.uploadname if mod.uploadname else mod.filename}')
@@ -85,11 +85,12 @@ class DetailsWindow(QDialog):
             self.scripts.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
             self.scripts.setReadOnly(True)
             self.scripts.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-            conflicting = mod.filename in model.conflicts.scripts
-            if conflicting:
-                scriptFiles = sorted(scriptFiles, key=lambda file: file not in model.conflicts.scripts[mod.filename])
+            conflicting = mod.filename in model.conflicts.scripts if model else False
+            if model and conflicting:
+                scriptFiles = sorted(
+                    scriptFiles, key=lambda file: file not in model.conflicts.scripts[mod.filename])
             for scriptFile in scriptFiles:
-                if conflicting and scriptFile in model.conflicts.scripts[mod.filename]:
+                if model and conflicting and scriptFile in model.conflicts.scripts[mod.filename]:
                     conflict = model.conflicts.scripts[mod.filename][scriptFile]
                     self.scripts.append(f'{scriptFile} <span style="color: #e94600;">conflicting with \
                                         <strong>{conflict}</strong></span>')
@@ -196,14 +197,14 @@ class DetailsWindow(QDialog):
             self.bundled.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
             self.bundled.setReadOnly(True)
             self.bundled.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-            conflicting = mod.filename in model.conflicts.bundled
-            if conflicting:
+            conflicting = mod.filename in model.conflicts.bundled if model else False
+            if model and conflicting:
                 bundled = sorted(bundled, key=lambda file: file not in model.conflicts.bundled[mod.filename])
             for bundledFile in bundled:
-                if conflicting and bundledFile in model.conflicts.bundled[mod.filename]:
+                if model and conflicting and bundledFile in model.conflicts.bundled[mod.filename]:
                     conflict = model.conflicts.bundled[mod.filename][bundledFile]
                     self.bundled.append(f'<span style="color: #888">{bundledFile.source}:</span> {bundledFile.bundled}\
-                        </span> <span style="color: #9a6700;">overridden by <strong>{conflict}</strong></span>')
+                        <span style="color: #9a6700;">overridden by <strong>{conflict}</strong></span>')
                 else:
                     self.bundled.append(f'<span style="color: #888">{bundledFile.source}:</span> \
                         <span>{bundledFile.bundled}</span>')
