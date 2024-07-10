@@ -108,6 +108,7 @@ class WatchedConfigFile:
         if self.path.is_file():
             encoding = detectEncoding(self.path)
             self.encoding = encoding
+            self.config.clear()
             self.config.read(self.path, encoding=encoding)
         else:
             self.config.clear()
