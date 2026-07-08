@@ -138,8 +138,10 @@ def isValidDlcDirectory(path: Path) -> bool:
     if path.is_dir() and (
         re.match('^(dlc).*', path.name, re.IGNORECASE)
         or re.match('^((?!mod).)*dlc$', path.name, re.IGNORECASE)
-        or re.match('^(mod).*', path.name, re.IGNORECASE)
+        or (
+            re.match('^(mod).*', path.name, re.IGNORECASE)
             and re.match('^(dlc[s]?)$', path.parent.name, re.IGNORECASE)
+        )
     ):
         return containsContentDirectory(path)
     return False
@@ -456,9 +458,11 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
             d for d in check.iterdir()
             if d.is_dir() and (
                 not onlyUngrouped
-                or not isValidModDirectory(d)
-                and not isValidDlcDirectory(d)
-                and not maybeModOrDlcDirectory(d, path)
+                or (
+                    not isValidModDirectory(d)
+                    and not isValidDlcDirectory(d)
+                    and not maybeModOrDlcDirectory(d, path)
+                )
             )
         )
     return (bins, user, inpu)

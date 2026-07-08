@@ -6,6 +6,7 @@ from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Any, TypeVar
+from os import fsdecode
 
 from loguru import logger
 from PySide6.QtCore import QObject, Signal
@@ -47,9 +48,9 @@ class FileWatcher(QObject):
         self._observer = Observer()
         self._handler = PatternMatchingEventHandler(
             patterns=files, ignore_patterns=[], ignore_directories=True, case_sensitive=False)
-        self._handler.on_modified = lambda event: self._signal.emit(Path(event.src_path))
-        self._handler.on_created = lambda event: self._signal.emit(Path(event.src_path))
-        self._handler.on_deleted = lambda event: self._signal.emit(Path(event.src_path))
+        self._handler.on_modified = lambda event: self._signal.emit(Path(fsdecode(event.src_path)))
+        self._handler.on_created = lambda event: self._signal.emit(Path(fsdecode(event.src_path)))
+        self._handler.on_deleted = lambda event: self._signal.emit(Path(fsdecode(event.src_path)))
         self._observer.schedule(self._handler, str(path), recursive=False)
         self._observer.start()
 

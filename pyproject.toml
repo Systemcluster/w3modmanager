@@ -2,7 +2,7 @@
 name = "w3modmanager"
 description = "Mod manager for The Witcher 3"
 version = "0.0.0"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 license = { text = "BSD-2-Clause" }
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "Christian Sdunek", email = "me@systemcluster.me" }]
@@ -10,38 +10,38 @@ keywords = ["witcher-3", "mod-manager", "modding", "games", "w3mm"]
 urls = { repository = "https://github.com/Systemcluster/w3modmanager" }
 
 dependencies = [
-    "fasteners>=0.19",
-    "PySide6>=6.7,<6.8",
+    "fasteners>=0.20",
+    "PySide6>=6.11,<6.12",
     "loguru>=0.7",
     "vdf>=3.4",
     "appdirs>=1.4",
-    "pywin32>=306",
-    "charset-normalizer>=3.3",
-    "httpx>=0.27",
-    "qasync>=0.27",
-    "dateparser>=1.2",
+    "charset-normalizer>=3.4",
+    "httpx>=0.28",
+    "qasync>=0.28",
+    "dateparser>=1.4",
     "dataclasses-json>=0.6",
-    "watchdog>=4.0",
-    "xxhash>=3.4",
+    "watchdog>=6.0",
+    "xxhash>=3.8",
+    "pywin32>=312; sys_platform == 'win32'",
 ]
 
 [tool.pdm.resolution]
 allow-prereleases = false
 
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 lint = [
-    "ruff>=0.5",
+    "ruff>=0.15",
     "pyright>=1.1",
-    "types-dateparser>=1.2",
+    "types-dateparser>=1.4",
     "autopep8>=2.3",
 ]
 test = [
-    "pytest>=8.2",
-    "pytest-asyncio>=0.23",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
 ]
 build = [
-    "pyinstaller>=6.8",
-    "invoke>=2.2",
+    "pyinstaller>=6.21",
+    "invoke>=3.0",
 ]
 
 [[tool.pdm.source]]
@@ -67,6 +67,7 @@ reportUnnecessaryComparison = "none"
 reportUnknownVariableType = "none"
 reportIncompatibleMethodOverride = "none"
 reportMissingParameterType = "none"
+reportOptionalMemberAccess = "none"
 
 [tool.ruff]
 output-format = "pylint"
@@ -105,11 +106,17 @@ ignore = [
     "S101",
     "S303",
     "PT003",
-    "ANN101",
     "ANN401",
     "SIM102",
     "SIM108",
+    "SIM114",
+    "SIM118",
     "UP017",
+    "PLC0415",
+    "PLC1802",
+    "PLW0108",
+    "ASYNC240",
+    "RUF010",
 ]
 unfixable = [
     "ERA001",
@@ -133,8 +140,7 @@ lines-after-imports = 2
 lines-between-types = 1
 
 [tool.ruff.format]
-quote-style = "single"
-indent-style = "space"
+exclude = ["*"]
 
 [tool.autopep8]
 max_line_length = 120
