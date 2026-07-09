@@ -301,8 +301,6 @@ def debounce[**Param](ms: int, cancel_running: bool = False) -> Callable[
     def decorator(fun: Callable[Param, Any]) -> Callable[Param, TimerHandle]:
         @wraps(fun)
         def debounced(*args: Param.args, **kwargs: Param.kwargs) -> TimerHandle:
-            debounced.__debounced = set()  # type: ignore
-
             def deferred() -> Task[Any]:
                 async def internal() -> Any:
                     try:
@@ -331,6 +329,8 @@ def debounce[**Param](ms: int, cancel_running: bool = False) -> Callable[
 
             debounced.timer = asyncio.get_running_loop().call_later(ms / 1000.0, deferred)  # type: ignore
             return debounced.timer  # type: ignore
+
+        debounced.__debounced: set[Task[Any]] = set()  # type: ignore
 
         def cancel() -> bool:
             try:
