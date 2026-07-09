@@ -1,22 +1,21 @@
 from w3modmanager.util.util import debounce, detectEncoding
 
-import asyncio
-
+from asyncio import Lock
 from collections.abc import Callable
 from configparser import ConfigParser
+from os import fsdecode
 from pathlib import Path
 from typing import Any, TypeVar
-from os import fsdecode
 
 from loguru import logger
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QReadWriteLock, Signal
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 
 class CallbackList[**Param](list[Callable[Param, Any]]):
     def __init__(self) -> None:
-        self.fireLock = asyncio.Lock()
+        self.fireLock = Lock()
         self._skip = 0
         super().__init__()
 
@@ -73,6 +72,7 @@ class WatchedConfigFile:
 
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
+        self.lock = QReadWriteLock()
         self.watcher = FileWatcher(self.path.parent, [self.path.name])
         self.watcher.callbacks.append(lambda _: self._onFileChanged())
         self.config = ConfigParser(strict=False)
@@ -81,18 +81,24 @@ class WatchedConfigFile:
         self.read()
 
     def setValue(self, section: str, key: str, value: str) -> None:
+        self.lock.lockForWrite()
         if not self.config.has_section(section):
             self.config.add_section(section)
         self.config.set(section, key, value)
+        self.lock.unlock()
 
     def getValue(self, section: str, key: str, fallback: _SectionGet = None) -> str | _SectionGet:
+        self.lock.lockForRead()
+        value = fallback
         if fallback is not None:
-            return self.config.get(section, key, fallback=fallback)
+            value = self.config.get(section, key, fallback=fallback)
         if self.config.has_section(section) and self.config.has_option(section, key):
-            return self.config.get(section, key)
-        return fallback
+            value = self.config.get(section, key)
+        self.lock.unlock()
+        return value
 
     def renameSection(self, section: str, to: str) -> None:
+        self.lock.lockForWrite()
         if self.config.has_section(section):
             items = self.config.items(section)
             if not self.config.has_section(to):
@@ -100,12 +106,14 @@ class WatchedConfigFile:
             for key, val in items:
                 self.config.set(to, key, val)
             self.config.remove_section(section)
+        self.lock.unlock()
 
     def removeSection(self, section: str) -> None:
         if self.config.has_section(section):
             self.config.remove_section(section)
 
     def read(self) -> None:
+        self.lock.lockForWrite()
         if self.path.is_file():
             encoding = detectEncoding(self.path)
             self.encoding = encoding
@@ -113,9 +121,11 @@ class WatchedConfigFile:
             self.config.read(self.path, encoding=encoding)
         else:
             self.config.clear()
+        self.lock.unlock()
 
     @debounce(25)
     def write(self) -> None:
+        self.lock.lockForWrite()
         # skip callbacks for the next modification event
         self.watcher.callbacks.skip(1)
         try:
@@ -125,6 +135,7 @@ class WatchedConfigFile:
                 self.config.write(file, space_around_delimiters=False)
         except Exception as e:
             logger.bind(path=self.path).exception(f'Could not write settings file: {e}')
+        self.lock.unlock()
 
     def _onFileChanged(self) -> None:
         self.read()
