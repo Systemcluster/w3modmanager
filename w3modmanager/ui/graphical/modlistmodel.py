@@ -3,7 +3,6 @@ from w3modmanager.util.util import createAsyncTask, getRuntimePath
 
 import asyncio
 
-from functools import cache
 from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, QSettings, Qt
@@ -45,6 +44,10 @@ class ModListModel(QAbstractTableModel):
         self._datatypes['udf'] = 'Undefined / Mod?'
 
         self.setIcons()
+
+        self._data_cache: dict[tuple[int, int, Qt.ItemDataRole], Any] = {}
+        self._flags_cache: dict[tuple[int, int], Qt.ItemFlag] = {}
+        self._header_cache: dict[tuple[int, Qt.Orientation, Qt.ItemDataRole], Any] = {}
 
         self._lastUpdate = model.lastUpdate
         self._lastInitialization = model.lastInitialization
@@ -101,9 +104,9 @@ class ModListModel(QAbstractTableModel):
         self._icons['spe'] = QIcon(pixmap)
 
     def clearCache(self) -> None:
-        self.data.cache_clear()
-        self.flags.cache_clear()
-        self.headerData.cache_clear()
+        self._data_cache.clear()
+        self._flags_cache.clear()
+        self._header_cache.clear()
 
     def update(self, model: Model) -> None:
         settings = QSettings()
@@ -135,21 +138,21 @@ class ModListModel(QAbstractTableModel):
         if col in ('filename',):
             mod = self.modmodel[row]
             await self.modmodel.setFilename(mod, value)
-            self.data.cache_clear()
+            self._data_cache.clear()
             self.dataChanged.emit(
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
         if col in ('package',):
             mod = self.modmodel[row]
             await self.modmodel.setPackage(mod, value)
-            self.data.cache_clear()
+            self._data_cache.clear()
             self.dataChanged.emit(
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
         if col in ('category',):
             mod = self.modmodel[row]
             await self.modmodel.setCategory(mod, value)
-            self.data.cache_clear()
+            self._data_cache.clear()
             self.dataChanged.emit(
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
@@ -160,7 +163,7 @@ class ModListModel(QAbstractTableModel):
             except ValueError:
                 priority = -1
             await self.modmodel.setPriority(mod, priority)
-            self.data.cache_clear()
+            self._data_cache.clear()
             self.dataChanged.emit(
                 self.index(row, 0),
                 self.index(row, self.columnCount() - 1))
@@ -183,33 +186,51 @@ class ModListModel(QAbstractTableModel):
             return 0
         return len(self._header)
 
-    @cache  # noqa: B019
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole = Qt.ItemDataRole.EditRole
     ) -> Any:
+        key = (section, orientation, role)
+        if key in self._header_cache:
+            return self._header_cache[key]
         if role != Qt.ItemDataRole.DisplayRole:
-            return None
-        if orientation != Qt.Orientation.Horizontal:
-            return None
-        return self._header[section][0] if len(self._header) > section else '?'
+            result = None
+        elif orientation != Qt.Orientation.Horizontal:
+            result = None
+        else:
+            result = self._header[section][0] if len(self._header) > section else '?'
+        self._header_cache[key] = result
+        return result
 
-    @cache  # noqa: B019
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
+        key = (index.row(), index.column())
+        if key in self._flags_cache:
+            return self._flags_cache[key]
         col = self.getColumnKey(index.column())
         if col in ('package', 'filename', 'category', 'priority',):
             mod = self.modmodel[index.row()]
             # TODO: disallow editing for special 0000 mods
             if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
-                return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+            else:
+                result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+        else:
+            result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        self._flags_cache[key] = result
+        return result
 
-    @cache  # noqa: B019
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
+        key = (index.row(), index.column(), role)
+        if key in self._data_cache:
+            return self._data_cache[key]
+        result = self._data(index, role)
+        self._data_cache[key] = result
+        return result
+
+    def _data(self, index: QModelIndex, role: Qt.ItemDataRole) -> Any:
         col = self.getColumnKey(index.column())
         if not col:
             return None

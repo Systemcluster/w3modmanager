@@ -86,6 +86,7 @@ class Model:
         self._dlcsPath: Path = Path()
 
         self._modList: dict[tuple[str, str], Mod] = {}
+        self._modIndexCache: list[Mod] | None = None
         self._lock = None
         self._pool = None
 
@@ -155,6 +156,7 @@ class Model:
         self.lastInitialization = datetime.now(tz=timezone.utc)
 
         self._modList = {}
+        self._modIndexCache = None
 
 
     @debounce(25)
@@ -201,8 +203,10 @@ class Model:
                     logger.bind(path=path).error('Ignoring duplicate MOD')
                     if not self._modList[(mod.filename, mod.target)].enabled:
                         self._modList[(mod.filename, mod.target)] = mod
+                        self._modIndexCache = None
                 else:
                     self._modList[(mod.filename, mod.target)] = mod
+                    self._modIndexCache = None
                 # TODO: incomplete: detect changed files
             except Exception as e:
                 logger.bind(path=path).exception(f'Could not load MOD: {e}')
@@ -225,8 +229,10 @@ class Model:
                         logger.bind(path=path).error('Ignoring duplicate MOD')
                         if not self._modList[(mod.filename, mod.target)].enabled:
                             self._modList[(mod.filename, mod.target)] = mod
+                            self._modIndexCache = None
                     else:
                         self._modList[(mod.filename, mod.target)] = mod
+                        self._modIndexCache = None
                         await self.update(mod)
             except InvalidPathError:
                 logger.bind(path=path).debug('Invalid MOD')
@@ -240,6 +246,7 @@ class Model:
                                       and file.name != '.w3mm')
                 mod.filename = path.name
                 self._modList[(mod.filename, mod.target)] = mod
+                self._modIndexCache = None
             except Exception as e:
                 logger.bind(path=path).exception(f'Could not load DLC: {e}')
         else:
@@ -253,6 +260,7 @@ class Model:
                                           and file.name != '.w3mm')
                     mod.filename = path.name
                     self._modList[(mod.filename, mod.target)] = mod
+                    self._modIndexCache = None
                     await self.update(mod)
             except InvalidPathError:
                 logger.bind(path=path).debug('Invalid DLC')
@@ -338,6 +346,7 @@ class Model:
                 self._modsSettings.removeSection(mod.filename)
                 raise e
             self._modList[(mod.filename, mod.target)] = mod
+            self._modIndexCache = None
         self._modsSettings.write()
         self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
@@ -356,6 +365,7 @@ class Model:
         # TODO: incomplete: handle possible conflict with existing mods
         async with self.updateLock:
             self._modList[(filename, target)] = mod
+            self._modIndexCache = None
         self.updateBundledContentsConflicts()
         self.setLastUpdateTime(datetime.now(tz=timezone.utc))
 
@@ -375,6 +385,7 @@ class Model:
                     logger.bind(name=mod.filename).warning(f'Could not remove settings from input.settings: {e}')
                 self._modsSettings.removeSection(mod.filename)
                 del self._modList[(mod.filename, mod.target)]
+                self._modIndexCache = None
             self._modsSettings.write()
             self.updateBundledContentsConflicts()
             self.setLastUpdateTime(datetime.now(tz=timezone.utc))
@@ -609,7 +620,12 @@ class Model:
 
     def __getitem__(self, mod: ModelIndexType) -> Mod:
         if isinstance(mod, int):
-            return list(self._modList.values())[mod]
+            if self._modIndexCache is None:
+                self._modIndexCache = list(self._modList.values())
+            try:
+                return self._modIndexCache[mod]
+            except IndexError as e:
+                raise IndexError(f'invalid index {mod}') from e
         if isinstance(mod, tuple) and len(mod) == 2:
             if mod not in self._modList:
                 raise ModNotFoundError(mod[0], mod[1])

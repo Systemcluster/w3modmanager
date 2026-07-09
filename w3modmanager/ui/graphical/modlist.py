@@ -69,28 +69,35 @@ class ModListItemDelegate(QStyledItemDelegate):
     def __init__(self, parent: QTableView) -> None:
         super().__init__(parent)
         self.linepen = QPen(QColor(200, 200, 200), 0, parent.gridStyle())
+        self._view = parent
 
     def paint(
         self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
     ) -> None:
-        itemOption = QStyleOptionViewItem(option)
+        focused = bool(option.state & QStyle.StateFlag.State_HasFocus)  # type: ignore
+        hovered = index.row() == self._view.hoverIndexRow  # type: ignore
 
-        # disable focus outline
-        if itemOption.state & QStyle.StateFlag.State_HasFocus:  # type: ignore
-            itemOption.state ^= QStyle.StateFlag.State_HasFocus  # type: ignore
-        # hover whole row
-        if index.row() == itemOption.styleObject.hoverIndexRow:  # type: ignore
-            itemOption.state |= QStyle.StateFlag.State_MouseOver  # type: ignore
-
-        super().paint(painter, itemOption, index)
+        if focused or hovered:
+            itemOption = QStyleOptionViewItem(option)
+            # disable focus outline
+            if focused:
+                itemOption.state ^= QStyle.StateFlag.State_HasFocus  # type: ignore
+            # hover whole row
+            if hovered:
+                itemOption.state |= QStyle.StateFlag.State_MouseOver  # type: ignore
+            super().paint(painter, itemOption, index)
+            rect = itemOption.rect
+        else:
+            super().paint(painter, option, index)
+            rect = option.rect
 
         # draw lines around numeric columns
         if index.column() in (5, 12):
             oldpen = painter.pen()
             painter.setPen(self.linepen)
             painter.drawLine(
-                itemOption.rect.topRight() + QPoint(0, 0),  # type: ignore
-                itemOption.rect.bottomRight() + QPoint(0, 0)  # type: ignore
+                rect.topRight() + QPoint(0, 0),  # type: ignore
+                rect.bottomRight() + QPoint(0, 0)  # type: ignore
             )
             painter.setPen(oldpen)
 
@@ -287,13 +294,13 @@ class ModList(QTableView):
                 createAsyncTask(self.changeHoveredModPriority(-1), self.tasks)
             return
         result = super().wheelEvent(event)
-        # repaint previously hovered row on scroll avoid repaint artifacts
+        # update previously hovered row on scroll to avoid repaint artifacts
         index = self.model().index(self.hoverIndexRow, 0)
         self.hoverIndexRow = self.indexAt(event.position().toPoint()).row()
         rect = self.visualRect(index)
         rect.setLeft(0)
         rect.setRight(self.viewport().width())
-        self.viewport().repaint(rect)
+        self.viewport().update(rect)
         return result
 
     def leaveEvent(self, event: QEvent) -> None:
