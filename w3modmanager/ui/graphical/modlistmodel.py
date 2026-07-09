@@ -336,8 +336,8 @@ class ModListModel(QAbstractTableModel):
             if col in ('inputs', 'settings',):
                 val = 0
                 for s in mod[col]:
-                    for n in s.config.sections():
-                        val += len(s.config.items(n))
+                    for section in s.sections():
+                        val += len(s.items(section))
                 return val if val else None
 
             if col in ('binFiles', 'menuFiles', 'contentFiles', 'scriptFiles', 'bundledFiles',):

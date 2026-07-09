@@ -151,9 +151,9 @@ class DetailsWindow(QDialog):
             self.settings.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
             for settingLine in settings:
                 self.settings.append(f'<strong>{settingLine.source}</strong>:')
-                for section in settingLine.config.sections():
+                for section in settingLine.sections():
                     self.settings.append(f'&nbsp;&nbsp;<span style="color: #888"><strong>[{section}]</strong></span>')
-                    for key, value in settingLine.config[section].items():
+                    for key, value in settingLine.items(section):
                         self.settings.append(f'&nbsp;&nbsp;&nbsp;&nbsp;\
                                              {key} <span style="color: #888">= {value} </span>')
             self.settings.moveCursor(QTextCursor.MoveOperation.Start)
@@ -175,9 +175,9 @@ class DetailsWindow(QDialog):
             self.inputs.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
             for inputLine in inputs:
                 self.inputs.append(f'<strong>{inputLine.source}</strong>:')
-                for section in inputLine.config.sections():
+                for section in inputLine.sections():
                     self.inputs.append(f'&nbsp;&nbsp;<span style="color: #888"><strong>[{section}]</strong></span>')
-                    for key, value in inputLine.config[section].items():
+                    for key, value in inputLine.items(section):
                         self.inputs.append(f'&nbsp;&nbsp;&nbsp;&nbsp;\
                                              {key} <span style="color: #888">= {value} </span>')
             self.inputs.moveCursor(QTextCursor.MoveOperation.Start)

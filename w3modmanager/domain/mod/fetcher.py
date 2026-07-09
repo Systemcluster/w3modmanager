@@ -353,20 +353,26 @@ class Settings(DataClassJsonMixin):
         config = ConfigParser(strict=False)
         config.optionxform = str  # type: ignore
         config.read_string(self.content)
-        self.config = config
+        self.config = {section: dict(config[section]) for section in config.sections()}
+
+    def sections(self) -> list[str]:
+        return list(self.config.keys())
+
+    def items(self, section: str) -> list[tuple[str, str]]:
+        return list(self.config[section].items())
 
     def __repr__(self) -> str:
         return f'\'{self.source!s}\': \
-            {str({section: dict(self.config[section]) for section in self.config.sections()})}'
+            {str({section: dict(self.config[section]) for section in self.config.keys()})}'
 
     def __str__(self) -> str:
         return f'{self.source!s}: \
-            {str({section: dict(self.config[section]) for section in self.config.sections()})}'
+            {str({section: dict(self.config[section]) for section in self.config.keys()})}'
 
     def __len__(self) -> int:
         val = 0
-        for n in self.config.sections():
-            val += len(self.config.items(n))
+        for n in self.config.keys():
+            val += len(self.config[n].items())
         return val
 
 

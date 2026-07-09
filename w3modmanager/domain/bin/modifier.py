@@ -15,10 +15,10 @@ def addSettings(settingslist: Sequence[Settings], path: Path) -> int:
     config.read(path, encoding=encoding)
     modified = 0
     for settings in settingslist:
-        for section in settings.config.sections():
+        for section in settings.sections():
             if not config.has_section(section):
                 config.add_section(section)
-            for key, val in settings.config.items(section):
+            for key, val in settings.items(section):
                 config.set(section, key, val)
                 modified += 1
     with open(path, 'w', encoding=encoding) as file:
@@ -35,10 +35,10 @@ def removeSettings(settingslist: Sequence[Settings], path: Path) -> int:
     config.read(path, encoding=encoding)
     modified = 0
     for settings in settingslist:
-        for section in settings.config.sections():
+        for section in settings.sections():
             if not config.has_section(section):
                 continue
-            for key, _ in settings.config.items(section):
+            for key, _ in settings.items(section):
                 config.remove_option(section, key)
                 modified += 1
             if not config.items(section):
