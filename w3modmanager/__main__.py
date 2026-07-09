@@ -32,10 +32,10 @@ if sys.version_info < w3modmanager.MIN_PYTHON_VERSION:
 
 # setup Qt environment
 
-if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
-    del os.environ['QT_DEVICE_PIXEL_RATIO']
 os.environ['QT_API'] = 'pyside6'
 if platform.system() == 'Windows':
+    if 'QT_DEVICE_PIXEL_RATIO' in os.environ:
+        del os.environ['QT_DEVICE_PIXEL_RATIO']
     os.environ['QT_QPA_PLATFORM'] = 'windows:darkmode=0'
 
 
@@ -114,10 +114,10 @@ def main(gamePath: str | None = None,
     from w3modmanager.domain.system.permissions import getWritePermissions, setWritePermissions
     from w3modmanager.domain.web.nexus import closeSession
     from w3modmanager.ui.graphical.mainwindow import MainWindow
-    from w3modmanager.util.util import getRuntimePath
+    from w3modmanager.util.util import getRuntimePath, setToolPermissions
 
     from PySide6.QtCore import QSettings, Qt
-    from PySide6.QtGui import QColor, QFont, QIcon, QPalette
+    from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QPalette
     from PySide6.QtWidgets import QApplication, QMessageBox
     from qasync import QEventLoop, QThreadExecutor
 
@@ -138,8 +138,12 @@ def main(gamePath: str | None = None,
     QApplication.setQuitOnLastWindowClosed(True)
 
     app = QApplication(sys.argv)
-    app.setStyle('windowsvista')
-    app.setStyleSheet('''
+    if platform.system() == 'Windows':
+        app.setStyle('windowsvista')
+    else:
+        app.setStyle('Fusion')
+
+    stylesheet = '''
         Link {
             text-decoration: none;
         }
@@ -199,12 +203,10 @@ def main(gamePath: str | None = None,
         }
         QTableView::item:!selected:hover {
             background: rgb(217, 235, 249);
-            padding: 0;
         }
         QTableView::item:selected {
             background: rgb(90, 155, 235);
             color: white;
-            padding: 0;
         }
         QLineEdit {
             outline: none;
@@ -279,7 +281,14 @@ def main(gamePath: str | None = None,
             background: #f2f2f2;
             margin: 2px 0;
         }
-    ''')
+    '''
+    if platform.system() != 'Windows':
+        stylesheet += '''
+            QPushButton:disabled {
+                color: #aaa;
+            }
+        '''
+    app.setStyleSheet(stylesheet)
 
     eventloop = QEventLoop(app)
     pool = QThreadExecutor(max_workers=8, stack_size=2**24)
@@ -290,17 +299,33 @@ def main(gamePath: str | None = None,
     palette.setColor(QPalette.ColorRole.Base, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.Window, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.Button, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
     palette.setColor(QPalette.ColorRole.Link, Qt.GlobalColor.red)
     palette.setColor(QPalette.ColorRole.LinkVisited, Qt.GlobalColor.red)
     palette.setColor(QPalette.ColorRole.Highlight, QColor(90, 155, 235))
+    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
     palette.setColor(QPalette.ColorRole.Accent, QColor(100, 165, 235))
     app.setPalette(palette)
 
-    font = QFont('Segoe UI')
+    if platform.system() == 'Windows':
+        font = QFont('Segoe UI')
+        font.setPointSize(9)
+    else:
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont)
+        font.setPointSize(12)
+
+    if platform.system() == 'Darwin':
+        font.setWeight(QFont.Weight.Light)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+    else:
+        font.setWeight(QFont.Weight.Normal)
+
     font.setStyleHint(QFont.StyleHint.System)
-    font.setWeight(QFont.Weight.Normal)
     font.setStyleStrategy(QFont.StyleStrategy.PreferDevice)
-    font.setPointSize(9)
     app.setFont(font)
 
     icon = QIcon()
@@ -330,6 +355,8 @@ def main(gamePath: str | None = None,
         if startupMode == StartupMode.Settings:
             MainWindow.showSettingsDialog(None).exec()
             sys.exit()
+
+        setToolPermissions()
 
         def createModel(ignorelock: bool = False) -> Model:
             nonlocal settings

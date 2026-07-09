@@ -1,4 +1,5 @@
 import os
+import platform
 
 from pathlib import Path
 
@@ -19,6 +20,12 @@ class UnexpectedInputError(IOError):
     def __init__(self, path: Path, message: str = '') -> None:
         super().__init__(f'{f"{message}: " if message else ""}{os.path.abspath(path)!s}')
         self.path = path
+        self.message = message
+
+
+class UnsupportedSystemError(IOError):
+    def __init__(self, message: str = '') -> None:
+        super().__init__(f'{f"{message}: " if message else ""}{platform.system()!s}')
         self.message = message
 
 

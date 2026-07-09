@@ -1,6 +1,6 @@
 import w3modmanager
 
-from w3modmanager.core.errors import InvalidPathError
+from w3modmanager.core.errors import InvalidPathError, UnsupportedSystemError
 
 import asyncio
 import codecs
@@ -8,6 +8,7 @@ import contextlib
 import ctypes
 import hashlib
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -84,21 +85,28 @@ def getRuntimePath(subpath: Path | str | None) -> Path:
 
 
 def getUserDocumentsPath() -> Path:
-    from ctypes import windll, wintypes
-    CSIDL_PERSONAL = 5       # user documents
-    SHGFP_TYPE_CURRENT = 0   # get current, not default value
-    buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
-    windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
-    return Path(buf.value)
+    if platform.system() == 'Windows':
+        from ctypes import windll, wintypes  # type: ignore
+        CSIDL_PERSONAL = 5  # user documents
+        SHGFP_TYPE_CURRENT = 0  # get current, not default value
+        buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+        windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
+        return Path(buf.value)
+    else:
+        from PySide6.QtCore import QStandardPaths
+        return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation))
 
 
 def getWindowsPath() -> Path:
-    from ctypes import windll
-    windows_directory_buffer = ctypes.create_unicode_buffer(1024)
-    if not windll.kernel32.GetWindowsDirectoryW(windows_directory_buffer, 1024):
-        return Path(os.environ['WINDIR'])
+    if platform.system() == 'Windows':
+        from ctypes import windll  # type: ignore
+        windows_directory_buffer = ctypes.create_unicode_buffer(1024)
+        if not windll.kernel32.GetWindowsDirectoryW(windows_directory_buffer, 1024):
+            return Path(os.environ['WINDIR'])
+        else:
+            return Path(windows_directory_buffer.value)
     else:
-        return Path(windows_directory_buffer.value)
+        raise UnsupportedSystemError('cannot resolve windows system path')
 
 
 def removeUrlScheme(url: str) -> str:
@@ -171,10 +179,27 @@ def removeDirectory(path: Path) -> None:
 
 
 def openDirectory(path: Path) -> None:
-    if os.path.isdir(path):
-        os.startfile(os.path.abspath(path), 'explore')  # noqa
-    else:
-        logger.bind(path=path).warning('Not a valid directory, could not open')
+    try:
+        if os.path.isdir(path):
+            if platform.system() == 'Windows':
+                os.startfile(os.path.abspath(path), 'explore')  # type: ignore # noqa
+                return
+            elif platform.system() == 'Darwin':
+                which = shutil.which('open')
+                if which:
+                    subprocess.Popen([which, path])  # noqa: S603
+                    return
+            elif platform.system() == 'Linux':
+                xdgopen = shutil.which('xdg-open')
+                if xdgopen:
+                    subprocess.call([xdgopen, path])  # noqa: S603
+                    return
+            import webbrowser
+            webbrowser.open(str(path), new=1)
+        else:
+            logger.bind(path=path).warning('Not a valid directory, could not open')
+    except Exception as e:
+        logger.bind(path=path).exception(f'Could not open directory: {e}')
 
 
 def openExecutable(path: Path, once: bool = False) -> None:
@@ -185,29 +210,81 @@ def openExecutable(path: Path, once: bool = False) -> None:
     start = True
     if once:
         try:
-            from win32.win32api import OpenProcess
-            from win32.win32gui import EnumWindows, GetWindow, IsIconic, SetForegroundWindow, ShowWindow
-            from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId
-            existingWindows = []
-            windowHandles = []
-            EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
-            for windowHandle in windowHandles:
-                processIds = GetWindowThreadProcessId(windowHandle)
-                for processId in processIds:
+            if platform.system() == 'Windows':
+                from win32.win32api import OpenProcess  # type: ignore
+                from win32.win32gui import (  # type: ignore
+                    EnumWindows,
+                    GetWindow,
+                    IsIconic,
+                    SetForegroundWindow,
+                    ShowWindow,
+                )
+                from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId  # type: ignore
+                existingWindows = []
+                windowHandles = []
+                EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
+                for windowHandle in windowHandles:
+                    processIds = GetWindowThreadProcessId(windowHandle)
+                    for processId in processIds:
+                        try:
+                            processHandle = OpenProcess(0x1000, False, processId)
+                            fileName = GetModuleFileNameEx(processHandle, 0)
+                            if normalizePath(Path(fileName), False) == path:
+                                existingWindows.append(windowHandle)
+                        except Exception:  # noqa
+                            continue
+                for existingWindow in existingWindows:
+                    parentWindow = GetWindow(existingWindow, 4)
+                    if not parentWindow:
+                        if IsIconic(existingWindow):
+                            ShowWindow(existingWindow, 9)
+                        SetForegroundWindow(existingWindow)
+                        start = False
+            elif platform.system() == 'Darwin':
+                import psutil  # type: ignore
+                for proc in psutil.process_iter(['exe']):
                     try:
-                        processHandle = OpenProcess(0x1000, False, processId)
-                        fileName = GetModuleFileNameEx(processHandle, 0)
-                        if normalizePath(Path(fileName), False) == path:
-                            existingWindows.append(windowHandle)
+                        exe = proc.info.get('exe')
+                        if exe and normalizePath(Path(exe), False) == path:
+                            pid = proc.pid
+                            osascript = shutil.which('osascript')
+                            if osascript:
+                                subprocess.run(  # noqa: S603
+                                    [osascript, '-e',
+                                    f'tell application "System Events" to set frontmost of '
+                                    f'(first process whose unix id is {pid}) to true'],
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    check=False
+                                )
+                            start = False
+                            break
                     except Exception:  # noqa
                         continue
-            for existingWindow in existingWindows:
-                parentWindow = GetWindow(existingWindow, 4)
-                if not parentWindow:
-                    if IsIconic(existingWindow):
-                        ShowWindow(existingWindow, 9)
-                    SetForegroundWindow(existingWindow)
-                    start = False
+            elif platform.system() == 'Linux':
+                import psutil  # type: ignore
+                for proc in psutil.process_iter(['exe']):
+                    try:
+                        exe = proc.info.get('exe')
+                        if exe and normalizePath(Path(exe), False) == path:
+                            pid = proc.pid
+                            wmctrl = shutil.which('wmctrl')
+                            xdotool = shutil.which('xdotool')
+                            if wmctrl:
+                                subprocess.run(  # noqa: S603
+                                    [wmctrl, '-p', '-a', str(pid)],
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    check=False
+                                )
+                            elif xdotool:
+                                subprocess.run(  # noqa: S603
+                                    [xdotool, 'search', '--pid', str(pid), 'windowactivate'],
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    check=False
+                                )
+                            start = False
+                            break
+                    except Exception:  # noqa
+                        continue
         except Exception as e:
             logger.bind(path=path).debug(f'Could not get open windows: {e}')
     if start:
@@ -218,15 +295,25 @@ def openExecutable(path: Path, once: bool = False) -> None:
 
 
 def scanBundleRaw(bundle: Path) -> subprocess.CompletedProcess[bytes]:
-    exe = str(getRuntimePath('resources/tools/quickbms/quickbms.exe'))
+    si = None
+    cf = 0
+    if platform.system() == 'Windows':
+        exe = str(getRuntimePath('resources/tools/quickbms/windows/quickbms.exe'))
+        si = subprocess.STARTUPINFO()  # type: ignore
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
+        CREATE_NO_WINDOW = 0x08000000
+        cf = CREATE_NO_WINDOW
+    elif platform.system() == 'Darwin':
+        exe = str(getRuntimePath('resources/tools/quickbms/darwin/quickbms'))
+    elif platform.system() == 'Linux':
+        exe = str(getRuntimePath('resources/tools/quickbms/linux/quickbms'))
+    else:
+        raise UnsupportedSystemError('quickbms not found for system')
     script = str(getRuntimePath('resources/tools/quickbms/witcher3.bms'))
-    si = subprocess.STARTUPINFO()
-    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    CREATE_NO_WINDOW = 0x08000000
     return subprocess.run(  # noqa: S603
         [exe, '-l', script, str(bundle)],
         stdin=subprocess.DEVNULL, capture_output=True,
-        creationflags=CREATE_NO_WINDOW, startupinfo=si,
+        creationflags=cf, startupinfo=si,
         check=False
     )
 
@@ -236,15 +323,9 @@ async def scanBundle(bundle: Path) -> list[str]:
         raise InvalidPathError(bundle, 'Invalid bundle, does not exist')
     if not bundle.suffix == '.bundle':
         raise InvalidPathError(bundle, 'Invalid bundle')
-    result = await asyncio.get_running_loop().run_in_executor(
-        None,
-        partial(scanBundleRaw, bundle)
-    )
+    result = await asyncio.get_running_loop().run_in_executor(None, partial(scanBundleRaw, bundle))
     if result.returncode != 0:
-        raise InvalidPathError(
-            bundle,
-            result.stderr.decode('utf-8') if result.stderr else 'Could not read bundle'
-        )
+        raise InvalidPathError(bundle, result.stderr.decode('utf-8') if result.stderr else 'Could not read bundle')
     output: str = result.stdout.decode('utf-8')
     files = []
     for line in output.splitlines():
@@ -257,14 +338,24 @@ def extractArchive(archive: Path, target: Path) -> None:
     if os.path.exists(target):
         removeDirectory(target)
     target.mkdir(parents=True)
-    exe = str(getRuntimePath('resources/tools/7zip/7z.exe'))
-    si = subprocess.STARTUPINFO()
-    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    CREATE_NO_WINDOW = 0x08000000
+    si = None
+    cf = 0
+    if platform.system() == 'Windows':
+        exe = str(getRuntimePath('resources/tools/7zip/windows/7z.exe'))
+        si = subprocess.STARTUPINFO()  # type: ignore
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
+        CREATE_NO_WINDOW = 0x08000000
+        cf = CREATE_NO_WINDOW
+    elif platform.system() == 'Darwin':
+        exe = str(getRuntimePath('resources/tools/7zip/darwin/7zz'))
+    elif platform.system() == 'Linux':
+        exe = str(getRuntimePath('resources/tools/7zip/linux/7zzs'))
+    else:
+        raise UnsupportedSystemError('7zip not found for system')
     result: subprocess.CompletedProcess[bytes] = subprocess.run(  # noqa: S603
         [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
         stdin=subprocess.DEVNULL, capture_output=True,
-        creationflags=CREATE_NO_WINDOW, startupinfo=si,
+        creationflags=cf, startupinfo=si,
         check=False
     )
     if result.returncode != 0:
@@ -292,6 +383,44 @@ def createAsyncTask[Return](coro: Coroutine[Any, Any, Return], refset: set[Task[
     refset.add(task)
     task.add_done_callback(refset.discard)
     return task
+
+
+def setToolPermissions() -> bool:
+    if platform.system() == 'Darwin':
+        paths = [
+            'resources/tools/7zip/darwin/7zz',
+            'resources/tools/quickbms/darwin/quickbms'
+        ]
+        xattr = shutil.which('xattr')
+        if not xattr:
+            return False
+        results = [
+            subprocess.run(  # noqa: S603
+                [xattr, '-d', 'com.apple.quarantine', str(getRuntimePath(path))],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False
+            )
+            for path in paths
+        ]
+        return all(results)
+    elif platform.system() == 'Linux':
+        paths = [
+            'resources/tools/7zip/linux/7zzs',
+            'resources/tools/quickbms/linux/quickbms'
+        ]
+        chmod = shutil.which('chmod')
+        if not chmod:
+            return False
+        results = [
+            subprocess.run(  # noqa: S603
+                [chmod, '+x', str(getRuntimePath(path))],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False
+            )
+            for path in paths
+        ]
+        return all(results)
+    return True
 
 
 def debounce[**Param](ms: int, cancel_running: bool = False) -> Callable[

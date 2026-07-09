@@ -4,6 +4,8 @@ from w3modmanager.domain.mod import fetcher
 from w3modmanager.domain.web.nexus import RequestError, ResponseError, UnauthorizedError, getUserInformation
 from w3modmanager.util.util import debounce, getTitleString
 
+import platform
+
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSize, Qt
@@ -35,6 +37,8 @@ class SettingsWindow(QDialog):
         settings = QSettings()
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(5, 5, 5, 5)
+        if platform.system() == 'Darwin':
+            mainLayout.setContentsMargins(8, 15, 8, 15)
 
         # First Start info
 

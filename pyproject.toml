@@ -22,6 +22,7 @@ dependencies = [
     "dataclasses-json>=0.6",
     "watchdog>=6.0",
     "xxhash>=3.8",
+    "psutil>=7.2; sys_platform != 'win32'",
     "pywin32>=312; sys_platform == 'win32'",
 ]
 
