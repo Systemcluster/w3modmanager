@@ -211,7 +211,7 @@ def fetchUnsureDirectories(path: Path) -> list[Path]:
 #
 
 @dataclass
-class BinFile:
+class BinFile(DataClassJsonMixin):
     source: Path = field(metadata=JsonConfig(encoder=str, decoder=Path), default_factory=Path)
     target: Path = field(metadata=JsonConfig(encoder=str, decoder=Path), default_factory=Path)
 
