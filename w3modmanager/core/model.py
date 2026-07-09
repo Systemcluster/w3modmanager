@@ -709,6 +709,8 @@ def verifyInternalPath(path: Path | None) -> Path | None:
         return None
     try:
         parent = path.parent
+        if not parent.exists():
+            parent.mkdir(parents=True)
         if not parent.is_dir():
             return None
         potentials = [d for d in parent.glob(f'{path.name.lower()}', case_sensitive=False) if d.is_dir()]
