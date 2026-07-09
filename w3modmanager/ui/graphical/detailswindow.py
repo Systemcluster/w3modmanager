@@ -1,6 +1,8 @@
 from w3modmanager.core.model import Model
 from w3modmanager.domain.mod.mod import Mod
 
+import platform
+
 from dataclasses import fields
 
 from PySide6.QtCore import QSize, Qt
@@ -18,6 +20,8 @@ class DetailsWindow(QDialog):
 
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(5, 5, 5, 5)
+        if platform.system() == 'Darwin':
+            mainLayout.setContentsMargins(8, 15, 8, 15)
 
         scrollArea = QScrollArea(self)
         scrollArea.setWidgetResizable(True)

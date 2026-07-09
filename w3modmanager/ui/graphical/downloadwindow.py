@@ -4,6 +4,7 @@ from w3modmanager.ui.graphical.modlist import ModListItemDelegate
 from w3modmanager.util.util import debounce, getTitleString
 
 import html
+import platform
 
 from typing import cast
 
@@ -43,6 +44,8 @@ class DownloadWindow(QDialog):
 
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(5, 5, 5, 5)
+        if platform.system() == 'Darwin':
+            mainLayout.setContentsMargins(8, 15, 8, 15)
 
         self.signals = DownloadWindowEvents(self)
 

@@ -555,19 +555,19 @@ async def fetchBundleContents(root: Path, path: Path) -> list[BundledFile]:
 
 def findGamePath() -> Path | None:
     # Try to find the game path through registry entries and library files
-    from w3modmanager.core.model import verifyGamePath  # noqa: I001
-    import winreg
-    import vdf
+    from w3modmanager.core.model import verifyGamePath
 
     try:
+        import winreg
+
         # try to read Witcher 3 GOG installation path directly
         # see https://www.gog.com/forum/general/querying_gog_install_path
-        key = winreg.OpenKeyEx(
-            winreg.HKEY_LOCAL_MACHINE,
+        key = winreg.OpenKeyEx(  # type: ignore
+            winreg.HKEY_LOCAL_MACHINE,  # type: ignore
             r'SOFTWARE',
-            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
-        subkey = winreg.OpenKeyEx(key, r'WOW6432Node\GOG.com\Games\1207664663')
-        game = Path(str(winreg.QueryValueEx(subkey, 'exe')[0]))
+            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))  # type: ignore
+        subkey = winreg.OpenKeyEx(key, r'WOW6432Node\GOG.com\Games\1207664663')  # type: ignore
+        game = Path(str(winreg.QueryValueEx(subkey, 'exe')[0]))  # type: ignore
         if verifyGamePath(game):
             return game
     except Exception as e:
@@ -575,14 +575,18 @@ def findGamePath() -> Path | None:
         logger.debug(f'Could not find GOG installation path: {e}')
 
     try:
+        import winreg
+
+        import vdf
+
         # try to read Steam installation path
         # see https://stackoverflow.com/questions/34090258/find-steam-games-folder
-        key = winreg.OpenKeyEx(
-            winreg.HKEY_LOCAL_MACHINE,
+        key = winreg.OpenKeyEx(  # type: ignore
+            winreg.HKEY_LOCAL_MACHINE,  # type: ignore
             r'SOFTWARE',
-            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))
-        subkey = winreg.OpenKeyEx(key, r'WOW6432Node\Valve\Steam')
-        steam = Path(str(winreg.QueryValueEx(subkey, 'installPath')[0]))
+            access=(winreg.KEY_READ | winreg.KEY_WOW64_64KEY))  # type: ignore
+        subkey = winreg.OpenKeyEx(key, r'WOW6432Node\Valve\Steam')  # type: ignore
+        steam = Path(str(winreg.QueryValueEx(subkey, 'installPath')[0]))  # type: ignore
         libs = steam.joinpath('steamapps/libraryfolders.vdf')
         if os.path.isdir(steam) and os.path.isfile(libs):
             # found Steam installation, now read library folders manifest

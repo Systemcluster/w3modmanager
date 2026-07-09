@@ -7,9 +7,9 @@ from loguru import logger
 
 def findScriptMergerPath() -> Path | None:
     try:
-        from win32.win32api import OpenProcess
-        from win32.win32gui import EnumWindows, GetWindow, GetWindowText
-        from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId
+        from win32.win32api import OpenProcess  # type: ignore
+        from win32.win32gui import EnumWindows, GetWindow, GetWindowText  # type: ignore
+        from win32.win32process import GetModuleFileNameEx, GetWindowThreadProcessId  # type: ignore
         existingPaths = []
         windowHandles = []
         EnumWindows(lambda windowHandle, _: windowHandles.append(windowHandle), None)
