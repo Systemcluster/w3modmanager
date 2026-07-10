@@ -263,6 +263,8 @@ class ModList(QTableView):
             self.verticalHeader().setDefaultSectionSize(25)
         else:
             self.verticalHeader().setDefaultSectionSize(30)
+        self.viewport().update()
+        self.scrollToTop()
 
     @debounce(200)
     def headerChangedEvent(self) -> None:
