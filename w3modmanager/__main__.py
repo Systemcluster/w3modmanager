@@ -397,7 +397,7 @@ def main(gamePath: str | None = None,
                 model = createModel()
 
             # check for write access to the game and config directories
-            for path in (model.gamepath, model.configpath, model.cachepath,):
+            for path in (model.gamepath, model.configpath, model.cachepath, model.modspath, model.dlcspath,):
                 if not getWritePermissions(path):
                     if MainWindow.showInvalidPermissionsDialog(None, path).exec() != QMessageBox.StandardButton.Yes \
                     or not setWritePermissions(path):
