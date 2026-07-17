@@ -43,14 +43,17 @@ def getSupportedExtensions() -> list[str]:
 
 
 def detectEncoding(path: Path) -> str:
-    encoding = detect(path.read_bytes())
+    with path.open('rb') as file:
+        b = file.read(128 * 1024)
+        encoding = detect(b)
     if encoding['confidence'] and float(encoding['confidence']) > 0.7:
         return str(encoding['encoding'])
     return 'utf-8'
 
 
 def readText(path: Path) -> str:
-    b = path.read_bytes()
+    with path.open('rb') as file:
+        b = file.read(8)
     if b.startswith(codecs.BOM_UTF16_LE):
         return path.read_text(encoding='utf-16')
     if b.startswith(codecs.BOM_UTF16_BE):
