@@ -7,6 +7,7 @@ import codecs
 import contextlib
 import ctypes
 import hashlib
+import inspect
 import os
 import platform
 import re
@@ -437,7 +438,7 @@ def debounce[**Param](ms: int, cancel_running: bool = False) -> Callable[
                 async def internal() -> Any:
                     try:
                         result = fun(*args, **kwargs)
-                        if type(result) is Awaitable or asyncio.iscoroutine(result):
+                        if type(result) is Awaitable or inspect.isawaitable(result) or asyncio.iscoroutine(result):
                             return await result
                         else:
                             return result
