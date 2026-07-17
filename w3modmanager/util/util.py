@@ -356,7 +356,7 @@ def extractArchive(archive: Path, target: Path) -> None:
     else:
         raise UnsupportedSystemError('7zip not found for system')
     result: subprocess.CompletedProcess[bytes] = subprocess.run(  # noqa: S603
-        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y'],
+        [exe, 'x', str(archive), '-o' + '' + str(target) + '', '-y', '-bso0', '-bsp0'],
         stdin=subprocess.DEVNULL, capture_output=True,
         creationflags=cf, startupinfo=si,
         check=False
