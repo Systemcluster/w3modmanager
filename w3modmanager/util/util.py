@@ -396,11 +396,16 @@ def setToolPermissions() -> bool:
             'resources/tools/quickbms/darwin/quickbms'
         ]
         xattr = shutil.which('xattr')
-        if not xattr:
+        chmod = shutil.which('chmod')
+        if not xattr or not chmod:
             return False
         results = [
             subprocess.run(  # noqa: S603
                 [xattr, '-d', 'com.apple.quarantine', str(getRuntimePath(path))],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False
+            ) and subprocess.run(  # noqa: S603
+                [chmod, '+x', str(getRuntimePath(path))],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 check=False
             )

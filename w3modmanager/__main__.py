@@ -356,7 +356,8 @@ def main(gamePath: str | None = None,
             MainWindow.showSettingsDialog(None).exec()
             sys.exit()
 
-        setToolPermissions()
+        if not setToolPermissions():
+            logger.debug('Failed to set tool permissions, check if files in resources/tools can be executed')
 
         def createModel(ignorelock: bool = False) -> Model:
             nonlocal settings
