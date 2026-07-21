@@ -78,19 +78,19 @@ class Mod(DataClassJsonMixin):
 
     @property
     def contentFiles(self) -> list[ContentFile]:
-        return list(filter(
+        return sorted(filter(
             lambda f: f.source.suffix != '.ws',
             self.contents))
 
     @property
     def scriptFiles(self) -> list[ContentFile]:
-        return list(filter(
+        return sorted(filter(
             lambda f: f.source.suffix == '.ws',
             self.contents))
 
     @property
     def binFiles(self) -> list[BinFile]:
-        return list(filter(
+        return sorted(filter(
             lambda f: f.target.parent not in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ),
@@ -98,18 +98,18 @@ class Mod(DataClassJsonMixin):
 
     @property
     def menuFiles(self) -> list[BinFile]:
-        return list(filter(
+        return sorted(filter(
             lambda f: f.target.parent in (
                 Path('bin/config/r4game/user_config_matrix/pc'),
             ), self.files))
 
     @property
     def bundledFiles(self) -> list[BundledFile]:
-        return self.bundled
+        return sorted(self.bundled)
 
     @property
     def readmeFiles(self) -> list[ReadmeFile]:
-        return self.readmes
+        return sorted(self.readmes)
 
 
     @classmethod
