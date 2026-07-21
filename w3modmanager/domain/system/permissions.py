@@ -38,6 +38,9 @@ def getWritePermissions(path: Path, children: bool = True) -> bool:
                     if file.parent not in dirs:
                         dirs.append(file.parent)
                     continue
+                READONLY = 0x1
+                if win32api.GetFileAttributes(str(file)) & READONLY:
+                    return False
                 # search for a permission set with full access or modify access
                 # for the current user or for authenticated users
                 good = False
@@ -73,6 +76,8 @@ def setWritePermissions(path: Path) -> bool:
             # get the paths to the required system executables
             icacls = shutil.which('icacls.exe') \
                 or getWindowsPath().joinpath('system32/icacls.exe')
+            attrib = shutil.which('attrib.exe') \
+                or getWindowsPath().joinpath('system32/attrib.exe')
             powershell = shutil.which('powershell.exe') or shutil.which('pwsh.exe') \
                 or getWindowsPath().joinpath('WindowsPowerShell/v1.0/powershell.exe')
             # add modify access permissions for the current user
@@ -87,6 +92,15 @@ def setWritePermissions(path: Path) -> bool:
                     -FilePath "{Path(icacls).resolve(strict=True)!s}" \
                     -ArgumentList \'"{path.resolve(strict=True)!s}" "/grant" "{user}:(OI)(CI)M" "/T"\' \
                     -Verb RunAs -WindowStyle Hidden'],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=CREATE_NO_WINDOW, startupinfo=si)
+            # remove read-only flag
+            result = result and subprocess.run([  # noqa
+                f'{Path(powershell).resolve(strict=True)!s}', '-Command',
+                f'Start-Process \
+                    -FilePath "{Path(attrib).resolve(strict=True)!s}" \
+                    -ArgumentList \'"-r" "/s" "/d"\' \
+                    -WindowStyle Hidden'],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 creationflags=CREATE_NO_WINDOW, startupinfo=si)
             return result.returncode == 0
