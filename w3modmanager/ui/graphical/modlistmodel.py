@@ -210,8 +210,8 @@ class ModListModel(QAbstractTableModel):
         col = self.getColumnKey(index.column())
         if col in ('package', 'filename', 'category', 'priority',):
             mod = self.modmodel[index.row()]
-            # TODO: disallow editing for special 0000 mods
-            if col in ('priority',) and mod.datatype not in ('mod', 'udf',):
+            if mod.filename.startswith('mod0000') \
+                    or (col in ('priority',) and mod.datatype not in ('mod', 'udf',)):
                 result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
             else:
                 result = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
