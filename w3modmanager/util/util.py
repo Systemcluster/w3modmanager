@@ -125,7 +125,7 @@ def normalizeUrl(url: str) -> str:
 
 def normalizePath(path: Path, long: bool = True) -> Path:
     normalized = os.fspath(os.path.abspath(path))
-    if long:
+    if long and platform.system() == 'Windows':
         if not normalized.startswith('\\\\?\\'):
             normalized = '\\\\?\\' + normalized
     else:
