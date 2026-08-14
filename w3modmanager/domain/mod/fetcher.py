@@ -103,6 +103,29 @@ def formatDlcName(name: str) -> str:
 # mod validation
 #
 
+def _caseInsensitivePathKey(path: Path) -> tuple[str, ...]:
+    return tuple(part.casefold() for part in path.parts)
+
+
+def _pathEqual(path: Path, other: Path) -> bool:
+    return _caseInsensitivePathKey(path) == _caseInsensitivePathKey(other)
+
+
+def _pathHasPart(path: Path, name: str) -> bool:
+    return any(part.casefold() == name.casefold() for part in path.parts)
+
+
+def _pathFromFirstPart(path: Path, name: str) -> Path:
+    for index, part in enumerate(path.parts):
+        if part.casefold() == name.casefold():
+            return Path(*path.parts[index:])
+    return path
+
+
+def _pathSortKey(path: Path) -> tuple[str, ...]:
+    return tuple(part.casefold() for part in path.parts)
+
+
 def containsValidMod(path: Path, searchlimit: int = 0) -> tuple[bool, bool]:
     # valid if contains a valid mod or dlc dir
     dirs = [path]
@@ -115,7 +138,7 @@ def containsValidMod(path: Path, searchlimit: int = 0) -> tuple[bool, bool]:
             bins = fetchBinFiles(check, onlyUngrouped=True)
             if len(bins[0]) or len(bins[1]) or len(bins[2]):
                 return True, True
-            dirs += sorted(d for d in check.iterdir() if d.is_dir())
+            dirs += sorted((d for d in check.iterdir() if d.is_dir()), key=_pathSortKey)
             if searchlimit and len(dirs) > searchlimit:
                 return False, False
     return False, True
@@ -164,7 +187,11 @@ def containsContentDirectory(path: Path) -> bool:
 
 def containsScripts(path: Path) -> bool:
     # check if path contains .ws scripts inside content/scripts/
-    return any(f.is_file() for f in path.glob('content/**/*.ws'))
+    return any(
+        f.is_file() and f.suffix.casefold() == '.ws'
+        for content in path.iterdir() if content.is_dir() and content.name.casefold() == 'content'
+        for f in content.glob('**/*')
+    )
 
 
 #
@@ -178,7 +205,7 @@ def fetchModDirectories(path: Path) -> list[Path]:
         if isValidModDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidDlcDirectory(check):
-            dirs += sorted(d for d in check.iterdir() if d.is_dir())
+            dirs += sorted((d for d in check.iterdir() if d.is_dir()), key=_pathSortKey)
     return bins
 
 
@@ -189,7 +216,7 @@ def fetchDlcDirectories(path: Path) -> list[Path]:
         if isValidDlcDirectory(check):
             bins.append(check.relative_to(path))
         elif not isValidModDirectory(check):
-            dirs += sorted(d for d in check.iterdir() if d.is_dir())
+            dirs += sorted((d for d in check.iterdir() if d.is_dir()), key=_pathSortKey)
     return bins
 
 
@@ -200,8 +227,9 @@ def fetchUnsureDirectories(path: Path) -> list[Path]:
         if maybeModOrDlcDirectory(check, path):
             bins.append(check.relative_to(path))
         dirs += sorted(
-            d for d in check.iterdir() if d.is_dir()
-            and not isValidModDirectory(d) and not isValidDlcDirectory(d)
+            (d for d in check.iterdir() if d.is_dir()
+             and not isValidModDirectory(d) and not isValidDlcDirectory(d)),
+            key=_pathSortKey,
         )
     return bins
 
@@ -229,23 +257,23 @@ class BinFile(DataClassJsonMixin):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BinFile):
-            return self.source == other.source and self.target == other.target
+            return _pathEqual(self.source, other.source) and _pathEqual(self.target, other.target)
         if isinstance(other, str):
             if self.source == self.target:
-                return self.source == Path(other)
+                return _pathEqual(self.source, Path(other))
             match = re.findall(r'^(.*) \((.*)\)$', other)
             if len(match) != 1 or len(match[0]) != 2:
                 return False
-            return bool(match) and self.source == Path(match[0][0]) \
-                and self.target == Path(match[0][1])
+            return bool(match) and _pathEqual(self.source, Path(match[0][0])) \
+                and _pathEqual(self.target, Path(match[0][1]))
         return False
 
     def __hash__(self) -> int:
-        return hash((self.source, self.target))
+        return hash((_caseInsensitivePathKey(self.source), _caseInsensitivePathKey(self.target)))
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, BinFile):
-            return self.source < other.source
+            return (self.source == self.target, self.source) < (other.source == other.target, other.source)
         return False
 
 
@@ -262,17 +290,17 @@ class ContentFile(DataClassJsonMixin):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, ContentFile):
-            return self.source == other.source
+            return _pathEqual(self.source, other.source)
         if isinstance(other, str):
-            return self.source == Path(other)
+            return _pathEqual(self.source, Path(other))
         return False
 
     def __hash__(self) -> int:
-        return hash(self.source)
+        return hash(_caseInsensitivePathKey(self.source))
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, ContentFile):
-            return self.source < other.source
+            return (len(self.source.parts), self.source) < (len(other.source.parts), other.source)
         return False
 
 
@@ -289,13 +317,13 @@ class ReadmeFile(DataClassJsonMixin):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, ReadmeFile):
-            return self.source == other.source
+            return _pathEqual(self.source, other.source)
         if isinstance(other, str):
-            return self.source == Path(other)
+            return _pathEqual(self.source, Path(other))
         return False
 
     def __hash__(self) -> int:
-        return hash(self.source)
+        return hash(_caseInsensitivePathKey(self.source))
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, ReadmeFile):
@@ -316,17 +344,17 @@ class BundledFile(DataClassJsonMixin):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BundledFile):
-            return self.source == other.source and self.bundled == other.bundled
+            return _pathEqual(self.source, other.source) and _pathEqual(self.bundled, other.bundled)
         if isinstance(other, str):
-            return self.source == Path(other)
+            return _pathEqual(self.source, Path(other))
         return False
 
     def __hash__(self) -> int:
-        return hash((self.source, self.bundled))
+        return hash((_caseInsensitivePathKey(self.source), _caseInsensitivePathKey(self.bundled)))
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, BundledFile):
-            if self.source == other.source:
+            if _pathEqual(self.source, other.source):
                 return self.bundled < other.bundled
             return self.source < other.source
         return False
@@ -375,6 +403,11 @@ class Settings(DataClassJsonMixin):
             val += len(self.config[n].items())
         return val
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Settings):
+            return type(self) is type(other) and _pathEqual(self.source, other.source) and self.content == other.content
+        return False
+
 
 class UserSettings(Settings):
     pass
@@ -398,8 +431,8 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
             relpath: Path = file.relative_to(path)
 
             # if the binfile is placed under bin, use its path relative to its bin dir
-            if 'bin' in relpath.parts:
-                minpath = Path(re.sub(r'^((?!bin\/).)*', r'', relpath.as_posix(), flags=re.IGNORECASE))
+            if _pathHasPart(relpath, 'bin'):
+                minpath = _pathFromFirstPart(relpath, 'bin')
                 bins.append(BinFile(relpath, minpath))
                 continue
 
@@ -438,9 +471,9 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 ))
                 # add cfgs coming with it
                 bins.extend(sorted(BinFile(
-                    cfg.relative_to(path),
-                    Path(f'bin/x64/{cfg.name}')
-                ) for cfg in file.parent.iterdir()
+                            cfg.relative_to(path),
+                            Path(f'bin/x64/{cfg.name}')
+                            ) for cfg in sorted(file.parent.iterdir(), key=_pathSortKey)
                     if re.match(r'.+(\.cfg)$', cfg.name, re.IGNORECASE) and cfg not in bins
                 ))
 
@@ -461,8 +494,8 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                 continue
 
         dirs += sorted(
-            d for d in check.iterdir()
-            if d.is_dir() and (
+            (d for d in check.iterdir()
+             if d.is_dir() and (
                 not onlyUngrouped
                 or (
                     not isValidModDirectory(d)
@@ -470,6 +503,8 @@ def fetchBinFiles(path: Path, onlyUngrouped: bool = False) -> \
                     and not maybeModOrDlcDirectory(d, path)
                 )
             )
+            ),
+            key=_pathSortKey,
         )
     return (bins, user, inpu)
 
@@ -485,10 +520,11 @@ def fetchReadmeFiles(path: Path, onlyUngrouped: bool = False) -> list[ReadmeFile
             relpath: Path = file.relative_to(path)
             if re.match(r'^(.*readme.*)\.(txt|md)', file.name, re.IGNORECASE):
                 contents.append(ReadmeFile(relpath, util.readText(file)))
-            dirs += sorted(
-                d for d in check.iterdir()
-                if d.is_dir() and not onlyUngrouped
-            )
+        dirs += sorted(
+            (d for d in check.iterdir()
+             if d.is_dir() and not onlyUngrouped),
+            key=_pathSortKey,
+        )
     return contents
 
 
@@ -496,19 +532,19 @@ def fetchContentFiles(path: Path) -> list[ContentFile]:
     contents = []
     dirs = [path]
     for check in dirs:
-        if check.is_dir() and check.name == 'content':
+        if check.is_dir() and check.name.casefold() == 'content':
             contents.extend([
                 ContentFile(x.relative_to(path), util.getXXHash(x))
                 for x in check.glob('**/*') if x.is_file()
             ])
         else:
-            dirs += sorted(d for d in check.iterdir() if d.is_dir())
+            dirs += sorted((d for d in check.iterdir() if d.is_dir()), key=_pathSortKey)
     return contents
 
 
 def fetchPatchFiles(path: Path) -> list[ContentFile]:
     contents = []
-    for check in sorted(d for d in path.iterdir() if d.is_dir() and d.name == 'content'):
+    for check in sorted((d for d in path.iterdir() if d.is_dir() and d.name.casefold() == 'content'), key=_pathSortKey):
         contents.extend([
             ContentFile(x.relative_to(path), util.getXXHash(x))
             for x in sorted(check.glob('**/*')) if x.is_file()
@@ -523,7 +559,7 @@ def resolveCommonBinRoot(root: Path, files: list[BinFile]) -> Path:
     common = None
     for file in files:
         parents = file.source.parent.parts
-        fileroot = Path(*itertools.takewhile(lambda d: d != 'bin', parents))
+        fileroot = Path(*itertools.takewhile(lambda d: d.casefold() != 'bin', parents))
         if not common or fileroot in common.parents:
             common = fileroot
             continue

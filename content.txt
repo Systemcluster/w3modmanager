@@ -1,0 +1,215 @@
+Now I'll compile my comprehensive review findings:
+
+---
+
+## **Merge Infrastructure Code Review: w3modmanager**
+
+### **CRITICAL ISSUES (Severity: Blocks maximally-automatic merging)**
+
+#### 1. **Lifecycle Integration Completely Missing** 
+**Files**: [w3modmanager/core/model.py](w3modmanager/core/model.py#L440), [w3modmanager/core/model.py](w3modmanager/core/model.py#L495), [w3modmanager/core/model.py](w3modmanager/core/model.py#L511)  
+**Problem**: Three `enable()`/`disable()` operations have TODOs saying "incomplete: handle xml and ini changes" — but **script merging is never mentioned or invoked**. The `merger2` module exists but is orphaned from the model lifecycle.
+
+**Concrete Gaps**:
+- No call to `merge_many()` or `merge_contributors()` on mod enable/disable
+- No invocation on install/uninstall (add/remove methods copy files but don't merge scripts)
+- No conflict detection or presentation to user
+- Scripts with multiple mods simply overwrite each other
+
+**Recommendation**: Hook `merger2.merge_contributors()` into:
+1. **On `add()`**: Merge new mod's scripts against base + enabled mods
+2. **On `enable()`**: Recompute merge for affected script files
+3. **On `disable()`**: Use cache or fall back to regional subtraction (see #2)
+4. **On `replace()`**: Trigger full merge pipeline
+
+---
+
+#### 2. **Cache Design Not Implemented Despite Excellent TODOS.md Spec**
+**Files**: [TODOS.md](TODOS.md#L5-L37), [w3modmanager/domain/bin/merger2.py](w3modmanager/domain/bin/merger2.py#L119)  
+**Problem**: `TODOS.md` specifies a sophisticated per-file cache strategy (lines 5-37) with:
+- Cache keys: `(file_path, base_hash, ordered mod tuples)`  
+- Regional fallback for uninstall (preserve unrelated resolutions)  
+- Post-resolution text storage (user decisions, not raw merge)
+
+Yet `MergeResolutionCache` is **never instantiated, populated, or queried** anywhere in the codebase.
+
+**Impact**: 
+- Users resolve conflicts manually, then repeat the same manual resolution on next mod change
+- No uninstall efficiency (recomputes full merge instead of subtracting mod)
+- Cache key infrastructure exists but unused: `MergeCacheKey`, `MergeResolution` types defined but dead code
+
+**Recommendation**: 
+1. Add persistent cache layer: `{cache_key → resolved_text}` stored in `cachepath/merge_cache.db`
+2. On `enable()/disable()`, query cache before invoking merger
+3. Implement regional fallback for uninstall (subtract one mod's diffs from merged result)
+4. Serialize/deserialize `MergeCacheKey` to/from JSON for disk persistence
+
+---
+
+#### 3. **Data Model Lacks Merge Provenance & Conflict Metadata**
+**Files**: [w3modmanager/domain/mod/fetcher.py](w3modmanager/domain/mod/fetcher.py#L253), [w3modmanager/core/model.py](w3modmanager/core/model.py#L15)  
+**Problem**: 
+- `ContentFile` only tracks `(source, hash)` — no merge metadata  
+- `ModelConflicts` is high-level (bundled vs. scripts, per-mod) — doesn't track per-file conflict markers or resolutions
+- No link between `ContentFile` instance and merge result
+
+**Consequences**:
+- Can't retrieve "which conflicts were already resolved in this merge"
+- Can't persist user's conflict resolution decisions
+- Can't display incremental UI of what changed in merged file
+
+**Recommendation**: Extend `ContentFile` (or create `MergedContentFile` subclass):
+```python
+@dataclass
+class MergedContentFile(ContentFile):
+    merge_cache_key: MergeCacheKey | None = None  # for cache lookup
+    has_unresolved_conflicts: bool = False
+    contributors: tuple[str, ...] = ()  # ordered mod IDs
+    resolution_timestamp: datetime | None = None
+```
+
+---
+
+### **HIGH-SEVERITY ISSUES** 
+
+#### 4. **Algorithm Correctness: Iterative 3-Way Merge May Not Be Optimal**
+**Files**: [w3modmanager/domain/bin/merger2.py](w3modmanager/domain/bin/merger2.py#L295)  
+**Current Behavior**: `merge_many(base, mod1, mod2, mod3)` → `merge(base, merge(base, mod1, mod2), mod3)`
+
+**Correctness Issue**: With 3+ mods, this is *technically* correct (all changes are applied), but violates symmetry:
+- Order matters: mod1 gets "first" precedence on same-position pure inserts (line 323: `if ea_lines != eb_lines: result.extend(eb_lines)`)
+- User expectations: "I installed A, B, C in that order" but a conflict may show B's version first if B and C conflict and A doesn't touch that region
+
+**Test Coverage Gap**: [tests/test_merger.py](tests/test_merger.py#L527-L550) has good 3-mod tests, but none verifying **conflict precedence ordering matches installation order**. The test at line 540 shows mod1's changes preserved, but doesn't test what happens when mod1, mod2, mod3 all modify the same line.
+
+**Recommendation**: 
+1. Document iteration order as a feature, not a limitation
+2. Add test: `test_three_way_conflict_uses_first_installed_precedence()` to verify mod1 wins in three-way conflict
+3. Consider N-way merge instead of iterative 2-way (requires algorithm redesign)
+
+---
+
+#### 5. **Persistence & Restart Behavior Not Defined**
+**Files**: [w3modmanager/domain/bin/merger2.py](w3modmanager/domain/bin/merger2.py#L119-L140)  
+**Problem**: 
+- `MergeResolutionCache` lives in memory (Python dict)
+- On process restart, all cached resolutions are lost
+- User must re-resolve conflicts they've already seen
+
+**Concrete Gap**: No code path that:
+- Saves `MergeCacheKey` + resolved text to disk
+- Loads cache on `Model.__init__()`
+- Invalidates cache when base file or mod hashes change
+
+**Recommendation**: 
+- Store cache as SQLite (queryable) or JSON Lines (append-only audit trail)
+- Hash-based invalidation: if `base_hash` in key doesn't match current base file, evict
+- Load cache on Model init: `cache = MergeResolutionCache(load_from_disk())`
+
+---
+
+#### 6. **No Uninstall Strategy (Deferred Issue, But Critical)**
+**Files**: [TODOS.md](TODOS.md#L22-L32)  
+**Context**: The TODOS.md explicitly warns: *"A local 'unmerge' primitive is intentionally not provided… would silently drop another mod's contribution."*
+
+**Current Impl**: Model.remove() naively deletes the mod directory and re-runs `removeSettings()`. If scripts were merged, **uninstall does NOT recompute the merged file**.
+
+**Impact**: If user installs mod A (adds function Foo), installs mod B (adds function Bar), merges to result {Foo, Bar}, then uninstalls A → **B's Bar is still missing** because the base game doesn't have Bar.
+
+**Recommendation**: 
+1. On `disable()/remove()`, check if script files were merged
+2. Query cache for remaining mods' merge result → write that
+3. If cache miss, use regional fallback (per TODOS.md spec) to preserve unrelated changes
+4. If no fallback applies, safe full recompute
+
+---
+
+### **MEDIUM-SEVERITY ISSUES**
+
+#### 7. **Test-Code Mismatch: Integration Tests Missing**
+**Files**: [tests/test_merger.py](tests/test_merger.py)  
+**Coverage**: Unit tests are excellent (55+, comprehensive edge cases), but **zero integration tests** for:
+- Model.add() → verify merged scripts written to correct location
+- Model.enable() → verify merge conflicts are reported
+- Model.disable() → verify cache used or regional fallback applied
+- Conflict + enable() + disable() round-trip
+
+**Recommendation**: Add `tests/test_merge_lifecycle.py` with async integration tests:
+```python
+async def test_mod_install_merges_scripts():
+    # Install modA, modB with overlapping script edits
+    # Assert merged result written to game/Mods/modB/
+    # Assert conflicts reported via model.conflicts
+
+async def test_disable_uses_cache_for_resolution():
+    # Install A, B (conflict); user resolves; disable B; re-enable B
+    # Assert same resolution used (no user prompt)
+```
+
+---
+
+#### 8. **Performance: No Concurrent Merge Batching**
+**Files**: [w3modmanager/core/model.py](w3modmanager/core/model.py#L156)  
+**Observation**: `ProcessPoolExecutor` created and used only for `ModelConflicts.fromModList()` conflict detection, **never for merging**. 
+
+**Issue**: If user installs 10 mods, each with script changes, merges are computed synchronously/sequentially (or not at all). No parallelization.
+
+**Recommendation**: 
+1. Batch script files for concurrent merge in executor
+2. Example: `executor.submit(merge_contributors, base, mods, file_path='...')` 
+3. Gather results asynchronously, cache them
+
+---
+
+#### 9. **Conflict Display Not Designed Into Model**
+**Files**: [w3modmanager/core/model.py](w3modmanager/core/model.py#L15), [w3modmanager/domain/bin/merger2.py](w3modmanager/domain/bin/merger2.py#L63)  
+**Context**: `ConflictRegion` tracks line numbers + scope (function/class name). UI could highlight conflicts per-function.
+
+**Gap**: No contract for how conflicts are surfaced to UI:
+- Should model emit a signal/callback with conflict details?
+- Should UI query model.conflicts after enable()?
+- Should conflicts be persisted for off-line review?
+
+**Recommendation**: Add `model.conflicts` to include per-file conflict details, not just aggregates:
+```python
+@dataclass  
+class FileConflict:
+    file_path: str
+    regions: tuple[ConflictRegion, ...]
+    cache_key: MergeCacheKey
+    resolved: bool = False
+    resolution_text: str = ''
+
+model.conflicts: dict[str, FileConflict]  # per-file metadata
+```
+
+---
+
+### **ALGORITHM CORRECTNESS SUMMARY**
+
+✅ **Sound**: The core `_merge_lines()` algorithm is correct:
+- SequenceMatcher with `autojunk=False` properly detects diffs
+- Pure insert handling preserves order and deduplicates identical inserts
+- Conflict region expansion handles overlaps correctly
+- Conflict markers are well-formed (requires all 3 markers in order)
+
+✅ **Well-Tested**: 55+ unit tests cover edge cases (CRLF, trailing newlines, overlapping edits, real WitcherScript patterns)
+
+⚠️ **Not Integrated**: The algorithm is never invoked during mod lifecycle operations
+
+---
+
+### **PRIORITY RECOMMENDATIONS**
+
+| Priority | Action | Effort | Impact |
+|----------|--------|--------|--------|
+| **P0** | Hook merger2 into model.enable/disable/add/remove | 2-3d | Enables auto-merge on mod changes |
+| **P0** | Implement disk cache (TODOS.md spec) | 3-4d | Eliminates user re-resolving same conflicts |
+| **P1** | Add integration tests for merge lifecycle | 2d | Catches regressions |
+| **P1** | Implement regional fallback for uninstall | 2d | Efficient mod removal, preserves resolutions |
+| **P2** | Extend ContentFile with merge metadata | 1d | Enables conflict UI, audit trail |
+| **P2** | Concurrent merge batching in executor | 1d | Performance scaling |
+
+---
+
+**Bottom Line**: The merge algorithm is production-ready, but the integration layer is entirely absent. The system currently offers **zero automatic script merging on mod operations**. The design (cache keys, regional fallback) is well-thought-out but unimplemented. Implementing P0 items would unlock maximally-automatic merging for 80% of use cases.

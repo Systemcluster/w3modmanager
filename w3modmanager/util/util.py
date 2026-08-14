@@ -134,6 +134,22 @@ def normalizePath(path: Path, long: bool = True) -> Path:
     return Path(normalized)
 
 
+def resolveCaseInsensitivePath(path: Path) -> Path | None:
+    if path.exists():
+        return path.resolve()
+    parent = path.parent
+    if parent == path:
+        return None
+    resolvedParent = resolveCaseInsensitivePath(parent)
+    if not resolvedParent:
+        return None
+    potentials = [child for child in resolvedParent.iterdir() if child.name.casefold() == path.name.casefold()]
+    if not potentials:
+        return None
+    exact = [child for child in potentials if child.name == path.name]
+    return (exact[0] if exact else potentials[0]).resolve()
+
+
 def isValidNexusModsUrl(url: str) -> bool:
     url = normalizeUrl(url)
     try:

@@ -334,3 +334,38 @@ async def test_mod_with_inputs_readme(mockdata: Path) -> None:
         IK_Z=(Action=OpenTestMenu)
     ''')]
     assert len(mod.inputs[0]) == 4
+
+
+@pytest.mark.asyncio()
+async def test_mod_detection_is_case_insensitive_for_game_paths(tmp_path: Path) -> None:
+    source = tmp_path.joinpath('mod-case-insensitive')
+    script = source.joinpath('MODMixed/CONTENT/SCRIPTS/game/R4GAME.WS')
+    bundle = source.joinpath('MODMixed/CONTENT/BLOB0.BUNDLE')
+    menu = source.joinpath('MODMixed/BIN/CONFIG/R4GAME/USER_CONFIG_MATRIX/PC/INPUT.XML')
+    settings = source.joinpath('MODMixed/User.Settings.Part.TXT')
+    script.parent.mkdir(parents=True)
+    bundle.parent.mkdir(parents=True, exist_ok=True)
+    menu.parent.mkdir(parents=True)
+    script.write_text('class R4Game {}', encoding='utf-8')
+    bundle.write_bytes(b'bundle')
+    menu.write_text('<VisibleVars />', encoding='utf-8')
+    settings.write_text('[Test]\nKey=Value\n', encoding='utf-8')
+
+    mods = await Mod.fromDirectory(source)
+
+    assert len(mods) == 1
+    mod = mods[0]
+    assert mod.filename == 'modMixed'
+    assert mod.source == source.joinpath('MODMixed')
+    assert mod.contentFiles == ['content/blob0.bundle']
+    assert mod.scriptFiles == ['content/scripts/game/r4game.ws']
+    assert mod.menuFiles == ['bin/config/r4game/user_config_matrix/pc/input.xml']
+    assert mod.settings == [UserSettings(Path('user.settings.part.txt'), '[Test]\nKey=Value')]
+
+
+def test_mod_file_identity_is_case_insensitive() -> None:
+    assert ContentFile(Path('content/scripts/game/r4game.ws')) == ContentFile(Path('CONTENT/SCRIPTS/GAME/R4GAME.WS'))
+    assert len({
+        BinFile(Path('BIN/CONFIG/foo.xml'), Path('BIN/CONFIG/foo.xml')),
+        BinFile(Path('bin/config/FOO.XML'), Path('bin/config/FOO.XML')),
+    }) == 1

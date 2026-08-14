@@ -6,12 +6,19 @@ from w3modmanager.domain.bin.merger2 import (
     CONFLICT_END,
     CONFLICT_MID,
     CONFLICT_START,
+    MergeContributor,
+    MergeResolutionCache,
     find_conflicts,
+    find_script_scope,
+    find_script_scopes,
     has_conflicts,
     merge,
+    merge_contributors,
     merge_many,
     merge_with_result,
 )
+
+import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +420,107 @@ def test_merge_with_result_reports_conflicts() -> None:
     assert len(result.conflicts) == 1
     assert result.conflicts[0].mod1_lines == ('X',)
     assert result.conflicts[0].mod2_lines == ('Y',)
+
+
+# ---------------------------------------------------------------------------
+# WitcherScript structure metadata
+# ---------------------------------------------------------------------------
+
+def test_find_script_scopes_detects_classes_and_functions() -> None:
+    scopes = find_script_scopes(_WS_BASE)
+    assert ('class', 'CR4Player') in [(scope.kind, scope.name) for scope in scopes]
+    assert ('function', 'OnSpawn') in [(scope.kind, scope.name) for scope in scopes]
+    assert ('function', 'GetCurrentSpeed') in [(scope.kind, scope.name) for scope in scopes]
+
+
+def test_find_script_scope_returns_innermost_scope() -> None:
+    line = _WS_BASE.splitlines().index('\t\treturn 5.0;') + 1
+    scope = find_script_scope(_WS_BASE, line)
+    assert scope is not None
+    assert scope.kind == 'function'
+    assert scope.name == 'GetCurrentSpeed'
+
+
+def test_ws_conflict_reports_function_scope() -> None:
+    result = merge_with_result(_WS_BASE, _WS_MOD1, _WS_MOD3_CONFLICT)
+    assert len(result.conflicts) == 1
+    assert result.conflicts[0].scope is not None
+    assert result.conflicts[0].scope.kind == 'function'
+    assert result.conflicts[0].scope.name == 'GetCurrentSpeed'
+
+
+# ---------------------------------------------------------------------------
+# named contributor merge metadata
+# ---------------------------------------------------------------------------
+
+def test_merge_contributors_records_ordered_contributors() -> None:
+    result = merge_contributors(
+        'a\nb',
+        MergeContributor('modA', 'a\nb\nA', 'hash-a'),
+        MergeContributor('modB', 'a\nb\nB', 'hash-b'),
+        file_path='content/scripts/foo.ws',
+        base_hash='base-hash',
+    )
+    assert result.text == 'a\nb\nA\nB'
+    assert result.contributors == ('modA', 'modB')
+    assert result.cache_key is not None
+    assert result.cache_key.file_path == 'content/scripts/foo.ws'
+    assert result.cache_key.base_hash == 'base-hash'
+    assert result.cache_key.contributors == (('modA', 'hash-a'), ('modB', 'hash-b'))
+
+
+def test_merge_contributors_cache_key_is_order_sensitive() -> None:
+    first = merge_contributors(
+        'a\nb',
+        MergeContributor('modA', 'a\nb\nA', 'hash-a'),
+        MergeContributor('modB', 'a\nb\nB', 'hash-b'),
+    )
+    second = merge_contributors(
+        'a\nb',
+        MergeContributor('modB', 'a\nb\nB', 'hash-b'),
+        MergeContributor('modA', 'a\nb\nA', 'hash-a'),
+    )
+    assert first.text != second.text
+    assert first.cache_key != second.cache_key
+
+
+def test_resolution_cache_stores_clean_merge_result() -> None:
+    result = merge_contributors(
+        'a\nb',
+        MergeContributor('modA', 'a\nb\nA', 'hash-a'),
+    )
+    cache = MergeResolutionCache()
+
+    resolution = cache.put_result(result)
+
+    assert result.cache_key is not None
+    assert resolution.text == result.text
+    assert cache.get(result.cache_key) == resolution
+
+
+def test_resolution_cache_rejects_unresolved_conflict_output() -> None:
+    result = merge_contributors(
+        'a\nb\nc',
+        MergeContributor('modA', 'a\nX\nc', 'hash-a'),
+        MergeContributor('modB', 'a\nY\nc', 'hash-b'),
+    )
+    cache = MergeResolutionCache()
+
+    with pytest.raises(ValueError, match='Conflicting merge result requires resolved text'):
+        cache.put_result(result)
+
+
+def test_resolution_cache_accepts_resolved_conflict_output() -> None:
+    result = merge_contributors(
+        'a\nb\nc',
+        MergeContributor('modA', 'a\nX\nc', 'hash-a'),
+        MergeContributor('modB', 'a\nY\nc', 'hash-b'),
+    )
+    cache = MergeResolutionCache()
+
+    resolution = cache.put_result(result, resolved_text='a\nresolved\nc')
+
+    assert resolution.text == 'a\nresolved\nc'
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,11 @@ Public API:
     - `merge(base, mod1, mod2)`  3-way merge of two mods against base.
     - `merge_many(base, *mods)`  iterative N-way merge (mod1, mod2, ...).
     - `merge_with_result(base, *mods)`  N-way merge with structured conflicts.
+    - `merge_contributors(base, *contributors)`  N-way merge with named mods
+                                 and cache-key metadata.
+    - `MergeResolutionCache`     in-memory guard for post-resolution cache data.
     - `find_conflicts(text)`     conflict regions produced by `merge`.
+    - `find_script_scopes(text)` WitcherScript declaration ranges.
     - `has_conflicts(text)`      true if `text` contains complete conflict
                                  regions produced by `merge`.
 
@@ -28,13 +32,31 @@ Notes:
 """
 
 import difflib
+import hashlib
+import re
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 
 CONFLICT_START = '<<<<<<<'
 CONFLICT_MID = '======='
 CONFLICT_END = '>>>>>>>'
+
+_SCRIPT_DECLARATION = re.compile(
+    r'^\s*(?:(?:public|private|protected|final|abstract|latent|static|exec|saved|editable|const)\s+)*'
+    r'(?P<kind>class|state|struct|enum|function|event)\s+(?P<name>[A-Za-z_]\w*)\b'
+)
+
+
+@dataclass(frozen=True)
+class ScriptScope:
+    """A coarse WitcherScript declaration range."""
+
+    kind: str
+    name: str
+    start_line: int
+    end_line: int
 
 
 @dataclass(frozen=True)
@@ -49,6 +71,34 @@ class ConflictRegion:
     end_line: int
     mod1_lines: tuple[str, ...]
     mod2_lines: tuple[str, ...]
+    scope: ScriptScope | None = None
+
+
+@dataclass(frozen=True)
+class MergeContributor:
+    """One mod's version of a file, with stable identity for cache keys."""
+
+    mod_id: str
+    text: str
+    content_hash: str = ''
+
+
+@dataclass(frozen=True)
+class MergeCacheKey:
+    """Identity for a resolved merge result for one target file."""
+
+    file_path: str
+    base_hash: str
+    # Ordered because same-position inserts are order-sensitive.
+    contributors: tuple[tuple[str, str], ...]
+
+
+@dataclass(frozen=True)
+class MergeResolution:
+    """A conflict-free resolved merge file stored under a cache key."""
+
+    key: MergeCacheKey
+    text: str
 
 
 @dataclass(frozen=True)
@@ -57,10 +107,36 @@ class MergeResult:
 
     text: str
     conflicts: tuple[ConflictRegion, ...]
+    contributors: tuple[str, ...] = ()
+    cache_key: MergeCacheKey | None = None
 
     @property
     def has_conflicts(self) -> bool:
         return bool(self.conflicts)
+
+
+class MergeResolutionCache:
+    """In-memory cache facade for conflict-free, post-resolution merge text."""
+
+    def __init__(self, resolutions: Iterable[MergeResolution] = ()) -> None:
+        self._resolutions = {resolution.key: resolution for resolution in resolutions}
+
+    def get(self, key: MergeCacheKey) -> MergeResolution | None:
+        return self._resolutions.get(key)
+
+    def put(self, key: MergeCacheKey, text: str) -> MergeResolution:
+        if has_conflicts(text):
+            raise ValueError('Cannot cache unresolved merge conflict output')
+        resolution = MergeResolution(key=key, text=text)
+        self._resolutions[key] = resolution
+        return resolution
+
+    def put_result(self, result: MergeResult, resolved_text: str = '') -> MergeResolution:
+        if result.cache_key is None:
+            raise ValueError('Cannot cache merge result without a cache key')
+        if result.has_conflicts and not resolved_text:
+            raise ValueError('Conflicting merge result requires resolved text')
+        return self.put(result.cache_key, resolved_text or result.text)
 
 
 def _get_edits(
@@ -87,6 +163,29 @@ def _reconstruct(
         pos = ee
     result.extend(base[pos:end])
     return result
+
+
+def _normalized_hash(text: str) -> str:
+    normalized = '\n'.join(text.splitlines())
+    if text.endswith('\n'):
+        normalized += '\n'
+    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+
+def _scope_end(lines: list[str], start: int) -> int:
+    depth = 0
+    saw_open = False
+
+    for index in range(start, len(lines)):
+        line = lines[index]
+        depth += line.count('{')
+        if '{' in line:
+            saw_open = True
+        depth -= line.count('}')
+        if saw_open and depth <= 0:
+            return index + 1
+
+    return start + 1
 
 
 def _merge_lines(base: list[str], mod1: list[str], mod2: list[str]) -> list[str]:
@@ -218,6 +317,57 @@ def merge_with_result(base: str, *mods: str) -> MergeResult:
     return MergeResult(text=text, conflicts=find_conflicts(text))
 
 
+def merge_contributors(
+    base: str, *contributors: MergeContributor, file_path: str = '', base_hash: str = ''
+) -> MergeResult:
+    """Merge named mod versions and return cache-ready metadata.
+
+    Contributor order is preserved because same-position inserts are order-sensitive.
+    """
+    text = merge_many(base, *(contributor.text for contributor in contributors))
+    cache_key = MergeCacheKey(
+        file_path=file_path,
+        base_hash=base_hash or _normalized_hash(base),
+        contributors=tuple(
+            (contributor.mod_id, contributor.content_hash or _normalized_hash(contributor.text))
+            for contributor in contributors
+        ),
+    )
+    return MergeResult(
+        text=text,
+        conflicts=find_conflicts(text),
+        contributors=tuple(contributor.mod_id for contributor in contributors),
+        cache_key=cache_key,
+    )
+
+
+def find_script_scopes(text: str) -> tuple[ScriptScope, ...]:
+    """Return coarse WitcherScript declaration ranges found in `text`."""
+    lines = text.splitlines()
+    scopes: list[ScriptScope] = []
+
+    for index, line in enumerate(lines):
+        match = _SCRIPT_DECLARATION.match(line)
+        if not match:
+            continue
+        scopes.append(ScriptScope(
+            kind=match.group('kind'),
+            name=match.group('name'),
+            start_line=index + 1,
+            end_line=_scope_end(lines, index),
+        ))
+
+    return tuple(scopes)
+
+
+def find_script_scope(text: str, line: int) -> ScriptScope | None:
+    """Return the innermost WitcherScript scope containing a 1-based line."""
+    scopes = [scope for scope in find_script_scopes(text) if scope.start_line <= line <= scope.end_line]
+    if not scopes:
+        return None
+    return min(scopes, key=lambda scope: scope.end_line - scope.start_line)
+
+
 def find_conflicts(text: str) -> tuple[ConflictRegion, ...]:
     """Return complete conflict marker regions produced by `merge`.
 
@@ -253,6 +403,7 @@ def find_conflicts(text: str) -> tuple[ConflictRegion, ...]:
             end_line=end + 1,
             mod1_lines=tuple(lines[pos + 1:mid]),
             mod2_lines=tuple(lines[mid + 1:end]),
+            scope=find_script_scope(text, pos + 1),
         ))
         pos = end + 1
 
@@ -263,6 +414,6 @@ def has_conflicts(text: str) -> bool:
     """Return True if `text` contains unresolved conflict regions from `merge`.
 
     Callers use this to decide whether a merge result is safe to write out
-automatically or needs manual resolution.
+    automatically or needs manual resolution.
     """
     return bool(find_conflicts(text))

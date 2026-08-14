@@ -1,0 +1,212 @@
+diff --git a/w3modmanager/core/model.py b/w3modmanager/core/model.py
+index aead3e9b8bc6d318aa419a2bf663be062d7f8729..c8683b5631311060346f2f45d1b9750d9f0f7104 100644
+--- a/w3modmanager/core/model.py
++++ b/w3modmanager/core/model.py
+@@ -21,6 +21,7 @@ from concurrent.futures import ProcessPoolExecutor
+ from dataclasses import dataclass, field
+ import asyncio
+ import re
++import os
+ 
+ 
+ class CallbackList(list):
+@@ -161,7 +162,7 @@ class Model:
+ 
+ 
+     async def loadInstalledMod(self, path: Path) -> None:
+-        if path.joinpath('.w3mm').is_file():
++        if os.path.isfile(path.joinpath('.w3mm')):
+             mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+             mod.enabled = not path.name.startswith('~')
+             mod.filename = re.sub(r'^(~)', r'', path.name)
+@@ -199,10 +200,10 @@ class Model:
+                 logger.bind(path=path).debug('Invalid MOD')
+ 
+     async def loadInstalledDlc(self, path: Path) -> None:
+-        if path.joinpath('.w3mm').is_file():
++        if os.path.isfile(path.joinpath('.w3mm')):
+             mod = Mod.from_json(path.joinpath('.w3mm').read_bytes())
+             mod.enabled = not all(file.name.endswith('.disabled')
+-                                  for file in path.glob('**/*') if file.is_file()
++                                  for file in path.glob('**/*') if os.path.isfile(file)
+                                   and not file.name == '.w3mm')
+             mod.filename = path.name
+             self._modList[(mod.filename, mod.target)] = mod
+@@ -213,7 +214,7 @@ class Model:
+                     mod.target = 'dlc'
+                     mod.datatype = 'dlc'
+                     mod.enabled = not all(file.name.endswith('.disabled')
+-                                          for file in path.glob('**/*') if file.is_file()
++                                          for file in path.glob('**/*') if os.path.isfile(file)
+                                           and not file.name == '.w3mm')
+                     mod.filename = path.name
+                     self._modList[(mod.filename, mod.target)] = mod
+@@ -255,7 +256,7 @@ class Model:
+             if (mod.filename, mod.target) in self._modList:
+                 raise ModExistsError(mod.filename, mod.target)
+             target = self.getModPath(mod)
+-            if target.exists():
++            if os.path.exists(target):
+                 # TODO: incomplete: make sure the mod is tracked by the model
+                 raise ModExistsError(mod.filename, mod.target)
+             settings = 0
+@@ -366,7 +367,7 @@ class Model:
+                     setSettingsValue(mod.filename, 'Enabled', '1', self.configpath.joinpath('mods.settings'))
+                 if mod.target == 'dlc':
+                     for file in oldpath.glob('**/*'):
+-                        while file.is_file() and file.suffix == '.disabled':
++                        while os.path.isfile(file) and file.suffix == '.disabled':
+                             file = file.rename(file.with_suffix(''))
+                             renames.append(file)
+                 settings = addSettings(mod.settings, self.configpath.joinpath('user.settings'))
+@@ -383,7 +384,7 @@ class Model:
+             if undo:
+                 newpath = self.getModPath(mod)
+                 mod.enabled = oldstat
+-                if newpath.is_dir() and newpath != oldpath and renamed:
++                if os.path.isdir(newpath) and newpath != oldpath and renamed:
+                     newpath.rename(oldpath)
+                 for rename in reversed(renames):
+                     rename.rename(rename.with_suffix(rename.suffix + '.disabled'))
+@@ -420,7 +421,7 @@ class Model:
+                     setSettingsValue(mod.filename, 'Enabled', '0', self.configpath.joinpath('mods.settings'))
+                 if mod.target == 'dlc':
+                     for file in oldpath.glob('**/*'):
+-                        if file.is_file() and not file.name == '.w3mm' and not file.suffix == '.disabled':
++                        if os.path.isfile(file) and not file.name == '.w3mm' and not file.suffix == '.disabled':
+                             file = file.rename(file.with_suffix(file.suffix + '.disabled'))
+                             renames.append(file)
+                 settings = removeSettings(mod.settings, self.configpath.joinpath('user.settings'))
+@@ -436,7 +437,7 @@ class Model:
+             if undo:
+                 newpath = self.getModPath(mod)
+                 mod.enabled = oldstat
+-                if newpath.is_dir() and newpath != oldpath and renamed:
++                if os.path.isdir(newpath) and newpath != oldpath and renamed:
+                     newpath.rename(oldpath)
+                 for rename in reversed(renames):
+                     rename.rename(rename.with_suffix(''))
+@@ -517,21 +518,21 @@ class Model:
+     def getModPath(self, mod: ModelIndexType, resolve: bool = False) -> Path:
+         if not isinstance(mod, Mod):
+             mod = self[mod]
+-        basepath = self.gamepath.joinpath(mod.target).resolve()
++        basepath = Path(os.path.abspath(self.gamepath.joinpath(mod.target)))
+         if not mod.enabled and mod.target == 'mods':
+             target = basepath.joinpath(f'~{mod.filename}')
+         else:
+             target = basepath.joinpath(mod.filename)
+         if resolve:
+-            if not mod.enabled and target.is_dir() \
+-            and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
++            if not mod.enabled and os.path.isdir(target) \
++            and os.path.isdir(target.parent.joinpath(re.sub(r'^~', r'', target.name))):
+                 # if the mod is disabled but there are two directories with each enabled and disabled names,
+                 # resolve to the non-disabled directory
+                 target = target.parent.joinpath(re.sub(r'^~', r'', target.name))
+-            if not target.is_dir():
+-                if not mod.enabled and target.parent.joinpath(re.sub(r'^~', r'', target.name)).is_dir():
++            if not os.path.isdir(target):
++                if not mod.enabled and os.path.isdir(target.parent.joinpath(re.sub(r'^~', r'', target.name))):
+                     target = target.parent.joinpath(re.sub(r'^~', r'', target.name))
+-                if not target.is_dir():
++                if not os.path.isdir(target):
+                     raise ModNotFoundError(mod.filename, mod.target)
+         return target
+ 
+@@ -584,70 +585,45 @@ class Model:
+ def verifyGamePath(path: Optional[Path]) -> Optional[Path]:
+     if not path:
+         return None
+-    try:
+-        if path.is_file() and path.suffix == '.exe':
+-            path = path.parents[2]
+-        return path.resolve() \
+-            if path.is_dir() \
+-            and path.joinpath('content').is_dir() \
+-            and path.joinpath('bin/x64/witcher3.exe').is_file() \
+-            else None
+-    except OSError:
+-        # check for errors here since this method is used with user input
+-        logger.bind(path=path).debug('Illegal path')
+-        return None
++    if os.path.isfile(path) and path.suffix == '.exe':
++        path = path.parents[2]
++    return Path(os.path.abspath(path)) \
++        if os.path.isdir(path) \
++        and os.path.isdir(path.joinpath('content')) \
++        and os.path.isfile(path.joinpath('bin/x64/witcher3.exe')) \
++        else None
+ 
+ 
+ def verifyConfigPath(path: Optional[Path]) -> Optional[Path]:
+     if not path:
+         return None
+-    try:
+-        return path.resolve() \
+-            if path \
+-            and path.is_dir() \
+-            and path.joinpath('user.settings').is_file() \
+-            and path.joinpath('input.settings').is_file() \
+-            else None
+-    except OSError:
+-        # check for errors here since this method is used with user input
+-        logger.bind(path=path).debug('Illegal path')
+-        return None
++    return Path(os.path.abspath(path)) \
++        if path \
++        and os.path.isdir(path) \
++        and os.path.isfile(path.joinpath('user.settings')) \
++        and os.path.isfile(path.joinpath('input.settings')) \
++        else None
+ 
+ 
+ def verifyCachePath(path: Optional[Path]) -> Optional[Path]:
+-    try:
+-        if not path or path.exists() and not path.is_dir():
+-            return None
+-        if not path.exists():
+-            path.mkdir(parents=True)
+-        return path.resolve()
+-    except OSError:
+-        # check for errors here since this method is used with user input
+-        logger.bind(path=path).debug('Illegal path')
++    if not path or os.path.exists(path) and not os.path.isdir(path):
+         return None
++    if not os.path.exists(path):
++        path.mkdir(parents=True)
++    return Path(os.path.abspath(path))
+ 
+ 
+ def verifyModsPath(path: Optional[Path]) -> Optional[Path]:
+-    try:
+-        if not path or path.exists() and not path.is_dir():
+-            return None
+-        if not path.exists():
+-            path.mkdir(parents=True)
+-        return path.resolve()
+-    except OSError:
+-        # check for errors here since this method is used with user input
+-        logger.bind(path=path).debug('Illegal path')
++    if not path or os.path.exists(path) and not os.path.isdir(path):
+         return None
++    if not os.path.exists(path):
++        path.mkdir(parents=True)
++    return Path(os.path.abspath(path))
+ 
+ 
+ def verifyDlcsPath(path: Optional[Path]) -> Optional[Path]:
+-    try:
+-        if not path or path.exists() and not path.is_dir():
+-            return None
+-        if not path.exists():
+-            path.mkdir(parents=True)
+-        return path.resolve()
+-    except OSError:
+-        # check for errors here since this method is used with user input
+-        logger.bind(path=path).debug('Illegal path')
++    if not path or os.path.exists(path) and not os.path.isdir(path):
+         return None
++    if not os.path.exists(path):
++        path.mkdir(parents=True)
++    return Path(os.path.abspath(path))

@@ -19,7 +19,7 @@ from w3modmanager.domain.bin.modifier import (
 from w3modmanager.domain.bin.watcher import CallbackList, WatchedConfigFile
 from w3modmanager.domain.mod.fetcher import BundledFile, ContentFile
 from w3modmanager.domain.mod.mod import Mod
-from w3modmanager.util.util import debounce, removeDirectory
+from w3modmanager.util.util import debounce, removeDirectory, resolveCaseInsensitivePath
 
 import asyncio
 import contextlib
@@ -675,12 +675,17 @@ def verifyGamePath(path: Path | None) -> Path | None:
     if not path:
         return None
     try:
-        if path.is_file() and path.suffix == '.exe':
+        path = resolveCaseInsensitivePath(path) or path
+        if path.is_file() and path.suffix.lower() == '.exe':
             path = path.parents[2]
+        contentPath = resolveCaseInsensitivePath(path.joinpath('content'))
+        executablePath = resolveCaseInsensitivePath(path.joinpath('bin/x64/witcher3.exe'))
         return path.resolve() \
             if path.is_dir() \
-            and path.joinpath('content').is_dir() \
-            and path.joinpath('bin/x64/witcher3.exe').is_file() \
+            and contentPath \
+            and contentPath.is_dir() \
+            and executablePath \
+            and executablePath.is_file() \
             else None
     except OSError:
         # check for errors here since this method is used with user input
@@ -692,11 +697,16 @@ def verifyConfigPath(path: Path | None) -> Path | None:
     if not path:
         return None
     try:
+        path = resolveCaseInsensitivePath(path) or path
+        userSettingsPath = resolveCaseInsensitivePath(path.joinpath('user.settings'))
+        inputSettingsPath = resolveCaseInsensitivePath(path.joinpath('input.settings'))
         return path.resolve() \
             if path \
             and path.is_dir() \
-            and path.joinpath('user.settings').is_file() \
-            and path.joinpath('input.settings').is_file() \
+            and userSettingsPath \
+            and userSettingsPath.is_file() \
+            and inputSettingsPath \
+            and inputSettingsPath.is_file() \
             else None
     except OSError:
         # check for errors here since this method is used with user input

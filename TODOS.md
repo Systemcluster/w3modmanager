@@ -10,7 +10,8 @@
   far the highest cost in the merge pipeline and dominates every other trade-off.
 
   Design:
-  - Key: `(file_path, base_hash, sorted set of (mod_id, mod_file_hash) for contributing mods)`.
+  - Key: `(file_path, base_hash, ordered tuple of (mod_id, mod_file_hash) for contributing mods)`.
+    Keep the contributors ordered because same-position inserts are order-sensitive.
   - Value: the **post-resolution** file (i.e. after the user resolved conflicts in
     the merger UI), not the raw merger output. Store alongside the resolution
     decisions if useful for debugging.

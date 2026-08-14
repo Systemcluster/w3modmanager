@@ -79,29 +79,26 @@ class Mod(DataClassJsonMixin):
     @property
     def contentFiles(self) -> list[ContentFile]:
         return sorted(filter(
-            lambda f: f.source.suffix != '.ws',
+            lambda f: f.source.suffix.lower() != '.ws',
             self.contents))
 
     @property
     def scriptFiles(self) -> list[ContentFile]:
         return sorted(filter(
-            lambda f: f.source.suffix == '.ws',
+            lambda f: f.source.suffix.lower() == '.ws',
             self.contents))
 
     @property
     def binFiles(self) -> list[BinFile]:
         return sorted(filter(
-            lambda f: f.target.parent not in (
-                Path('bin/config/r4game/user_config_matrix/pc'),
-            ),
+            lambda f: f.target.parent.as_posix().casefold() != 'bin/config/r4game/user_config_matrix/pc',
             self.files))
 
     @property
     def menuFiles(self) -> list[BinFile]:
         return sorted(filter(
-            lambda f: f.target.parent in (
-                Path('bin/config/r4game/user_config_matrix/pc'),
-            ), self.files))
+            lambda f: f.target.parent.as_posix().casefold() == 'bin/config/r4game/user_config_matrix/pc',
+            self.files))
 
     @property
     def bundledFiles(self) -> list[BundledFile]:
@@ -122,7 +119,7 @@ class Mod(DataClassJsonMixin):
         dirs = [path]
         if len(list(path.iterdir())) == 1 \
                 and len([d for d in path.iterdir() if d.is_dir() and d.name[:3].lower() not in ('dlc', 'mod',) \
-                         and d.name not in ('content',) and len(d.name) > 3]) == 1:
+                         and d.name.lower() not in ('content',) and len(d.name) > 3]) == 1:
             # if directory contains only one subdirectory and it's not the mod, dlc or content dir,
             # use it for the package name
             package = formatPackageName(next(iter(path.iterdir())).name)
@@ -143,7 +140,7 @@ class Mod(DataClassJsonMixin):
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
-                        if _content.source.suffix == '.bundle':
+                        if _content.source.suffix.lower() == '.bundle':
                             bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
@@ -174,7 +171,7 @@ class Mod(DataClassJsonMixin):
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
-                        if _content.source.suffix == '.bundle':
+                        if _content.source.suffix.lower() == '.bundle':
                             bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
@@ -205,7 +202,7 @@ class Mod(DataClassJsonMixin):
                         size += check.joinpath(_file.source).stat().st_size
                     for _content in contents:
                         size += check.joinpath(_content.source).stat().st_size
-                        if _content.source.suffix == '.bundle':
+                        if _content.source.suffix.lower() == '.bundle':
                             bundled.extend(await fetchBundleContents(check, check.joinpath(_content.source)))
                     mods.append(cls(
                         package,
@@ -224,7 +221,7 @@ class Mod(DataClassJsonMixin):
                     ))
                     continue
                 if recursive:
-                    dirs += sorted(d for d in check.iterdir() if d.is_dir())
+                    dirs += sorted((d for d in check.iterdir() if d.is_dir()), key=lambda d: d.name.casefold())
         # fetch loose bin files
         files, settings, inputs = fetchBinFiles(path, onlyUngrouped=True)
         if searchCommonRoot:
@@ -261,7 +258,7 @@ class Mod(DataClassJsonMixin):
                 bundled = []
                 for _content in contents:
                     size += path.joinpath(_content.source).stat().st_size
-                    if _content.source.suffix == '.bundle':
+                    if _content.source.suffix.lower() == '.bundle':
                         bundled.extend(await fetchBundleContents(check, path.joinpath(_content.source)))  # type: ignore
                 mods.append(cls(
                     package,
